@@ -1,0 +1,11 @@
+{
+  "items": [
+    {
+      "id": "evt-page-1",
+      "summary": "1 ページ目",
+      "start": { "dateTime": "2026-10-27T09:00:00+09:00" },
+      "end": { "dateTime": "2026-10-27T10:00:00+09:00" }
+    }
+  ],
+  "nextPageToken": "token-2"
+}

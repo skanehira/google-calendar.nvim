@@ -5,3 +5,4 @@
 .luacheckcache
 __pycache__/
 download.html
+.tmp-state/

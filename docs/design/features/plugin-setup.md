@@ -24,6 +24,8 @@
 **`setup(opts)`**:
 
 - 既定値と `opts` を深いマージで統合する。`keymaps` / `highlights` は画面ごとにマージし、`false` で無効化できる
+- `keymaps` は `month` / `agenda` / `detail` / `form` / `confirm` / `help` の画面ごとにアクション名で指定する。未知の画面名・アクション名は警告して無視する
+- すべての画面のキーは `config.keymaps` から解決し、実装に直書きしない。保存の既定キーは `<F2>`（`<C-s>` は herdr の prefix と衝突するため使わない）
 - 不正な値（`week_start` が `sunday` / `monday` 以外、`max_events_per_cell` が 1 未満）は `vim.notify` で警告し、既定値を使う
 - 複数回呼ばれた場合は最後の設定を有効にする（テストで設定を差し替えられるようにする）
 
@@ -76,3 +78,6 @@
 | float を閉じると親のウィンドウへフォーカスが戻る | 結合 |
 | `make test` が plenary の busted harness で `lua/` 配下の spec を実行する | 結合 |
 | `make check` が lint / format-check / typecheck / test を順に実行する | 結合 |
+| `setup({ keymaps = { form = { save = '<F2>' } } })` がフォームの保存キーを上書きする | 単体 |
+| `false` を指定したキーが作用しない | 単体 |
+| 未知の画面名・アクション名を指定すると警告が出て、その指定は無視される | 単体 |

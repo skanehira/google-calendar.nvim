@@ -34,6 +34,8 @@ gws calendar events delete --params '{"calendarId":"primary","eventId":"<id>"}' 
 - 終了コード 0 を成功とする。stdout の `saved_file` などは無視する
 - 成功時は詳細と確認を閉じ、月表示を再取得する
 
+キーマップは `config.keymaps.confirm` から解決し、`setup()` で上書きできる。
+
 ## API
 
 該当なし（HTTP API を持たない。`gws` の呼び出し規約は [DESIGN.md](../DESIGN.md)「CLI インターフェース」「既知の制約」参照）。

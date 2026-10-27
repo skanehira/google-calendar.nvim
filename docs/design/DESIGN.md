@@ -256,7 +256,7 @@ GOOGLE_WORKSPACE_CLI_CONFIG_DIR="$PWD/.local/gws-config" gws calendar calendarLi
 | 画面 | キー | 動作 |
 | --- | --- | --- |
 | 月表示 | `h` / `l` | 前日 / 翌日を選択 |
-| 月表示 | `j` / `k` | 前週 / 翌週を選択 |
+| 月表示 | `k` / `j` | 前週 / 翌週を選択 |
 | 月表示 | `H` / `L` | 前月 / 次月へ移動 |
 | 月表示 | `t` | 今日へ移動 |
 | 月表示 | `<CR>` | 選択日の日別アジェンダを開く |
@@ -274,12 +274,12 @@ GOOGLE_WORKSPACE_CLI_CONFIG_DIR="$PWD/.local/gws-config" gws calendar calendarLi
 | フォーム | `<Tab>` / `<S-Tab>` | 次のフィールド / 前のフィールド |
 | フォーム | `<CR>` | テキストフィールドの編集を開始する |
 | フォーム | `<Space>` | 終日・Meet のトグルを切り替える |
-| フォーム | `<C-s>` | 保存する |
+| フォーム | `<F2>` | 保存する（`<C-s>` は herdr の prefix と衝突するため使わない） |
 | フォーム | `<Esc>` / `q` | キャンセルする（入力は破棄）。`<Esc>` は insert / normal の両モードでキャンセルする |
 | フォーム | `?` | フォームのヘルプを開く |
 | ヘルプ | `q` / `<Esc>` | ヘルプを閉じる |
 
-キーマップは `setup({ keymaps = { ... } })` で画面ごとに上書きできる。`false` を指定するとそのキーを無効にする。
+キーマップは `setup({ keymaps = { ... } })` で画面ごとに上書きできる。`false` を指定するとそのキーを無効にする。すべての画面のキーは `config.keymaps.<screen>.<action>` から解決し、実装に直書きしない。保存の既定キーは `<F2>`（`<C-s>` は herdr の prefix と衝突するため使わない）。
 
 **設定（`setup()`）**:
 
@@ -300,8 +300,22 @@ require('google-calendar').setup({
   gws_cmd = 'gws',
   -- 通知関数（テストで差し替え可能）
   notify = vim.notify,
-  -- キーマップの上書き
-  keymaps = {},
+  -- キーマップの上書き（画面ごとに指定。false で無効化）
+  keymaps = {
+    month = {
+      prev_day = 'h', next_day = 'l', prev_week = 'k', next_week = 'j',
+      prev_month = 'H', next_month = 'L', today = 't',
+      agenda = '<CR>', create = 'a', refresh = 'r', help = '?', close = 'q',
+    },
+    agenda = { next = 'j', prev = 'k', open = '<CR>', help = '?', close = 'q' },
+    detail = { edit = 'e', delete = 'd', copy_meet = 'y', help = '?', close = 'q' },
+    form = {
+      next_field = '<Tab>', prev_field = '<S-Tab>', edit = '<CR>',
+      toggle = '<Space>', save = '<F2>', cancel = '<Esc>', help = '?',
+    },
+    confirm = { yes = 'y', no = 'n' },
+    help = { close = 'q' },
+  },
   -- ハイライトの上書き
   highlights = {},
 })
@@ -337,7 +351,7 @@ require('google-calendar').setup({
 ### 非同期とローディング
 
 - `gws` 呼び出し中は `state.loading = true`。月表示のヘッダーに `読み込み中...` を表示し、キー操作を無視する
-- フォームの保存中は `<C-s>` を無効化し、フッターに `保存中...` を表示する
+- フォームの保存中は `<F2>` を無効化し、フッターに `保存中...` を表示する
 - 二重送信を防ぐため、同じ画面で同時に 1 リクエストだけを実行する
 
 ### 確認と取り消し
@@ -358,6 +372,14 @@ require('google-calendar').setup({
 - 日本語を含む文字列は `vim.fn.strdisplaywidth` で幅を計算し、`vim.fn.strcharpart` で切り詰める。`#` や `string.sub` は使わない
 - 予定タイトルの改行は空白に置換し、1 行に収める
 - セル幅を超えるタイトルは末尾を `…` にする
+
+### キーマップ
+
+- すべての画面のキーは `config.keymaps.<screen>.<action>` から解決する。実装にキーを直書きしない
+- `setup({ keymaps = ... })` は既定値と深くマージする。`false` を指定したキーは無効化する
+- 未知の画面名・アクション名は `vim.notify` で警告し、無視する
+- ヘルプは解決後のキーを表示する
+- 保存の既定キーは `<F2>`。`<C-s>` は herdr の prefix と衝突するため使わない。ユーザーは `keymaps.form.save` で変更できる（例: `<A-s>`, `gs`）
 
 ### ハイライト
 

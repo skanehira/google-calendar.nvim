@@ -56,6 +56,8 @@ Google カレンダーの月表示を Neovim の float window に描画する。
 - 時刻付き予定は開始日に、終日予定は開始日から終了日の前日まで各日に載せる
 - 予定は `events_by_date` に `YYYY-MM-DD` をキーとして保持する
 
+キーマップは `config.keymaps.month` から解決し、`setup()` で上書きできる。
+
 ## API
 
 該当なし（HTTP API を持たない。`gws` の呼び出し規約は [DESIGN.md](../DESIGN.md)「CLI インターフェース」「既知の制約」参照）。

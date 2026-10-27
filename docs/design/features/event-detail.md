@@ -45,6 +45,8 @@
 - アジェンダの予定は `state.events_by_date[selected_date]` から取得する。月表示の取得結果をそのまま使う（追加の API 呼び出しはしない）
 - 詳細は選択した予定モデルをそのまま表示する
 
+キーマップは `config.keymaps.agenda` / `config.keymaps.detail` から解決し、`setup()` で上書きできる。
+
 ## API
 
 該当なし（HTTP API を持たない。`gws` の呼び出し規約は [DESIGN.md](../DESIGN.md)「CLI インターフェース」「既知の制約」参照）。

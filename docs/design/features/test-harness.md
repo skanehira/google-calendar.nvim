@@ -21,7 +21,11 @@
 | `calendar events delete --params <JSON>` | 予定を削除し、`{"status":"success"}` を返す。cwd に 0 バイトの `download.html` を生成し、cwd を `FAKE_GWS_CWD_LOG` に記録する |
 | `calendar calendarList list` | primary カレンダーの 1 件を返す |
 
-- 状態ファイルのパスは環境変数 `FAKE_GWS_STATE` で指定する。未指定なら一時ディレクトリに作る
+- 状態ファイルのパスは環境変数 `FAKE_GWS_STATE` で指定する。未指定なら一時ディレクトリの `google-calendar-fake-gws-state.json` を使う
+- 状態ファイルの形式は `{"items": [...]}`。`events list` は絞り込んだ `items` を返す
+- ページ取得のページサイズは環境変数 `FAKE_GWS_PAGE_SIZE` で指定する（既定 2500）。`pageToken` は次ページの開始オフセットを表す文字列
+- 環境変数 `FAKE_GWS_ERROR_FIXTURE` にエラー fixture のパスを指定すると、その JSON を stdout に出して終了する。`error.reason` が `authError` なら終了コード 2、それ以外は 1
+- 環境変数 `FAKE_GWS_CALL_LOG` にパスを指定すると、呼び出しごとに `{"argv": [...], "cwd": "..."}` を 1 行ずつ追記する（二重送信の検証用）
 - 終了コードは成功 0、認証エラー 2、API エラー 1。エラー時は stdout に `{"error": {...}}` を出す
 - `--format json` を受け付け、それ以外の形式は無視する
 - 実カレンダーには一切アクセスしない
@@ -40,8 +44,8 @@
 
 - `XDG_STATE_HOME` をワークスペース内の書き込み可能なディレクトリに向ける（サンドボックスでの `nvim.log` 書き込みエラーを避ける）
 - `PLENARY_PATH` で plenary.nvim の場所を指定できる
-- テストが 0 件の場合は失敗とする（`PlenaryBustedDirectory` の出力を検査する）
-- `scripts/e2e.sh` は一時ディレクトリを作り、`FAKE_GWS_STATE` と `XDG_STATE_HOME` を設定し、終了時に後始末する
+- テストが 0 件の場合は失敗とする。`PlenaryBustedDirectory` は 0 件のディレクトリで終了コード 0 を返すため、`tests/minimal_init.lua` が 0 件なら `cquit 1` にし、`scripts/test.sh` も集計結果が 0 件なら失敗にする
+- `scripts/e2e.sh` は一時ディレクトリを作り、`FAKE_GWS_STATE` / `FAKE_GWS_CWD_LOG` / `FAKE_GWS_CALL_LOG` / `XDG_STATE_HOME` を設定し、`gws` シンボリックリンクを `PATH` の先頭に置き、終了時に後始末する
 
 ## API
 

@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<title>issue #9 保留レビュー項目</title>
+<style>
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; margin: 2rem auto; max-width: 960px; line-height: 1.6; color: #1f2328; }
+  h1 { font-size: 1.4rem; }
+  .meta { color: #57606a; font-size: 0.9rem; margin-bottom: 1.5rem; }
+  .item { border: 1px solid #d0d7de; border-radius: 6px; padding: 0.9rem 1rem; margin-bottom: 1rem; }
+  .item.high { border-left: 4px solid #cf222e; }
+  .item.medium { border-left: 4px solid #bf8700; }
+  .item label { font-weight: 600; }
+  .badge { display: inline-block; font-size: 0.75rem; padding: 0.1rem 0.45rem; border-radius: 999px; margin-right: 0.4rem; }
+  .badge.high { background: #ffebe9; color: #cf222e; }
+  .badge.medium { background: #fff8c5; color: #7d4e00; }
+  .loc { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.85rem; color: #57606a; }
+  dl { margin: 0.6rem 0 0; }
+  dt { font-weight: 600; font-size: 0.85rem; margin-top: 0.5rem; }
+  dd { margin: 0 0 0 0; }
+</style>
+</head>
+<body>
+<h1>issue #9 保留レビュー項目</h1>
+<p class="meta">run: dev-impl 2026-10-27 / review: review-9-r1.json + review-9-r2.json (base 258385a) / 保留 high 1 件・保留 medium 4 件</p>
+<p>merge を止めない指摘を事後確認用に記録する。対応する場合はチェックを付けて修正し、このファイルを削除する。</p>
+
+<div class="item high" data-severity="high" data-category="spec-compliance">
+  <label><input type="checkbox"> 複数回 setup で前回の highlight 上書きが残る</label>
+  <span class="badge high">high</span><span class="badge">spec-compliance</span>
+  <div class="loc">lua/google-calendar/config.lua:201</div>
+  <dl>
+    <dt>summary</dt>
+    <dd>apply_highlights は今回の setup の上書きだけを適用するため、以前の setup で上書きしたハイライトが残る。setup() を複数回呼ぶと最後の設定が有効になる契約 (plugin-setup.md:30) に反する。</dd>
+    <dt>evidence</dt>
+    <dd>`setup({highlights={GoogleCalendarHeader={fg='#ff0000'}}})` 後の nvim_get_hl は #ff0000 / bold=true。続けて `setup()` を呼ぶと config.get() は #7aa2f7 に戻るが、nvim_get_hl は #ff0000 のまま。defaults ループの `default = true` が既存定義を上書きしないため。</dd>
+    <dt>fix_hint</dt>
+    <dd>適用済みの上書きグループの集合を持ち、今回の setup で上書きされないグループは既定定義に戻す (`nvim_set_hl(0, group, vim.tbl_extend('force', { default = false }, defaults.highlights[group]))` 等)。複数回 setup の highlight を assert するテストを追加する。</dd>
+  </dl>
+</div>
+
+<div class="item medium" data-severity="medium" data-category="spec-compliance">
+  <label><input type="checkbox"> highlights に false を指定しても無効化されない</label>
+  <span class="badge medium">medium</span><span class="badge">spec-compliance</span>
+  <div class="loc">lua/google-calendar/config.lua:203</div>
+  <dl>
+    <dt>summary</dt>
+    <dd>plugin-setup.md:26 の「false で無効化できる」を満たさない。apply_highlights はテーブル以外を無視し、defaults ループが先に既定を定義する。</dd>
+    <dt>evidence</dt>
+    <dd>`config.setup({highlights={GoogleCalendarHeader=false}})` 後の config.get() は false だが、apply_highlights() 後の nvim_get_hl は既定の fg (#7aa2f7) が定義されたまま。</dd>
+    <dt>fix_hint</dt>
+    <dd>apply_highlights の defaults ループで false のグループを定義せず、false を無効化として扱う。仕様として false をサポートしないなら merge_highlights で警告して無視し、docs を明確化する。</dd>
+  </dl>
+</div>
+
+<div class="item medium" data-severity="medium" data-category="spec-compliance">
+  <label><input type="checkbox"> 4 件以上の予定 fixture が無い</label>
+  <span class="badge medium">medium</span><span class="badge">spec-compliance</span>
+  <div class="loc">tests/fixtures/events.json:1</div>
+  <dl>
+    <dt>summary</dt>
+    <dd>設計 docs/design/features/test-harness.md:66 のエッジケース「予定 0 件・1 件・4 件以上（+N）のケースを用意する」を満たす fixture が無い。</dd>
+    <dt>evidence</dt>
+    <dd>tests/fixtures/events.json は予定 3 件のみ。4 件以上（+N 表示）のケースを pin するテストが無い。</dd>
+    <dt>fix_hint</dt>
+    <dd>4 件以上の予定を含む fixture（例: tests/fixtures/many-events.json）を追加するか events.json を 4 件以上に拡張し、ページネーション/`+N` のテストで使う。</dd>
+  </dl>
+</div>
+
+<div class="item medium" data-severity="medium" data-category="code-quality">
+  <label><input type="checkbox"> PLENARY_TEST_TIMEOUT の復元位置で nested 実行がハングする</label>
+  <span class="badge medium">medium</span><span class="badge">code-quality</span>
+  <div class="loc">tests/minimal_init.lua:26</div>
+  <dl>
+    <dt>summary</dt>
+    <dd>PLENARY_TEST_TIMEOUT の unset が最初の _find_files_to_run だけに効き、original test_directory 内の 2 回目の _find_files_to_run で文字列が復元されて `time: expected number, got string` で失敗する。</dd>
+    <dt>evidence</dt>
+    <dd>nested の非空ディレクトリを対象にした実行でハングすることをレビュワーが確認。</dd>
+    <dt>fix_hint</dt>
+    <dd>env の復元を original test_directory の呼び出し後まで遅らせる（unset したまま呼び、戻ってから復元する）。</dd>
+  </dl>
+</div>
+
+<div class="item medium" data-severity="medium" data-category="spec-compliance">
+  <label><input type="checkbox"> 複数キー（q / &lt;Esc&gt;）を config.keymaps で表現できない</label>
+  <span class="badge medium">medium</span><span class="badge">spec-compliance</span>
+  <div class="loc">lua/google-calendar/config.lua:38</div>
+  <dl>
+    <dt>summary</dt>
+    <dd>設計のキーマップ表の `q` / `&lt;Esc&gt;`（およびフォームの `&lt;Esc&gt;` / `q`）の複数キーが config.keymaps の単一キーで表現できず、`&lt;Esc&gt;` を false で無効化できない。</dd>
+    <dt>evidence</dt>
+    <dd>config.keymaps の各アクションは単一キー文字列のみを受け付ける。画面実装で `&lt;Esc&gt;` を直書きすると「実装にキーを直書きしない」規約に反する。</dd>
+    <dt>fix_hint</dt>
+    <dd>キーマップの値に複数キーのリストを許すか、close_esc / cancel_q のような別アクションを config.keymaps に追加し、DESIGN.md・plugin-setup.md・README.md の表/例とテストを更新する。</dd>
+  </dl>
+</div>
+</body>
+</html>

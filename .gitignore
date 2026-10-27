@@ -1,0 +1,7 @@
+.poc/
+.local/
+.claude/worktrees/
+*.log
+.luacheckcache
+__pycache__/
+download.html

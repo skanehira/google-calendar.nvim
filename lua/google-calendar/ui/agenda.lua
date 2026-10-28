@@ -50,16 +50,13 @@ local function build_lines(events, width)
   return lines, starts
 end
 
-local function window_opts(events)
-  local max_width = math.max(1, math.min(60, vim.o.columns - 8))
-  local lines = build_lines(events, max_width)
-  local width = math.max(1, math.min(max_width, window.max_display_width(lines) + 2))
-  -- Enter で開くアジェンダは、内容の 2 倍ほどの高さにして見やすくする
-  local height = math.max(1, math.min(#lines * 2, vim.o.lines - 4))
-  local row = math.max(0, math.floor((vim.o.lines - height) / 2))
-  local col = math.max(0, math.floor((vim.o.columns - width) / 2))
+local function window_opts()
+  local cfg = config.get().agenda
+  local width, height = window.target_size(cfg.width, cfg.height)
+  local row = math.max(0, math.floor((vim.o.lines - (height + 2)) / 2))
+  local col = math.max(0, math.floor((vim.o.columns - (width + 2)) / 2))
 
-  return width, { relative = 'editor', width = width, height = height, row = row, col = col }
+  return { relative = 'editor', width = width, height = height, row = row, col = col }
 end
 
 local function event_index(events, event_id)
@@ -96,21 +93,20 @@ local function place_cursor()
   end
 end
 
-local function render(win, events, width)
+local function render(win, events)
+  local cfg = config.get().agenda
+  local width, height = window.target_size(cfg.width, cfg.height)
+  local max_width = math.max(1, width - 2)
+
   local buf = vim.api.nvim_win_get_buf(win)
-  local lines, starts = build_lines(events, width)
+  local lines, starts = build_lines(events, max_width)
   line_starts = starts
 
   vim.bo[buf].modifiable = true
   vim.api.nvim_buf_set_lines(buf, 0, -1, false, lines)
   vim.bo[buf].modifiable = false
 
-  -- 幅は内容に合わせ、高さは内容の 2 倍にして見やすくする
-  window.resize(
-    win,
-    math.min(width, window.max_display_width(lines) + 2),
-    math.max(1, math.min(#lines * 2, vim.o.lines - 4))
-  )
+  window.resize(win, width, height)
 
   place_cursor()
 end
@@ -167,7 +163,7 @@ end
 function M.open(opts)
   current_opts = opts or {}
   local events = current_events()
-  local width, win_opts = window_opts(events)
+  local win_opts = window_opts()
 
   local win = state.windows.agenda
   if win ~= nil and vim.api.nvim_win_is_valid(win) then
@@ -177,7 +173,7 @@ function M.open(opts)
   end
 
   selected_index = 1
-  render(win, events, width)
+  render(win, events)
   vim.api.nvim_set_option_value('cursorline', true, { win = win })
   set_keymaps(vim.api.nvim_win_get_buf(win))
   vim.api.nvim_set_current_win(win)
@@ -198,9 +194,9 @@ function M.refresh(event_id)
   end
   clamp_selection(#events)
 
-  local width, win_opts = window_opts(events)
+  local win_opts = window_opts()
   vim.api.nvim_win_set_config(win, win_opts)
-  render(win, events, width)
+  render(win, events)
 end
 
 return M

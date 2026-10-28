@@ -89,8 +89,11 @@ require('google-calendar').setup({
   -- 1 セルに表示する予定の最大件数 (1〜10)
   max_events_per_cell = 3,
   -- float のサイズ (ボーダーを除く利用可能領域に対する割合。1.0 で画面いっぱい)
-  width = 1.0,
-  height = 1.0,
+  width = 0.7,
+  height = 0.7,
+  -- アジェンダ / 詳細のサイズ (同じく利用可能領域に対する割合)
+  agenda = { width = 0.5, height = 0.5 },
+  detail = { width = 0.5, height = 0.5 },
   -- 日時の表示形式
   date_format = '%Y-%m-%d %H:%M',
   -- gws の実行ファイル

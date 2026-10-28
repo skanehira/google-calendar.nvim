@@ -162,6 +162,7 @@ function M.build_view(grid, events_by_date, cfg, today, selected_date, cell_w, r
       local col = (index - 1) * (cell_w + 3) + (cell_w - #day_text)
       local cell_start = (index - 1) * (cell_w + 3)
       cells[index] = {
+        date = cell.date,
         col = col,
         end_col = col + #day_text,
         cell_col = cell_start,
@@ -255,6 +256,21 @@ function M.render(win, view)
   -- 設定した画面サイズ (ウィンドウ高さ) に合わせる。内容が収まらない場合はスクロールする
   local layout = M.compute_layout(vim.o.columns, vim.o.lines, config.get())
   window.resize(win, vim.fn.strdisplaywidth(view.header), layout.win_height)
+
+  -- 高さが足りない場合でも選択中の週が見えるようにスクロール位置を合わせる
+  local selected_line = 1
+  for week_index, week in ipairs(view.weeks) do
+    for _, cell in ipairs(week.cells) do
+      if cell.date == state.selected_date then
+        selected_line = week_index + 1
+        break
+      end
+    end
+    if selected_line > 1 then
+      break
+    end
+  end
+  vim.api.nvim_win_set_cursor(win, { selected_line, 0 })
 end
 
 local function render()

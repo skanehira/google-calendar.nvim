@@ -79,6 +79,14 @@ function M.max_display_width(lines)
   return width
 end
 
+function M.target_size(width_ratio, height_ratio)
+  local usable_width = math.max(1, vim.o.columns - 2)
+  local usable_height = math.max(1, vim.o.lines - 2)
+  local width = math.max(1, math.min(usable_width, math.floor(usable_width * width_ratio)))
+  local height = math.max(1, math.min(usable_height, math.floor(usable_height * height_ratio)))
+  return width, height
+end
+
 function M.resize(win, width, height)
   if win == nil or not vim.api.nvim_win_is_valid(win) then
     return

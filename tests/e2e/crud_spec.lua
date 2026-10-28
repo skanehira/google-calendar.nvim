@@ -232,7 +232,7 @@ describe('e2e crud', function()
     vim.o.columns = 100
     vim.o.lines = 40
 
-    plugin.setup({ gws_cmd = fake_gws, notify = notify })
+    plugin.setup({ gws_cmd = fake_gws, notify = notify, width = 1.0, height = 1.0 })
     vim.cmd('runtime! plugin/google-calendar.lua')
   end)
 
@@ -479,17 +479,11 @@ describe('e2e crud', function()
 
       feed('<CR>')
       assert.are.equal('agenda', state.stack[#state.stack].name)
-      assert.are.equal(
-        math.min(#window_lines('agenda') * 2, vim.o.lines - 4),
-        vim.api.nvim_win_get_config(state.windows.agenda).height
-      )
+      assert.are.equal(math.floor((vim.o.lines - 2) * 0.5), vim.api.nvim_win_get_config(state.windows.agenda).height)
 
       feed('<CR>')
       assert.are.equal('detail', state.stack[#state.stack].name)
-      assert.are.equal(
-        math.min(#window_lines('detail') * 2, vim.o.lines - 4),
-        vim.api.nvim_win_get_config(state.windows.detail).height
-      )
+      assert.are.equal(math.floor((vim.o.lines - 2) * 0.5), vim.api.nvim_win_get_config(state.windows.detail).height)
 
       feed('e')
       assert.are.equal('form', state.stack[#state.stack].name)

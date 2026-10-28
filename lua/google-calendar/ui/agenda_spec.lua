@@ -102,13 +102,9 @@ describe('ui.agenda', function()
       local win = agenda.open()
 
       local win_config = vim.api.nvim_win_get_config(win)
-      local lines = buffer_lines()
-      local content_width = 0
-      for _, line in ipairs(lines) do
-        content_width = math.max(content_width, vim.fn.strdisplaywidth(line))
-      end
-      assert.are.equal(math.min(60, vim.o.columns - 8, content_width + 2), win_config.width)
-      assert.are.equal(math.min(#lines * 2, vim.o.lines - 4), win_config.height)
+      local width, height = window.target_size(0.5, 0.5)
+      assert.are.equal(width, win_config.width)
+      assert.are.equal(height, win_config.height)
       assert.are.equal(win, vim.api.nvim_get_current_win())
       assert.are.equal('agenda', state.stack[#state.stack].name)
       assert.are.same({
@@ -127,7 +123,8 @@ describe('ui.agenda', function()
 
     local win = agenda.open()
 
-    assert.are.equal(math.min(2, vim.o.lines - 4), vim.api.nvim_win_get_config(win).height)
+    local _, height = window.target_size(0.5, 0.5)
+    assert.are.equal(height, vim.api.nvim_win_get_config(win).height)
     assert.are.same({ '予定なし' }, buffer_lines())
 
     feed('<CR>')
@@ -254,36 +251,34 @@ describe('ui.agenda', function()
     assert.are.equal(parent, vim.api.nvim_get_current_win())
   end)
 
-  it(
-    '予定が 25 件の日は内容の 2 倍の高さに広げ、j で最後の予定まで選択できる',
-    function()
-      local events = {}
-      for index = 1, 25 do
-        local minute = string.format('%02d', index)
-        table.insert(
-          events,
-          timed_event(
-            'e' .. index,
-            '予定' .. index,
-            '2026-10-28T09:' .. minute .. ':00+09:00',
-            '2026-10-28T10:' .. minute .. ':00+09:00'
-          )
+  it('予定が 25 件の日は設定した高さで表示し、j で最後の予定まで選択できる', function()
+    local events = {}
+    for index = 1, 25 do
+      local minute = string.format('%02d', index)
+      table.insert(
+        events,
+        timed_event(
+          'e' .. index,
+          '予定' .. index,
+          '2026-10-28T09:' .. minute .. ':00+09:00',
+          '2026-10-28T10:' .. minute .. ':00+09:00'
         )
-      end
-      set_events(events)
-
-      local win = agenda.open()
-      assert.are.equal(math.min(50, vim.o.lines - 4), vim.api.nvim_win_get_config(win).height)
-
-      for _ = 1, 24 do
-        feed('j')
-      end
-
-      assert.are.same({ 25, 0 }, vim.api.nvim_win_get_cursor(win))
-
-      feed('<CR>')
-
-      assert.are.equal('e25', opened_detail.id)
+      )
     end
-  )
+    set_events(events)
+
+    local win = agenda.open()
+    local _, height = window.target_size(0.5, 0.5)
+    assert.are.equal(height, vim.api.nvim_win_get_config(win).height)
+
+    for _ = 1, 24 do
+      feed('j')
+    end
+
+    assert.are.same({ 25, 0 }, vim.api.nvim_win_get_cursor(win))
+
+    feed('<CR>')
+
+    assert.are.equal('e25', opened_detail.id)
+  end)
 end)

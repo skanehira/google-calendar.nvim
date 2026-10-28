@@ -62,7 +62,7 @@ local function blank_chunks(cell_w)
   return { { string.rep(' ', cell_w) } }
 end
 
-local function build_event_rows(week, events_by_date, max_events, cell_w)
+local function build_event_rows(week, events_by_date, max_events, cell_w, selected_date)
   local lists = {}
   local rows = 0
   for index, cell in ipairs(week) do
@@ -85,18 +85,24 @@ local function build_event_rows(week, events_by_date, max_events, cell_w)
       end
 
       local list = lists[index]
+      local cell_chunks
       if row_index <= math.min(#list, max_events) then
-        for _, chunk in ipairs(chip_chunks(list[row_index], cell_w)) do
-          table.insert(chunks, chunk)
-        end
+        cell_chunks = chip_chunks(list[row_index], cell_w)
       elseif row_index == rows and #list > max_events then
-        for _, chunk in ipairs(overflow_chunks(#list - max_events, cell_w)) do
-          table.insert(chunks, chunk)
-        end
+        cell_chunks = overflow_chunks(#list - max_events, cell_w)
       else
-        for _, chunk in ipairs(blank_chunks(cell_w)) do
-          table.insert(chunks, chunk)
+        cell_chunks = blank_chunks(cell_w)
+      end
+
+      -- 選択中の日は、日付行だけでなく予定行も含めたセル全体をハイライトする
+      if week[index].date == selected_date then
+        for _, chunk in ipairs(cell_chunks) do
+          chunk[2] = 'GoogleCalendarSelected'
         end
+      end
+
+      for _, chunk in ipairs(cell_chunks) do
+        table.insert(chunks, chunk)
       end
     end
     result[row_index] = chunks
@@ -133,12 +139,7 @@ function M.build_view(grid, events_by_date, cfg, today, selected_date, cell_w)
     local cells = {}
     for index, cell in ipairs(week) do
       local day_text = tostring(cell.day)
-      if cell.date == selected_date then
-        -- 背景色だけに頼らず、選択中のセルの左端にマーカーを置いて視認できるようにする
-        date_cells[index] = '>' .. string.rep(' ', cell_w - 1 - #day_text) .. day_text
-      else
-        date_cells[index] = string.rep(' ', cell_w - #day_text) .. day_text
-      end
+      date_cells[index] = string.rep(' ', cell_w - #day_text) .. day_text
 
       local col = (index - 1) * (cell_w + 3) + (cell_w - #day_text)
       local cell_start = (index - 1) * (cell_w + 3)
@@ -154,7 +155,7 @@ function M.build_view(grid, events_by_date, cfg, today, selected_date, cell_w)
     weeks[week_index] = {
       date_line = table.concat(date_cells, '│'),
       cells = cells,
-      event_rows = build_event_rows(week, events_by_date, cfg.max_events_per_cell, cell_w),
+      event_rows = build_event_rows(week, events_by_date, cfg.max_events_per_cell, cell_w, selected_date),
     }
   end
 

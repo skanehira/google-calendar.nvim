@@ -245,7 +245,7 @@ describe('ui.month_view', function()
         '           4│           5│           6│           7│           8│           9│          10',
         '          11│          12│          13│          14│          15│          16│          17',
         '          18│          19│          20│          21│          22│          23│          24',
-        '          25│          26│          27│>         28│          29│          30│          31',
+        '          25│          26│          27│          28│          29│          30│          31',
         '           1│           2│           3│           4│           5│           6│           7',
       }, buffer_lines())
       assert.are.equal(2026, state.year)
@@ -353,7 +353,7 @@ describe('ui.month_view', function()
       assert.is_nil(virt_lines(1))
       assert.is_true(has_chunk(rows[1], ' 12:00 ', 'GoogleCalendarEventTime'))
       assert.is_true(has_chunk(rows[1], '定例', 'GoogleCalendarEvent'))
-      assert.is_true(has_chunk(rows[4], ' +2', 'GoogleCalendarEvent'))
+      assert.is_true(has_chunk(rows[4], ' +2', 'GoogleCalendarSelected'))
     end
   )
 
@@ -582,7 +582,7 @@ describe('ui.month_view', function()
 
   it('タイトル・ボーダー・選択セル・チップ背景にハイライトを適用する', function()
     gws_handler = function(_, cb)
-      cb({ timed_event('e1', '定例', '2026-10-28T09:00:00+09:00') }, nil)
+      cb({ timed_event('e1', '定例', '2026-10-27T09:00:00+09:00') }, nil)
     end
     run_command()
     wait_loading()
@@ -615,7 +615,7 @@ describe('ui.month_view', function()
     wait_loading()
 
     local rows = assert(virt_lines(5))
-    assert.is_true(has_chunk(rows[4], ' +2', 'GoogleCalendarEvent'))
+    assert.is_true(has_chunk(rows[4], ' +2', 'GoogleCalendarSelected'))
   end)
 
   it('取得中は移動・再取得・opener・close の全キーを無視する', function()
@@ -790,24 +790,49 @@ describe('ui.month_view', function()
     local cell_w = math.floor((win_config.width - 6) / 7)
     assert.are.equal(cell_w, selected[4].end_col - selected[3])
   end)
-  it('選択中の日付に > マーカーを表示し、移動に追従する', function()
+  it('選択中のセルの日付行と予定行を全体ハイライトする', function()
     gws_handler = function(_, cb)
-      cb({ timed_event('e1', '定例', '2026-10-28T09:00:00+09:00') }, nil)
+      cb({
+        timed_event('e1', '定例', '2026-10-28T09:00:00+09:00'),
+        timed_event('e2', '別の予定', '2026-10-29T10:00:00+09:00'),
+      }, nil)
     end
 
     run_command()
     wait_loading()
 
     assert.are.equal(
-      '          25│          26│          27│>         28│          29│          30│          31',
+      '          25│          26│          27│          28│          29│          30│          31',
       buffer_lines()[6]
     )
 
-    feed('l')
+    local rows = assert(virt_lines(5))
+    assert.is_true(#rows > 0)
 
-    assert.are.equal(
-      '          25│          26│          27│          28│>         29│          30│          31',
-      buffer_lines()[6]
-    )
+    local function cell_chunks(chunks)
+      local cells = {}
+      local current = {}
+      for _, chunk in ipairs(chunks) do
+        if chunk[1] == '│' then
+          table.insert(cells, current)
+          current = {}
+        else
+          table.insert(current, chunk)
+        end
+      end
+      table.insert(cells, current)
+      return cells
+    end
+
+    for _, event_row in ipairs(rows) do
+      local cells = cell_chunks(event_row)
+      -- 2026-10-28 は水曜 (日曜始まりで 4 番目)
+      for _, chunk in ipairs(cells[4]) do
+        assert.are.equal('GoogleCalendarSelected', chunk[2])
+      end
+      for _, chunk in ipairs(cells[5]) do
+        assert.are_not.equal('GoogleCalendarSelected', chunk[2])
+      end
+    end
   end)
 end)

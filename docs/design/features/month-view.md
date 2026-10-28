@@ -48,7 +48,7 @@ Google カレンダーの月表示を Neovim の float window に描画する。
 - 各週は「日付行 1 行 + 予定行 `max_events_per_cell + 1` 行」のブロック。予定行は常に `max_events_per_cell + 1` 行描画し（予定がない週も空行で埋める）、7 セル分のチャンクを横に並べる。これにより取得中と取得完了でウィンドウの高さが変わらない
 - 日付行は ` 1`〜`31` の右寄せ。今日は `GoogleCalendarToday`、選択日は `GoogleCalendarSelected`（セル全体・目立つ背景・bold）、日曜は `GoogleCalendarSunday`、土曜は `GoogleCalendarSaturday`、前月・翌月は `GoogleCalendarOtherMonth` でハイライトする
 - ウィンドウの高さは「ヘッダー 1 行 + 6 週分の日付行 + 6 本の横線 + 6 * (max_events_per_cell + 1) 行」の固定値。幅は 7 セル + 6 本の区切り線に合わせる。右側に空白を残さない
-- 月タイトルは `FloatTitle`、float のボーダーは `FloatBorder` を `winhl` で `GoogleCalendarHeader` / `GoogleCalendarBorder` に割り当てる。予定チップは `GoogleCalendarEvent` を背景に適用する
+- 月タイトルは `FloatTitle`、float のボーダーは `FloatBorder` を `winhl` で `GoogleCalendarHeader` / `GoogleCalendarBorder` に割り当てる。予定チップは `GoogleCalendarEvent`（既定は属性なし）で文字を表示し、背景は付けない
 - 選択中のセルは、日付行と予定行を含むセル全体を `GoogleCalendarSelected` の背景でハイライトする。ウィンドウタイトルにも `選択: MM-DD` を表示する
 - 予定チップは `HH:MM タイトル`。終日予定は `終日 タイトル`。タイトルはセル幅に合わせて `…` で切り詰める
 - 予定が `max_events_per_cell` を超える日は、`max_events_per_cell` 件までを表示し、最後の行に `+N` を表示する

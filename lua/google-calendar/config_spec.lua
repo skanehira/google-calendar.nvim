@@ -150,6 +150,14 @@ describe('config', function()
     assert.is_true(header.bold)
   end)
 
+  it('apply_highlights が予定チップに背景を付けない', function()
+    config.setup({})
+    config.apply_highlights()
+
+    local event_hl = vim.api.nvim_get_hl(0, { name = 'GoogleCalendarEvent', link = false })
+    assert.is_nil(event_hl.bg)
+  end)
+
   it('apply_highlights が上書きを既定の属性とマージして適用する', function()
     config.setup({ highlights = { GoogleCalendarHeader = { fg = '#ff0000' } } })
     config.apply_highlights()

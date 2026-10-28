@@ -493,7 +493,7 @@ require('google-calendar').setup({
 - `vim.system` の `env` は Neovim 0.10 では `KEY=VALUE` のリスト、0.11 以降はマップで渡す。`clear_env = true` と併用するテストは `vim.fn.has('nvim-0.11')` で切り替える（0.10 でマップを渡すと環境変数が無視され、子プロセスの `PATH` が失われる）
 - Linux の `execvp` は ENOEXEC のテキストファイルを `/bin/sh` で実行する。実行ファイルの起動失敗を再現するテストは、存在しないインタプリタを指す shebang を使う
 - GNU make 4.x は `MAKEFLAGS` に `w` が入ると `make -n` の出力に `Entering directory` を混ぜる。レシピ順を検証するテストは `--no-print-directory` を付ける
-- ヘッドレス環境では `+` レジスタへの書き込みが環境依存で失敗しうる。テストでは `config.clipboard` を注入して書き込みを検証し、`+` レジスタの内容を直接 assert しない
+- ヘッドレス環境では `+` レジスタへの書き込みが環境依存で失敗しうる。テストでは `config.clipboard` を注入して書き込みを検証し、`+` レジスタの内容を直接 assert しない。成功系は `vim.fn.has('clipboard')` を 1 に固定し、非対応環境のケースだけ 0 にモックする
 
 ## 未解決の論点
 

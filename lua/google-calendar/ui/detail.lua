@@ -15,7 +15,9 @@ M.openers = {
   delete = function(item)
     require('google-calendar.ui.confirm').open(item)
   end,
-  copy_meet = function(_item) end,
+  copy_meet = function(item)
+    M.copy_meet(item)
+  end,
   help = function(screen)
     require('google-calendar.ui.help').open(screen)
   end,
@@ -101,6 +103,34 @@ local function render(win, item, width)
   vim.bo[buf].modifiable = false
 
   vim.api.nvim_win_set_cursor(win, { 1, 0 })
+end
+
+local function notify(message, level)
+  config.get().notify(event.truncate(message, vim.o.columns), level)
+end
+
+local function notify_copy_failure(url)
+  notify('クリップボードにコピーできませんでした: ' .. url, vim.log.levels.ERROR)
+end
+
+function M.copy_meet(item)
+  local url = event.meet_url(item)
+  if url == nil then
+    notify('この予定には Meet URL がありません', vim.log.levels.WARN)
+    return
+  end
+
+  if vim.fn.has('clipboard') == 0 then
+    notify_copy_failure(url)
+    return
+  end
+
+  if not pcall(config.get().clipboard, url) then
+    notify_copy_failure(url)
+    return
+  end
+
+  notify('Meet URL をコピーしました: ' .. url, vim.log.levels.INFO)
 end
 
 local function open_edit()

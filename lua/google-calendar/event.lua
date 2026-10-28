@@ -153,6 +153,21 @@ function M.extract_hangout_link(raw)
   return nil
 end
 
+-- 正規化済みのモデルは hangout_link を持つが、生の JSON を渡された場合に備えて conferenceData も見る
+function M.meet_url(item)
+  local url = present(item.hangout_link)
+  if url ~= nil and url ~= '' then
+    return url
+  end
+
+  url = M.extract_hangout_link(item)
+  if url == nil or url == '' then
+    return nil
+  end
+
+  return url
+end
+
 function M.normalize(raw, opts)
   opts = opts or {}
   local display_offset = parse_offset(os.date('%z')) or 0

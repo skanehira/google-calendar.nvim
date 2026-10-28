@@ -29,6 +29,7 @@ local fake_agenda = {
   open = function()
     openers.agenda = true
   end,
+  refresh = function() end,
 }
 
 local fake_form = {

@@ -48,7 +48,7 @@ local defaults = {
       cancel = '<Esc>',
       help = '?',
     },
-    confirm = { yes = 'y', no = 'n' },
+    confirm = { yes = 'y', no = 'n', close = 'q', esc_close = '<Esc>' },
     help = { close = 'q', esc_close = '<Esc>' },
   },
   highlights = default_highlights,

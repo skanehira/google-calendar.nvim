@@ -258,6 +258,7 @@ local function fetch(initial)
       notify.reset()
       state.events_by_date = event.events_by_date(events or {}, start_date, calendar.add_days(end_date, -1))
       render()
+      require('google-calendar.ui.agenda').refresh()
     end)
   end)
 end
@@ -309,14 +310,20 @@ local function go_today()
   fetch(false)
 end
 
-local function refresh()
+function M.refresh()
   if state.loading then
-    return
+    return false
+  end
+
+  local win = state.windows.month
+  if win == nil or not vim.api.nvim_win_is_valid(win) then
+    return false
   end
 
   state.loading = true
   render()
   fetch(false)
+  return true
 end
 
 local function close()
@@ -340,7 +347,7 @@ local function open_create()
     return
   end
 
-  require('google-calendar.ui.form').open_create({ on_created = refresh })
+  require('google-calendar.ui.form').open_create({ on_created = M.refresh })
 end
 
 local function open_help()
@@ -373,7 +380,7 @@ local key_actions = {
   today = go_today,
   agenda = open_agenda,
   create = open_create,
-  refresh = refresh,
+  refresh = M.refresh,
   help = open_help,
   close = close,
 }

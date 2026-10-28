@@ -26,7 +26,9 @@
 - `cwd` は `vim.fn.stdpath('cache') .. '/google-calendar.nvim'`。ディレクトリが無ければ `vim.fn.mkdir(dir, 'p')` で作る
 - タイムアウトは 30 秒。`vim.system` の `timeout` を使う
 - 1 つのリクエストにつき 1 回だけコールバックを呼ぶ
-- ページ取得は `nextPageToken` がある限り `pageToken` を付けて再実行し、`items` を結合する。`vim.NIL` は終端として扱う
+- コールバックは `cb(value, err)` の形で呼ぶ。成功時は `err == nil`、失敗時は `value == nil`
+- `events list` の `--params` には `calendarId` / `timeMin` / `timeMax` に加えて `singleEvents=true` と `maxResults=2500` を入れる
+- ページ取得は `nextPageToken` がある限り `pageToken` を付けて再実行し、`items` を結合する。`vim.NIL` は終端として扱う。10 ページを超える場合は 10 ページで打ち切り、`vim.log.levels.WARN` で警告を出して取得済みの `items` を返す
 
 **エラー分類**:
 
@@ -38,12 +40,15 @@
 | 終了コード 0 だが stdout が JSON でない | `invalid_output` | stdout の先頭 200 文字 |
 | タイムアウト | `network` | `timeout` |
 
+エラーは `{ kind = '<分類>', ... }` の形で返す。`kind` は `not_found` / `auth` / `api` / `invalid_output` / `network`。分類ごとの追加キーは `command`（not_found）、`message`（auth / network）、`code` / `reason`（api）、`output`（invalid_output）。
+
 **予定モデルへの正規化**:
 
 - `id`, `summary`, `location`, `description`, `start`, `end`, `hangout_link`, `calendar_id`, `status`
 - `start` / `end` は `{ date = 'YYYY-MM-DD' }` または `{ dateTime = 'RFC3339', timeZone = '...' }`
 - `hangout_link` は `hangoutLink`、なければ `conferenceData.entryPoints` の `entryPointType == 'video'` の `uri`
 - `dateTime` はローカル時刻へ変換して表示用の値を持たせる（変換式は [DESIGN.md](../DESIGN.md)「横断規約」）
+- 更新時に保持する API フィールド（`attendees` / `reminders` / `colorId` / `visibility` / `transparency` / `conferenceData`）は、応答に存在する場合だけモデルへ引き継ぐ（[DESIGN.md](../DESIGN.md)「既知の制約」）
 
 ## API
 
@@ -54,7 +59,7 @@
 | 処理 | 層 | 実装先ファイル |
 | --- | --- | --- |
 | `vim.system` による gws 実行、ページ取得、エラー分類 | アダプタ | `lua/google-calendar/gws.lua` |
-| 予定 JSON の正規化、Meet URL の抽出、日時変換 | ドメイン | `lua/google-calendar/event.lua` |
+| 予定 JSON の正規化、Meet URL の抽出、日時変換、更新リクエストボディの組み立て（編集可能フィールドの保持） | ドメイン | `lua/google-calendar/event.lua` |
 | エラー種別ごとの通知 | アダプタ | `lua/google-calendar/notify.lua` |
 
 ## エッジケースの決定

@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<title>issue #12 保留レビュー項目</title>
+<style>
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; margin: 2rem auto; max-width: 960px; line-height: 1.6; color: #1f2328; }
+  h1 { font-size: 1.4rem; }
+  .meta { color: #57606a; font-size: 0.9rem; margin-bottom: 1.5rem; }
+  .item { border: 1px solid #d0d7de; border-radius: 6px; padding: 0.9rem 1rem; margin-bottom: 1rem; }
+  .item.high { border-left: 4px solid #cf222e; }
+  .item.medium { border-left: 4px solid #bf8700; }
+  .item label { font-weight: 600; }
+  .badge { display: inline-block; font-size: 0.75rem; padding: 0.1rem 0.45rem; border-radius: 999px; margin-right: 0.4rem; }
+  .badge.high { background: #ffebe9; color: #cf222e; }
+  .badge.medium { background: #fff8c5; color: #7d4e00; }
+  .loc { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.85rem; color: #57606a; }
+  dl { margin: 0.6rem 0 0; }
+  dt { font-weight: 600; font-size: 0.85rem; margin-top: 0.5rem; }
+  dd { margin: 0 0 0 0; }
+</style>
+</head>
+<body>
+<h1>issue #12 保留レビュー項目</h1>
+<p class="meta">run: dev-impl 2026-10-28 / review: review-12-r1.json + review-12-r2.json (base 502712b) / 保留 high 0 件・保留 medium 1 件</p>
+<p>merge を止めない指摘を事後確認用に記録する。対応する場合はチェックを付けて修正し、このファイルを削除する。</p>
+
+<div class="item medium" data-severity="medium" data-category="test-quality">
+  <label><input type="checkbox"> help.close の実バインディング上書き・false 無効化が spec 未 pin</label>
+  <span class="badge medium">medium</span><span class="badge">test-quality</span>
+  <div class="loc">lua/google-calendar/ui/help_spec.lua:64</div>
+  <dl>
+    <dt>summary</dt>
+    <dd>ヘルプの close キーが config.keymaps.help.close から解決されること、および上書き・無効化・再表示時の更新が spec で pin されていない。表示行だけを検査しており、`config.resolve('help','close')` を 'q' 固定にする変異が survived（esc_close 側は pin 済み）。</dd>
+    <dt>evidence</dt>
+    <dd>mutate-check.ts で `config.resolve('help','close')` を 'q' 固定にする変異が survived。実装自体は headless 確認で正しく動作（close='Q' で q は閉じず Q で閉じる、false で q 無効、再表示で旧キー無効）。</dd>
+    <dt>fix_hint</dt>
+    <dd>`config.setup({ keymaps = { help = { close = 'Q' } } })` でヘルプを開き Q で閉じ、q では閉じないこと、`help.close = false` で q が閉じないこと、再表示後に旧キーが効かず新キーが効くことをテストで pin する。</dd>
+  </dl>
+</div>
+</body>
+</html>

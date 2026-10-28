@@ -123,7 +123,7 @@ require('google-calendar').setup({
       help = '?',
     },
     confirm = { yes = 'y', no = 'n' },
-    help = { close = 'q' },
+    help = { close = 'q', esc_close = '<Esc>' },
   },
   -- ハイライトの上書き
   highlights = {},

@@ -300,7 +300,7 @@ GOOGLE_WORKSPACE_CLI_CONFIG_DIR="$PWD/.local/gws-config" gws calendar calendarLi
 | フォーム | `?` | フォームのヘルプを開く |
 | ヘルプ | `q` / `<Esc>` | ヘルプを閉じる |
 
-キーマップは `setup({ keymaps = { ... } })` で画面ごとに上書きできる。`false` を指定するとそのキーを無効にする。すべての画面のキーは `config.keymaps.<screen>.<action>` から解決し、実装に直書きしない。保存の既定キーは `<F2>`（`<C-s>` は herdr の prefix と衝突するため使わない）。
+キーマップは `setup({ keymaps = { ... } })` で画面ごとに上書きできる。`false` を指定するとそのキーを無効にする。すべての画面のキーは `config.keymaps.<screen>.<action>` から解決し、実装に直書きしない。ヘルプを閉じる `q` / `<Esc>` は `help.close` / `help.esc_close` で別々に変更・無効化できる。保存の既定キーは `<F2>`（`<C-s>` は herdr の prefix と衝突するため使わない）。
 
 **設定（`setup()`）**:
 
@@ -335,7 +335,7 @@ require('google-calendar').setup({
       toggle = '<Space>', save = '<F2>', cancel = '<Esc>', help = '?',
     },
     confirm = { yes = 'y', no = 'n' },
-    help = { close = 'q' },
+    help = { close = 'q', esc_close = '<Esc>' },
   },
   -- ハイライトの上書き
   highlights = {},

@@ -49,7 +49,7 @@ local defaults = {
       help = '?',
     },
     confirm = { yes = 'y', no = 'n' },
-    help = { close = 'q' },
+    help = { close = 'q', esc_close = '<Esc>' },
   },
   highlights = default_highlights,
 }

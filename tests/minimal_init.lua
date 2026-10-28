@@ -23,11 +23,14 @@ harness.test_directory = function(directory, opts)
   local timeout = vim.env.PLENARY_TEST_TIMEOUT
   vim.env.PLENARY_TEST_TIMEOUT = nil
   local paths = harness._find_files_to_run(directory)
-  vim.env.PLENARY_TEST_TIMEOUT = timeout
 
   if #paths == 0 then
     io.stderr:write('spec が 0 件です: ' .. directory .. '\n')
     vim.cmd('cquit 1')
   end
-  return test_directory(directory, opts)
+
+  -- test_directory 内でも _find_files_to_run が呼ばれるため、戻るまで unset を維持する
+  local result = test_directory(directory, opts)
+  vim.env.PLENARY_TEST_TIMEOUT = timeout
+  return result
 end

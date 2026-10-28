@@ -17,25 +17,25 @@ local layouts = {
     { { action = 'create', label = '登録' } },
     { { action = 'refresh', label = '再取得' } },
     { { action = 'help', label = 'ヘルプ' } },
-    { { action = 'close', label = '閉じる' } },
+    { { action = 'close', label = '閉じる' }, { action = 'esc_close', label = '閉じる' } },
   },
   agenda = {
     { { action = 'next', label = '選択' }, { action = 'prev', label = '選択' } },
     { { action = 'open', label = '詳細' } },
-    { { action = 'close', label = '戻る' } },
+    { { action = 'close', label = '戻る' }, { action = 'esc_close', label = '戻る' } },
   },
   detail = {
     { { action = 'edit', label = '更新' } },
     { { action = 'delete', label = '削除' } },
     { { action = 'copy_meet', label = 'Meet URL コピー' } },
-    { { action = 'close', label = '戻る' } },
+    { { action = 'close', label = '戻る' }, { action = 'esc_close', label = '戻る' } },
   },
   form = {
     { { action = 'next_field', label = '移動' }, { action = 'prev_field', label = '移動' } },
     { { action = 'edit', label = '編集' } },
     { { action = 'toggle', label = '切替' } },
     { { action = 'save', label = '保存' } },
-    { { action = 'cancel', label = '取消' } },
+    { { action = 'cancel', label = '取消' }, { action = 'close', label = '取消' } },
   },
 }
 

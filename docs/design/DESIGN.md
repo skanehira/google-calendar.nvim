@@ -127,7 +127,8 @@ flowchart TB
     Detail --> Notify
 
     GWS --> Event
-    GWS --> Notify
+    GWS --> Config
+    Confirm -.->|on_finished| Detail
     GWS -->|gws CLI| GWSAPI
 ```
 
@@ -151,7 +152,7 @@ flowchart TB
 | `lua/google-calendar/ui/help.lua` | 画面ごとのキー一覧 |
 | `lua/google-calendar/ui/confirm.lua` | 削除確認（`y` / `n`） |
 
-**依存の向き**: `init` → `config` / `notify` / `state` / `ui` / `gws`。`ui` → `calendar` / `event` / `gws` / `notify` / `state` / `window`。`gws` → `config` / `event` / `notify`。`notify` → `config` / `event`。循環依存を作らない。
+**依存の向き**: `init` → `config` / `notify` / `state` / `ui` / `gws`。`ui` → `calendar` / `event` / `gws` / `notify` / `state` / `window`。`gws` → `config` / `event`（通知は `config.get().notify` 経由）。`notify` → `config` / `event`。`confirm` は `month_view` を require せず、`detail` が渡す `on_finished` コールバックで詳細を閉じて再取得する。循環依存を作らない。
 
 **状態管理**:
 
@@ -305,7 +306,7 @@ GOOGLE_WORKSPACE_CLI_CONFIG_DIR="$PWD/.local/gws-config" gws calendar calendarLi
 | フォーム | `?` | フォームのヘルプを開く |
 | ヘルプ | `q` / `<Esc>` | ヘルプを閉じる |
 
-キーマップは `setup({ keymaps = { ... } })` で画面ごとに上書きできる。`false` を指定するとそのキーを無効にする。すべての画面のキーは `config.keymaps.<screen>.<action>` から解決し、実装に直書きしない。ヘルプを閉じる `q` / `<Esc>` は `help.close` / `help.esc_close` で別々に変更・無効化できる。アジェンダ・詳細を閉じる `q` / `<Esc>` も `agenda.esc_close` / `detail.esc_close` で別々に変更・無効化できる。保存の既定キーは `<F2>`（`<C-s>` は herdr の prefix と衝突するため使わない）。
+キーマップは `setup({ keymaps = { ... } })` で画面ごとに上書きできる。`false` を指定するとそのキーを無効にする。すべての画面のキーは `config.keymaps.<screen>.<action>` から解決し、実装に直書きしない。ヘルプを閉じる `q` / `<Esc>` は `help.close` / `help.esc_close`、アジェンダ・詳細を閉じる `q` / `<Esc>` は `agenda.esc_close` / `detail.esc_close`、月表示を閉じる `q` / `<Esc>` は `month.close` / `month.esc_close` で別々に変更・無効化できる。フォームの `<Esc>` / `q` も `form.cancel` / `form.close` で別々に変更・無効化できる（`q` は normal モードのみ）。保存の既定キーは `<F2>`（`<C-s>` は herdr の prefix と衝突するため使わない）。
 
 **設定（`setup()`）**:
 
@@ -335,13 +336,13 @@ require('google-calendar').setup({
     month = {
       prev_day = 'h', next_day = 'l', prev_week = 'k', next_week = 'j',
       prev_month = 'H', next_month = 'L', today = 't',
-      agenda = '<CR>', create = 'a', refresh = 'r', help = '?', close = 'q',
+      agenda = '<CR>', create = 'a', refresh = 'r', help = '?', close = 'q', esc_close = '<Esc>',
     },
     agenda = { next = 'j', prev = 'k', open = '<CR>', help = '?', close = 'q', esc_close = '<Esc>' },
     detail = { edit = 'e', delete = 'd', copy_meet = 'y', help = '?', close = 'q', esc_close = '<Esc>' },
     form = {
       next_field = '<Tab>', prev_field = '<S-Tab>', edit = '<CR>',
-      toggle = '<Space>', save = '<F2>', cancel = '<Esc>', help = '?',
+      toggle = '<Space>', save = '<F2>', cancel = '<Esc>', close = 'q', help = '?',
     },
     confirm = { yes = 'y', no = 'n', close = 'q', esc_close = '<Esc>' },
     help = { close = 'q', esc_close = '<Esc>' },
@@ -428,6 +429,8 @@ require('google-calendar').setup({
 | `GoogleCalendarEventTime` | 予定の時刻 |
 | `GoogleCalendarBorder` | float のボーダー |
 | `GoogleCalendarError` | フォーム内のエラー |
+
+`highlights` に `false` を指定するとそのグループを無効化する（既定の定義を消す）。
 
 ### float の管理
 

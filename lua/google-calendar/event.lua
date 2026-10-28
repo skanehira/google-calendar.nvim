@@ -120,7 +120,7 @@ local function normalize_time(raw_time, display_offset)
   end
 
   local time_zone = present(raw_time.timeZone)
-  if time_zone ~= nil then
+  if date_time ~= nil and time_zone ~= nil then
     normalized.timeZone = time_zone
   end
   return normalized

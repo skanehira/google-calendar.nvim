@@ -276,6 +276,9 @@ describe('gws adapter', function()
 
     assert.is_nil(err)
     assert.are.equal(10, #events)
+    for index, item in ipairs(events) do
+      assert.are.equal('予定 ' .. index, item.summary)
+    end
     assert.are.same({
       {
         msg = 'google-calendar.nvim: 予定の取得が 10 ページを超えたため打ち切りました',
@@ -381,6 +384,13 @@ describe('gws adapter', function()
       assert.are.equal(0, vim.fn.getfsize(cache_dir .. '/download.html'))
       assert.are.equal(0, vim.fn.filereadable(repo_root .. '/download.html'))
       assert.are.same({ items = {} }, read_json(state_path))
+
+      local call = vim.json.decode(read_lines(call_log)[1])
+      assert.are.same({ 'calendar', 'events', 'delete' }, { call.argv[1], call.argv[2], call.argv[3] })
+      assert.are.same({
+        calendarId = 'primary',
+        eventId = 'evt-timed-1',
+      }, vim.json.decode(call.argv[5]))
     end
   )
 
@@ -517,6 +527,8 @@ describe('gws adapter', function()
     end)
 
     assert.is_nil(err)
+    assert.is_truthy(created.id:match('^evt%-%x+$'))
+    assert.is_nil(created.hangout_link)
     local expected = vim.deepcopy(created)
     expected.id = '<id>'
     assert.are.same({
@@ -527,6 +539,18 @@ describe('gws adapter', function()
       calendar_id = 'primary',
     }, expected)
     assert.are.equal(1, #read_json(state_path).items)
+
+    local call = vim.json.decode(read_lines(call_log)[1])
+    assert.are.same({ 'calendar', 'events', 'insert' }, { call.argv[1], call.argv[2], call.argv[3] })
+    assert.are.equal('--params', call.argv[4])
+    assert.are.same({ calendarId = 'primary' }, vim.json.decode(call.argv[5]))
+    assert.are.equal('--json', call.argv[6])
+    assert.are.same({
+      summary = '終日',
+      start = { date = '2026-10-27' },
+      ['end'] = { date = '2026-10-28' },
+    }, vim.json.decode(call.argv[7]))
+    assert.are.same({ '--format', 'json' }, { call.argv[8], call.argv[9] })
   end)
 
   it('update_event が編集可能フィールドを保持して events update を実行する', function()
@@ -610,5 +634,241 @@ describe('gws adapter', function()
       transparency = 'opaque',
     }, vim.json.decode(call.argv[7]))
     assert.are.same({ '--format', 'json' }, { call.argv[8], call.argv[9] })
+  end)
+  it('execute が vim.system に timeout=30000 を渡す', function()
+    local original_system = vim.system
+    local captured
+    rawset(vim, 'system', function(_, opts)
+      captured = opts
+      return {}
+    end)
+    gws.get_event('evt-timeout', function() end)
+    rawset(vim, 'system', original_system)
+
+    assert.are.equal(30000, captured.timeout)
+  end)
+
+  it('get_event が予定を取得し、calendarId / eventId の argv を渡す', function()
+    write_json(state_path, { items = { timed_event } })
+
+    local item, err = await(function(callback)
+      gws.get_event('evt-timed-1', callback)
+    end)
+
+    assert.is_nil(err)
+    assert.are.same(normalized(timed_event), item)
+
+    local call = vim.json.decode(read_lines(call_log)[1])
+    assert.are.same({ 'calendar', 'events', 'get' }, { call.argv[1], call.argv[2], call.argv[3] })
+    assert.are.equal('--params', call.argv[4])
+    assert.are.same({
+      calendarId = 'primary',
+      eventId = 'evt-timed-1',
+    }, vim.json.decode(call.argv[5]))
+    assert.are.same({ '--format', 'json' }, { call.argv[6], call.argv[7] })
+  end)
+
+  it('list で時間範囲を指定しないとき params に timeMin/timeMax を含めない', function()
+    local events, err = await(function(callback)
+      gws.list_events({ calendar_id = 'primary' }, callback)
+    end)
+
+    assert.is_nil(err)
+    assert.are.same({}, events)
+
+    local call = vim.json.decode(read_lines(call_log)[1])
+    assert.are.same({
+      calendarId = 'primary',
+      singleEvents = true,
+      maxResults = 2500,
+    }, vim.json.decode(call.argv[5]))
+  end)
+
+  it('items が無い応答を 0 件として扱う', function()
+    local events, err = await(function(callback)
+      gws.list_events({ calendar_id = 'primary' }, callback)
+    end)
+
+    assert.is_nil(err)
+    assert.are.same({}, events)
+  end)
+
+  it('終了コード非 0 かつ error を持たない応答を invalid_output として分類する', function()
+    local script_path = tmp_root .. '/no-error-gws'
+    write_script(script_path, { '#!/bin/sh', 'echo boom', 'exit 1' })
+    setup_config({ gws_cmd = script_path })
+
+    local events, err = await(function(callback)
+      gws.list_events({ calendar_id = 'primary' }, callback)
+    end)
+
+    assert.is_nil(events)
+    assert.are.same({ kind = 'invalid_output', output = 'boom\n', stderr = '' }, err)
+  end)
+
+  it('+09:00 の dateTime をローカル時刻としてそのまま扱う', function()
+    local item = event.normalize({
+      id = 'evt-plus9',
+      summary = '定例',
+      start = { dateTime = '2026-10-01T17:00:00+09:00' },
+      ['end'] = { dateTime = '2026-10-01T18:00:00+09:00' },
+    }, { calendar_id = 'primary' })
+
+    assert.are.equal('2026-10-01T17:00:00+09:00', item.start.dateTime)
+    assert.are.equal('2026-10-01T18:00:00+09:00', item['end'].dateTime)
+  end)
+
+  it('update_event が conferenceData を含めず、指定したフィールドだけを送る', function()
+    local raw = {
+      id = 'evt-update-2',
+      summary = '更新前',
+      start = { dateTime = '2026-10-27T09:00:00+09:00' },
+      ['end'] = { dateTime = '2026-10-27T10:00:00+09:00' },
+    }
+    write_json(state_path, { items = { raw } })
+
+    local updated, err = await(function(callback)
+      gws.update_event({
+        id = 'evt-update-2',
+        summary = '更新後',
+        start = raw.start,
+        ['end'] = raw['end'],
+      }, callback)
+    end)
+
+    assert.is_nil(err)
+    assert.are.equal('更新後', updated.summary)
+
+    local call = vim.json.decode(read_lines(call_log)[1])
+    assert.are.same({
+      calendarId = 'primary',
+      eventId = 'evt-update-2',
+    }, vim.json.decode(call.argv[5]))
+    local body = vim.json.decode(call.argv[7])
+    assert.are.equal('更新後', body.summary)
+    assert.is_nil(body.conferenceData)
+    assert.is_nil(body.attendees)
+    assert.is_nil(body.reminders)
+    assert.is_nil(body.colorId)
+    assert.is_nil(body.visibility)
+    assert.is_nil(body.transparency)
+  end)
+
+  it('normalize が不正な raw_time を nil として扱う', function()
+    local item = event.normalize({
+      id = 'evt-bad-time',
+      summary = '不正',
+      start = { foo = 'bar' },
+      ['end'] = { date = '2026-10-29' },
+    }, { calendar_id = 'primary' })
+
+    assert.is_nil(item.start)
+    assert.are.same({ date = '2026-10-29' }, item['end'])
+  end)
+
+  it('終了コード 2 で authError 以外の非 table 応答を invalid_output として分類する', function()
+    local body, err = gws.classify({ code = 2, stdout = 'plain', stderr = 'err' })
+
+    assert.is_nil(body)
+    assert.are.same({ kind = 'invalid_output', output = 'plain', stderr = 'err' }, err)
+  end)
+
+  it('list の 2 ページ目でエラーになったとき、そのエラーを返す', function()
+    local count_file = tmp_root .. '/page-count'
+    local script_path = tmp_root .. '/two-page-gws'
+    write_script(script_path, {
+      '#!/bin/sh',
+      'count=$(cat "$FAKE_GWS_COUNT_FILE" 2>/dev/null || echo 0)',
+      'count=$((count + 1))',
+      'echo "$count" > "$FAKE_GWS_COUNT_FILE"',
+      'if [ "$count" -eq 1 ]; then',
+      'echo \'{"items":[{"id":"e1","summary":"a","start":{"date":"2026-10-01"},'
+        .. '"end":{"date":"2026-10-02"}}],"nextPageToken":"2"}\'',
+      'else',
+      'echo \'{"error":{"code":500,"message":"boom","reason":"backendError"}}\'',
+      'exit 1',
+      'fi',
+    })
+    vim.env.FAKE_GWS_COUNT_FILE = count_file
+    setup_config({ gws_cmd = script_path })
+
+    local events, err = await(function(callback)
+      gws.list_events({ calendar_id = 'primary' }, callback)
+    end)
+
+    assert.is_nil(events)
+    assert.are.same({
+      kind = 'api',
+      code = 500,
+      message = 'boom',
+      reason = 'backendError',
+    }, err)
+  end)
+
+  it('list のコールバックが 1 回だけ呼ばれる', function()
+    local count = 0
+    gws.list_events({ calendar_id = 'primary' }, function()
+      count = count + 1
+    end)
+
+    assert.is_true(vim.wait(10000, function()
+      return count > 0
+    end, 10))
+    vim.wait(100)
+    assert.are.equal(1, count)
+  end)
+
+  it('終日予定の timeZone は落とし、時刻付きで timeZone が無い場合は補わない', function()
+    local all_day = event.normalize({
+      id = 'evt-tz-all-day',
+      summary = '終日',
+      start = { date = '2026-10-28', timeZone = 'Asia/Tokyo' },
+      ['end'] = { date = '2026-10-29' },
+    }, { calendar_id = 'primary' })
+
+    assert.is_nil(all_day.start.timeZone)
+
+    local timed = event.normalize({
+      id = 'evt-tz-timed',
+      summary = '定例',
+      start = { dateTime = '2026-10-28T09:00:00+09:00' },
+      ['end'] = { dateTime = '2026-10-28T10:00:00+09:00' },
+    }, { calendar_id = 'primary' })
+
+    assert.is_nil(timed.start.timeZone)
+  end)
+
+  it('items が配列でない invalid_output にも stderr を含める', function()
+    local script_path = tmp_root .. '/items-not-array-gws'
+    write_script(script_path, {
+      '#!/bin/sh',
+      'echo \'{"items":"oops"}\'',
+      'echo diag >&2',
+      'exit 0',
+    })
+    setup_config({ gws_cmd = script_path })
+
+    local events, err = await(function(callback)
+      gws.list_events({ calendar_id = 'primary' }, callback)
+    end)
+
+    assert.is_nil(events)
+    assert.are.same({
+      kind = 'invalid_output',
+      output = '{"items":"oops"}',
+      stderr = 'diag\n',
+    }, err)
+  end)
+
+  it('status を予定モデルへ引き継ぐ', function()
+    local item = event.normalize({
+      id = 'evt-status',
+      summary = '定例',
+      status = 'confirmed',
+      start = { date = '2026-10-28' },
+      ['end'] = { date = '2026-10-29' },
+    }, { calendar_id = 'primary' })
+
+    assert.are.equal('confirmed', item.status)
   end)
 end)

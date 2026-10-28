@@ -108,9 +108,15 @@ local function key_footer()
     table.insert(parts, save_key .. ':保存')
   end
 
-  local cancel_key = config.resolve('form', 'cancel')
-  if cancel_key ~= nil then
-    table.insert(parts, cancel_key .. ':取消')
+  local cancel_keys = {}
+  for _, action in ipairs({ 'cancel', 'close' }) do
+    local key = config.resolve('form', action)
+    if key ~= nil then
+      table.insert(cancel_keys, key)
+    end
+  end
+  if #cancel_keys > 0 then
+    table.insert(parts, table.concat(cancel_keys, '/') .. ':取消')
   end
 
   if #parts == 0 then
@@ -436,10 +442,10 @@ local function handle_edit_error(err, prefix)
   end
 
   form.saving = false
-  form.error = prefix .. ': ' .. error_detail(err)
+  form.error = prefix .. ': ' .. notify_adapter.message(err)
   form.error_field = nil
   render()
-  notify(form.error, vim.log.levels.ERROR)
+  notify_adapter.error(err)
 end
 
 local function save_edit(fields)
@@ -606,6 +612,7 @@ local function set_keymaps(buf)
     save()
   end)
   map({ 'n', 'i' }, 'cancel', cancel)
+  map('n', 'close', cancel)
   map('n', 'help', open_help)
 end
 

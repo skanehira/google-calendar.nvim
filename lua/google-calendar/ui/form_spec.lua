@@ -177,6 +177,13 @@ local function error_marks()
   return vim.api.nvim_buf_get_extmarks(form_buf(), ns, 0, -1, { details = true })
 end
 
+local function assert_error_mark(line)
+  local marks = error_marks()
+  assert.are.equal(1, #marks)
+  assert.are.equal(line, marks[1][2])
+  assert.are.equal('GoogleCalendarError', marks[1][4].hl_group)
+end
+
 local function month_marks()
   local ns = vim.api.nvim_get_namespaces()['google-calendar-month']
   return vim.api.nvim_buf_get_extmarks(vim.api.nvim_win_get_buf(state.windows.month), ns, 0, -1, { details = true })
@@ -292,7 +299,7 @@ local function edit_initial_lines(item)
     '説明:     ' .. event.sanitize(item.description or ''),
     'Meet:     ' .. (item.hangout_link or ''),
     '',
-    '<Tab>/<S-Tab>:移動  <CR>:編集  <Space>:切替  <F2>:保存  <Esc>:取消',
+    '<Tab>/<S-Tab>:移動  <CR>:編集  <Space>:切替  <F2>:保存  <Esc>/q:取消',
   }
 end
 
@@ -326,7 +333,7 @@ local function initial_lines(date)
     '説明:     ',
     'Meet:     off',
     '',
-    '<Tab>/<S-Tab>:移動  <CR>:編集  <Space>:切替  <F2>:保存  <Esc>:取消',
+    '<Tab>/<S-Tab>:移動  <CR>:編集  <Space>:切替  <F2>:保存  <Esc>/q:取消',
   }
 end
 
@@ -487,6 +494,7 @@ describe('ui.form', function()
 
     assert.is_true(vim.api.nvim_win_is_valid(state.windows.form))
     assert.are.equal('エラー: タイトルは 1024 文字以内で入力してください', footer())
+    assert_error_mark(0)
     assert.are.equal(0, #insert_calls())
 
     set_field(1, '定例')
@@ -505,6 +513,7 @@ describe('ui.form', function()
 
     assert.is_true(vim.api.nvim_win_is_valid(state.windows.form))
     assert.are.equal('エラー: 場所は 1024 文字以内で入力してください', footer())
+    assert_error_mark(4)
     assert.are.equal(0, #insert_calls())
 
     set_field(5, '会議室A')
@@ -523,6 +532,7 @@ describe('ui.form', function()
 
     assert.is_true(vim.api.nvim_win_is_valid(state.windows.form))
     assert.are.equal('エラー: 説明は 8192 文字以内で入力してください', footer())
+    assert_error_mark(5)
     assert.are.equal(0, #insert_calls())
 
     set_field(6, '週次の進捗確認')
@@ -541,6 +551,7 @@ describe('ui.form', function()
 
     assert.is_true(vim.api.nvim_win_is_valid(state.windows.form))
     assert.are.equal('エラー: 開始日時は YYYY-MM-DD HH:MM 形式で入力してください', footer())
+    assert_error_mark(1)
     assert.are.equal(0, #insert_calls())
 
     edit_field(2, '2026-10-28 09:00')
@@ -559,6 +570,7 @@ describe('ui.form', function()
 
     assert.is_true(vim.api.nvim_win_is_valid(state.windows.form))
     assert.are.equal('エラー: 終了日時は YYYY-MM-DD HH:MM 形式で入力してください', footer())
+    assert_error_mark(2)
     assert.are.equal(0, #insert_calls())
 
     edit_field(3, '2026-10-28 10:00')
@@ -577,6 +589,7 @@ describe('ui.form', function()
 
     assert.is_true(vim.api.nvim_win_is_valid(state.windows.form))
     assert.are.equal('エラー: 終了は開始より後にしてください', footer())
+    assert_error_mark(2)
     assert.are.equal(0, #insert_calls())
 
     edit_field(3, '2026-10-28 08:00')
@@ -843,7 +856,7 @@ describe('ui.form', function()
       '<CR>:編集',
       '<Space>:切替',
       '<F2>:保存',
-      '<Esc>:取消',
+      '<Esc>/q:取消',
     }, vim.api.nvim_buf_get_lines(vim.api.nvim_win_get_buf(help_win), 0, -1, false))
 
     feed('q')
@@ -857,7 +870,7 @@ describe('ui.form', function()
     setup({ keymaps = { form = { save = '<A-s>' } } })
 
     form.open_create()
-    assert.are.equal('<Tab>/<S-Tab>:移動  <CR>:編集  <Space>:切替  <A-s>:保存  <Esc>:取消', footer())
+    assert.are.equal('<Tab>/<S-Tab>:移動  <CR>:編集  <Space>:切替  <A-s>:保存  <Esc>/q:取消', footer())
     edit_field(1, '別キー')
 
     feed('<F2>')
@@ -1134,12 +1147,15 @@ describe('ui.form', function()
       wait_form_error()
 
       assert.is_true(vim.api.nvim_win_is_valid(state.windows.form))
-      assert.are.equal('エラー: 予定を更新できませんでした: Backend Error', footer())
+      assert.are.equal(
+        'エラー: 予定を更新できませんでした: Google Calendar API エラー: Backend Error',
+        footer()
+      )
       local lines = form_lines()
       assert.are.equal('タイトル: 失敗する更新', lines[1])
       assert.are.equal('場所:     会議室B', lines[5])
       assert.are.same({
-        { message = '予定を更新できませんでした: Backend Error', level = vim.log.levels.ERROR },
+        { message = 'Google Calendar API エラー: Backend Error', level = vim.log.levels.ERROR },
       }, notifications)
       assert.are.equal(2, #read_lines(call_log))
 
@@ -1246,7 +1262,7 @@ describe('ui.form', function()
         '<CR>:編集',
         '<Space>:切替',
         '<F2>:保存',
-        '<Esc>:取消',
+        '<Esc>/q:取消',
       }, vim.api.nvim_buf_get_lines(vim.api.nvim_win_get_buf(help_win), 0, -1, false))
 
       feed('q')
@@ -1454,4 +1470,220 @@ describe('ui.form', function()
       )
     end
   )
+  it('q でフォームを閉じ、予定を作成しない', function()
+    form.open_create()
+    feed('q')
+    assert.is_nil(state.windows.form)
+    assert.are.equal(0, #insert_calls())
+  end)
+
+  it('form.next_field の上書きが効き、既定の <Tab> は移動しない', function()
+    setup({ keymaps = { form = { next_field = '<C-n>' } } })
+    form.open_create()
+
+    feed('<C-n>')
+    assert.are.equal(2, vim.api.nvim_win_get_cursor(state.windows.form)[1])
+
+    feed('<Tab>')
+    assert.are.equal(2, vim.api.nvim_win_get_cursor(state.windows.form)[1])
+  end)
+
+  it('form.prev_field の上書きが効き、既定の <S-Tab> は移動しない', function()
+    setup({ keymaps = { form = { prev_field = '<C-p>' } } })
+    form.open_create()
+
+    feed('<C-p>')
+    assert.are.equal(7, vim.api.nvim_win_get_cursor(state.windows.form)[1])
+
+    feed('<S-Tab>')
+    assert.are.equal(7, vim.api.nvim_win_get_cursor(state.windows.form)[1])
+  end)
+
+  it('form.edit の上書きが効き、既定の <CR> は編集を開始しない', function()
+    setup({ keymaps = { form = { edit = 'E' } } })
+    form.open_create()
+
+    feed('Eabc')
+    assert.are.equal('タイトル: abc', form_lines()[1])
+
+    vim.cmd('stopinsert')
+    feed('<CR>')
+    assert.are.equal(2, vim.api.nvim_win_get_cursor(state.windows.form)[1])
+  end)
+
+  it('form.toggle の上書きが効き、既定の <Space> は切り替えない', function()
+    setup({ keymaps = { form = { toggle = 'T' } } })
+    form.open_create()
+    select_field(4)
+
+    feed('T')
+    assert.are.equal('終日:     on', form_lines()[4])
+
+    feed('<Space>')
+    assert.are.equal('終日:     on', form_lines()[4])
+  end)
+
+  it('form.cancel の上書きが効き、既定の <Esc> は閉じない', function()
+    setup({ keymaps = { form = { cancel = '<C-c>' } } })
+    form.open_create()
+
+    feed('<C-c>')
+    assert.is_nil(state.windows.form)
+
+    form.open_create()
+    feed('<Esc>')
+    assert.is_true(vim.api.nvim_win_is_valid(state.windows.form))
+  end)
+
+  it('form.help の上書きが効き、既定の ? はヘルプを開かない', function()
+    setup({ keymaps = { form = { help = 'H' } } })
+    form.open_create()
+
+    feed('H')
+    local help_win = state.windows.help
+    assert.is_true(vim.api.nvim_win_is_valid(help_win))
+    feed('q')
+    assert.is_false(vim.api.nvim_win_is_valid(help_win))
+
+    feed('?')
+    assert.is_nil(state.windows.help)
+  end)
+
+  it('時刻付き予定を終日に変更して <F2> を押すと date 形式で更新する', function()
+    local raw = timed_raw('evt-edit-10', '定例', '2026-10-28', '09:00', '10:00')
+    open_month_with({ raw })
+    open_detail_from_month()
+
+    feed('e')
+    select_field(4)
+    feed('<Space>')
+    assert.are.equal('終日:     on', form_lines()[4])
+
+    press_save()
+    wait_form_closed()
+
+    local update = update_call()
+    assert.are.same({
+      summary = '定例',
+      start = { date = '2026-10-28' },
+      ['end'] = { date = '2026-10-29' },
+    }, vim.json.decode(update.argv[7]))
+  end)
+
+  it('更新時に編集可能フィールドを保持する', function()
+    local extra = {
+      attendees = { { email = 'a@example.com' } },
+      reminders = { useDefault = false, overrides = { { method = 'popup', minutes = 10 } } },
+      colorId = '7',
+      visibility = 'private',
+      transparency = 'opaque',
+    }
+    local raw = timed_raw('evt-edit-11', '定例', '2026-10-28', '09:00', '10:00', extra)
+    open_month_with({ raw })
+    open_detail_from_month()
+
+    feed('e')
+    edit_field(1, '保持テスト')
+    press_save()
+    wait_form_closed()
+
+    local update = update_call()
+    local body = vim.json.decode(update.argv[7])
+    assert.are.same(extra.attendees, body.attendees)
+    assert.are.same(extra.reminders, body.reminders)
+    assert.are.equal('7', body.colorId)
+    assert.are.equal('private', body.visibility)
+    assert.are.equal('opaque', body.transparency)
+  end)
+
+  it('場所と説明を空にして更新できる', function()
+    local raw = timed_raw('evt-edit-12', '定例', '2026-10-28', '09:00', '10:00', {
+      location = '会議室A',
+      description = '議題',
+    })
+    open_month_with({ raw })
+    open_detail_from_month()
+
+    feed('e')
+    edit_field(5, '')
+    edit_field(6, '')
+    press_save()
+    wait_form_closed()
+
+    local body = vim.json.decode(update_call().argv[7])
+    assert.are.equal('', body.location)
+    assert.are.equal('', body.description)
+  end)
+
+  it(
+    '更新で予定が別の日付に移動すると、月表示とアジェンダの選択を移動先に合わせる',
+    function()
+      local raw = timed_raw('evt-edit-13', '定例', '2026-10-28', '09:00', '10:00')
+      open_month_with({ raw })
+      open_detail_from_month()
+
+      feed('e')
+      edit_field(2, '2026-10-29 09:00')
+      edit_field(3, '2026-10-29 10:00')
+      press_save()
+      wait_form_closed()
+      wait_month_loading()
+
+      assert.are.equal('2026-10-29', state.selected_date)
+      assert.is_true(vim.api.nvim_win_is_valid(state.windows.agenda))
+
+      feed('<CR>')
+      assert.is_true(vim.api.nvim_win_is_valid(state.windows.detail))
+      local lines = vim.api.nvim_buf_get_lines(vim.api.nvim_win_get_buf(state.windows.detail), 0, -1, false)
+      assert.are.equal('タイトル: 定例', lines[1])
+    end
+  )
+
+  it('更新時の invalid_output を分類した文言で表示する', function()
+    local raw = timed_raw('evt-edit-14', '定例', '2026-10-28', '09:00', '10:00')
+    write_json(state_path, { items = { raw } })
+
+    local script = tmp_root .. '/invalid-output-gws'
+    write_script(script, {
+      '#!/bin/sh',
+      'echo "$@" >> "$FAKE_GWS_CALL_LOG"',
+      'if [ "$3" = "get" ]; then',
+      "echo '" .. vim.json.encode(raw) .. "'",
+      'exit 0',
+      'fi',
+      'echo "not json"',
+      'exit 1',
+    })
+    setup({ gws_cmd = script })
+
+    open_edit_from_detail(normalized(raw))
+    edit_field(1, '失敗する更新')
+    press_save()
+    wait_form_error()
+
+    assert.are.equal(
+      'エラー: 予定を更新できませんでした: gws の出力を解釈できませんでした',
+      footer()
+    )
+    assert.are.same({
+      { message = 'gws の出力を解釈できませんでした', level = vim.log.levels.ERROR },
+    }, notifications)
+  end)
+
+  it('更新時の not_found を分類した文言で表示する', function()
+    local raw = timed_raw('evt-edit-15', '定例', '2026-10-28', '09:00', '10:00')
+    write_json(state_path, { items = { raw } })
+    setup({ gws_cmd = tmp_root .. '/does-not-exist' })
+
+    open_edit_from_detail(normalized(raw))
+    edit_field(1, '失敗する更新')
+    press_save()
+    wait_form_error()
+
+    assert.is_true(vim.api.nvim_win_is_valid(state.windows.form))
+    assert.are.equal(
+      'エラー: 予定を取得できませんでした: gws が見つかりません。README のセットアップ手順に従って gws をインストールしてください。',
+      footer()
+    )
+  end)
 end)

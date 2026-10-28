@@ -108,7 +108,7 @@ describe('ui.agenda', function()
         content_width = math.max(content_width, vim.fn.strdisplaywidth(line))
       end
       assert.are.equal(math.min(60, vim.o.columns - 8, content_width + 2), win_config.width)
-      assert.are.equal(#lines, win_config.height)
+      assert.are.equal(math.min(#lines * 2, vim.o.lines - 4), win_config.height)
       assert.are.equal(win, vim.api.nvim_get_current_win())
       assert.are.equal('agenda', state.stack[#state.stack].name)
       assert.are.same({
@@ -127,7 +127,7 @@ describe('ui.agenda', function()
 
     local win = agenda.open()
 
-    assert.are.equal(1, vim.api.nvim_win_get_config(win).height)
+    assert.are.equal(math.min(2, vim.o.lines - 4), vim.api.nvim_win_get_config(win).height)
     assert.are.same({ '予定なし' }, buffer_lines())
 
     feed('<CR>')
@@ -255,7 +255,7 @@ describe('ui.agenda', function()
   end)
 
   it(
-    '予定が 25 件の日は内容に合わせて高さを広げ、j で最後の予定まで選択できる',
+    '予定が 25 件の日は内容の 2 倍の高さに広げ、j で最後の予定まで選択できる',
     function()
       local events = {}
       for index = 1, 25 do
@@ -273,7 +273,7 @@ describe('ui.agenda', function()
       set_events(events)
 
       local win = agenda.open()
-      assert.are.equal(25, vim.api.nvim_win_get_config(win).height)
+      assert.are.equal(math.min(50, vim.o.lines - 4), vim.api.nvim_win_get_config(win).height)
 
       for _ = 1, 24 do
         feed('j')

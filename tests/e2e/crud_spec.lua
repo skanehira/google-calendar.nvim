@@ -138,7 +138,7 @@ local function month_virt_lines()
 
   local marks = vim.api.nvim_buf_get_extmarks(vim.api.nvim_win_get_buf(win), ns, 0, -1, { details = true })
   for _, mark in ipairs(marks) do
-    if mark[4].virt_lines ~= nil then
+    if mark[4].virt_lines ~= nil and mark[4].virt_lines_above ~= true then
       rows[mark[2]] = mark[4].virt_lines
     end
   end
@@ -349,7 +349,11 @@ describe('e2e crud', function()
 
     assert.are.equal(0, #state_items())
     assert_month_matches_state()
-    assert.are.same({}, month_virt_lines())
+    local rows = month_virt_lines()
+    assert.are.equal(6, #rows)
+    for week = 1, 6 do
+      assert.are.equal(4, #rows[week])
+    end
     assert.is_false(has_chunk('更新2', 'GoogleCalendarSelected'))
     assert.are.same({
       { message = '予定を作成しました', level = vim.log.levels.INFO },
@@ -458,16 +462,31 @@ describe('e2e crud', function()
       for _, rows in pairs(month_virt_lines()) do
         virt = virt + #rows
       end
-      assert.are.equal(#content_lines + virt, month_config.height)
+      local separators = 0
+      local ns = vim.api.nvim_get_namespaces()['google-calendar-month']
+      for _, mark in
+        ipairs(vim.api.nvim_buf_get_extmarks(vim.api.nvim_win_get_buf(month_win), ns, 0, -1, { details = true }))
+      do
+        if mark[4].virt_lines_above == true then
+          separators = separators + 1
+        end
+      end
+      assert.are.equal(#content_lines + virt + separators, month_config.height)
       assert.are.equal(vim.fn.strdisplaywidth(content_lines[1]), month_config.width)
 
       feed('<CR>')
       assert.are.equal('agenda', state.stack[#state.stack].name)
-      assert.are.equal(#window_lines('agenda'), vim.api.nvim_win_get_config(state.windows.agenda).height)
+      assert.are.equal(
+        math.min(#window_lines('agenda') * 2, vim.o.lines - 4),
+        vim.api.nvim_win_get_config(state.windows.agenda).height
+      )
 
       feed('<CR>')
       assert.are.equal('detail', state.stack[#state.stack].name)
-      assert.are.equal(#window_lines('detail'), vim.api.nvim_win_get_config(state.windows.detail).height)
+      assert.are.equal(
+        math.min(#window_lines('detail') * 2, vim.o.lines - 4),
+        vim.api.nvim_win_get_config(state.windows.detail).height
+      )
 
       feed('e')
       assert.are.equal('form', state.stack[#state.stack].name)

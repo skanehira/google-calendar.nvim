@@ -64,18 +64,12 @@ end
 
 local function build_event_rows(week, events_by_date, max_events, cell_w, selected_date)
   local lists = {}
-  local rows = 0
   for index, cell in ipairs(week) do
     lists[index] = events_by_date[cell.date] or {}
-    local shown = math.min(#lists[index], max_events)
-    if #lists[index] > max_events then
-      shown = shown + 1
-    end
-    if shown > rows then
-      rows = shown
-    end
   end
 
+  -- 取得中と取得完了でウィンドウの高さが変わらないよう、常に最大表示 (max_events + N) の行数を作る
+  local rows = max_events + 1
   local result = {}
   for row_index = 1, rows do
     local chunks = {}
@@ -116,7 +110,9 @@ function M.compute_layout(columns, lines, cfg)
   local cell_w = math.floor((max_width - 6) / 7)
   -- 7 セル + 6 本の区切り線に合わせて幅を丸め、右側に余白を残さない
   local win_width = 7 * cell_w + 6
-  local win_height = math.min(40, math.floor(lines * cfg.height))
+  -- ヘッダー + 6 週分の日付行 + 各週の横線 + 各週の最大予定行 (max_events + N)
+  local weeks = 6
+  local win_height = math.max(1, math.min(1 + weeks + weeks + weeks * (cfg.max_events_per_cell + 1), lines - 2))
 
   return {
     win_width = win_width,
@@ -159,8 +155,14 @@ function M.build_view(grid, events_by_date, cfg, today, selected_date, cell_w)
     }
   end
 
+  local horizontal_cells = {}
+  for index = 1, 7 do
+    horizontal_cells[index] = string.rep('─', cell_w)
+  end
+
   return {
     header = table.concat(header_cells, '│'),
+    horizontal = table.concat(horizontal_cells, '┼'),
     weeks = weeks,
   }
 end
@@ -207,19 +209,24 @@ function M.render(win, view)
       end
     end
 
+    -- 予定行を先に置き、その上に横線を重ねてセルのグリッドを作る
     if #week.event_rows > 0 then
       vim.api.nvim_buf_set_extmark(buf, ns, line, 0, {
         virt_lines = week.event_rows,
       })
     end
+    vim.api.nvim_buf_set_extmark(buf, ns, line, 0, {
+      virt_lines = { { { view.horizontal, 'GoogleCalendarBorder' } } },
+      virt_lines_above = true,
+    })
   end
 
   vim.bo[buf].modifiable = false
 
-  -- 日付行・予定行の実数に合わせて高さを詰め、下部に空白を残さない
-  local content_height = 1
+  -- 横線・日付行・予定行の実数に合わせて高さを固定する
+  local content_height = #lines
   for _, week in ipairs(view.weeks) do
-    content_height = content_height + 1 + #week.event_rows
+    content_height = content_height + #week.event_rows + 1
   end
   window.resize(win, vim.fn.strdisplaywidth(view.header), content_height)
 end
@@ -257,8 +264,31 @@ local function event_date(events_by_date, event_id)
   end
 end
 
+local function cache_key(year, month)
+  return string.format('%04d-%02d', year, month)
+end
+
 local function fetch(initial, selected_event_id)
   local cfg = config.get()
+  local key = cache_key(state.year, state.month)
+  local cached = state.month_cache[key]
+  if cached ~= nil then
+    request_seq = request_seq + 1
+    state.loading = false
+    notify.reset()
+    state.events_by_date =
+      event.events_by_date(cached.events, cached.start_date, calendar.add_days(cached.end_date, -1))
+    if selected_event_id ~= nil then
+      local date = event_date(state.events_by_date, selected_event_id)
+      if date ~= nil then
+        state.selected_date = date
+      end
+    end
+    render()
+    require('google-calendar.ui.agenda').refresh(selected_event_id)
+    return
+  end
+
   local start_date, end_date, time_min, time_max = calendar.fetch_range(state.year, state.month, cfg.week_start)
   request_seq = request_seq + 1
   local request_id = request_seq
@@ -283,6 +313,7 @@ local function fetch(initial, selected_event_id)
         state.loading = false
         notify.error(err)
         if initial then
+          state.month_cache = {}
           window.close('month')
         else
           render()
@@ -292,6 +323,11 @@ local function fetch(initial, selected_event_id)
 
       state.loading = false
       notify.reset()
+      state.month_cache[key] = {
+        events = events or {},
+        start_date = start_date,
+        end_date = end_date,
+      }
       state.events_by_date = event.events_by_date(events or {}, start_date, calendar.add_days(end_date, -1))
       if selected_event_id ~= nil then
         local date = event_date(state.events_by_date, selected_event_id)
@@ -367,6 +403,8 @@ local function refresh(changed_event)
     selected_event_id = changed_event.id
   end
 
+  -- r / R や予定の変更後は、保持している月キャッシュをすべて破棄して再取得する
+  state.month_cache = {}
   state.loading = true
   render()
   fetch(false, selected_event_id)
@@ -382,6 +420,7 @@ local function close()
     return
   end
 
+  state.month_cache = {}
   window.close('month')
 end
 
@@ -444,6 +483,11 @@ local function set_keymaps(buf)
       vim.keymap.set('n', key, handler, { buffer = buf, nowait = true, silent = true })
     end
   end
+
+  -- 既定の再取得キー r に加えて、R でも再取得できるようにする
+  if config.resolve('month', 'refresh') == 'r' then
+    vim.keymap.set('n', 'R', key_actions.refresh, { buffer = buf, nowait = true, silent = true })
+  end
 end
 
 function M.open()
@@ -458,12 +502,10 @@ function M.open()
       return false
     end
 
-    -- 初回は日付行 6 週分だけの高さで開き、取得後に内容へ合わせて広げる
-    local initial_height = math.min(7, layout.win_height)
     win = window.open('month', {
       width = layout.win_width,
-      height = initial_height,
-      row = math.floor((vim.o.lines - initial_height) / 2),
+      height = layout.win_height,
+      row = layout.row,
       col = layout.col,
       title = month_title(true),
       border = 'rounded',
@@ -476,6 +518,16 @@ function M.open()
   local buf = vim.api.nvim_win_get_buf(win)
   vim.bo[buf].modifiable = false
   vim.wo[win].winhl = 'FloatBorder:GoogleCalendarBorder,FloatTitle:GoogleCalendarHeader'
+  if initial then
+    -- プラグインの close キー以外 (:q など) で閉じてもキャッシュを破棄する
+    vim.api.nvim_create_autocmd('WinClosed', {
+      pattern = tostring(win),
+      once = true,
+      callback = function()
+        state.month_cache = {}
+      end,
+    })
+  end
   set_keymaps(buf)
 
   state.loading = true

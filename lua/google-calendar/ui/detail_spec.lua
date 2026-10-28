@@ -136,7 +136,7 @@ describe('ui.detail', function()
       content_width = math.max(content_width, vim.fn.strdisplaywidth(line))
     end
     assert.are.equal(math.min(70, vim.o.columns - 8, content_width + 2), win_config.width)
-    assert.are.equal(#lines, win_config.height)
+    assert.are.equal(math.min(#lines * 2, vim.o.lines - 4), win_config.height)
     assert.are.equal(win, vim.api.nvim_get_current_win())
     assert.are.equal('detail', state.stack[#state.stack].name)
     assert.are.equal(parent, state.stack[#state.stack].parent)

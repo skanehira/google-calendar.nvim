@@ -141,7 +141,7 @@ flowchart TB
 | `lua/google-calendar/config.lua` | 既定値、キーマップ、ハイライト、入力検証 |
 | `lua/google-calendar/calendar.lua` | 月グリッドの計算、日付の加算、RFC3339 変換、表示用フォーマット |
 | `lua/google-calendar/event.lua` | gws の JSON を予定モデルへ正規化、時刻・終日・Meet URL の整形、表示幅での切り詰め |
-| `lua/google-calendar/state.lua` | 表示中の年月、選択日、予定キャッシュ、読み込み中フラグ、float スタック |
+| `lua/google-calendar/state.lua` | 表示中の年月、選択日、予定キャッシュ、月キャッシュ、読み込み中フラグ、float スタック |
 | `lua/google-calendar/gws.lua` | `vim.system` による gws 実行、一覧のページ取得、作成・取得・更新・削除、エラー分類 |
 | `lua/google-calendar/notify.lua` | エラー種別ごとの通知文言と `vim.notify` |
 | `lua/google-calendar/ui/window.lua` | float の生成・破棄・フォーカス復帰、共通のバッファ設定 |
@@ -208,10 +208,10 @@ nvim --headless -u tests/minimal_init.lua \
 
 実測値:
 
-- `make test`: 51 tests passed / 0 failed / 0 errors、exit 0（config 13、plugin 3、ui.window 4、test_harness 14、gws 17）
-- `make test-file FILE=lua/google-calendar/config_spec.lua`: 13 tests passed、exit 0
+- `make test`: 284 tests passed / 0 failed / 0 errors、exit 0
+- `make test-file FILE=lua/google-calendar/config_spec.lua`: 15 tests passed、exit 0
 - `make test-file FILE=lua/google-calendar/gws_spec.lua`: 17 tests passed、exit 0
-- `XDG_STATE_HOME="$PWD/.tmp-state" make test`: 51 tests passed、exit 0
+- `XDG_STATE_HOME="$PWD/.tmp-state" make test`: 284 tests passed、exit 0
 - `make test TEST_DIR=<空ディレクトリ>`: exit 2、`spec が 0 件です` を出力（0 件のまま成功しない）
 
 `TEST_DIR` は既定 `lua/`。spec は実装ファイルの隣 (`lua/**/*_spec.lua`) に置く。テストハーネスの spec も `lua/google-calendar/test_harness_spec.lua` に置き、`make test` の走査対象に含める。E2E の spec は `tests/e2e/` に置き、`make test-e2e` で実行する。
@@ -270,7 +270,7 @@ GOOGLE_WORKSPACE_CLI_CONFIG_DIR="$PWD/.local/gws-config" gws calendar calendarLi
 
 | コマンド | 引数 | 動作 |
 | --- | --- | --- |
-| `:GoogleCalendar` | なし | 当月の月表示を開く。既に開いている場合は再取得してフォーカスする |
+| `:GoogleCalendar` | なし | 当月の月表示を開く。既に開いている場合はメモリキャッシュを使ってフォーカスする（再取得は `r` / `R`） |
 | `:GoogleCalendar <YYYY-MM>` | `2026-11` 形式 | 指定した月の月表示を開く |
 | `:GoogleCalendar <YYYY-MM>` | 不正な形式 | `月の指定は YYYY-MM 形式で入力してください` と通知し、開かない |
 
@@ -286,7 +286,7 @@ GOOGLE_WORKSPACE_CLI_CONFIG_DIR="$PWD/.local/gws-config" gws calendar calendarLi
 | 月表示 | `t` | 今日へ移動 |
 | 月表示 | `<CR>` | 選択日の日別アジェンダを開く |
 | 月表示 | `a` | 選択日の予定を登録する |
-| 月表示 | `r` | 表示中の月を再取得する |
+| 月表示 | `r` / `R` | 表示中の月を再取得する（キャッシュを破棄する） |
 | 月表示 | `?` | ヘルプを開く |
 | 月表示 | `q` / `<Esc>` | 月表示を閉じる |
 | アジェンダ | `j` / `k` | 予定を選択 |
@@ -318,8 +318,9 @@ require('google-calendar').setup({
   week_start = 'sunday',
   -- 1 セルに表示する予定の最大件数
   max_events_per_cell = 3,
-  -- float のサイズの上限（画面に対する割合。実際のサイズは内容に合わせて縮む）
+  -- float の幅の上限（画面に対する割合。実際の幅は内容に合わせる）
   width = 0.9,
+  -- 月表示は固定高さ、アジェンダ・詳細は内容の 2 倍のため、height は互換用（現在は未使用）
   height = 0.85,
   -- 日時の表示形式
   date_format = '%Y-%m-%d %H:%M',
@@ -396,7 +397,7 @@ require('google-calendar').setup({
 
 - 予定の `dateTime` は RFC3339 としてパースし、イベントのオフセットを考慮してローカル時刻へ変換する。変換式は `epoch = os.time(components) + local_offset - event_offset`（PoC `timezone-conversion`）
 - 終日予定は `start.date` / `end.date` をそのまま使い、時刻変換しない
-- 月表示の取得範囲はローカルオフセット付きの RFC3339 で渡す
+- 月表示の取得範囲はローカルオフセット付きの RFC3339 で渡す。取得済みの月は `state.month_cache` に保持し、同じ月へ戻るときは再利用する。ウィンドウを閉じるか `r` / `R` で再取得すると破棄する
 - 表示は `%H:%M`、詳細は `%Y-%m-%d %H:%M`
 
 ### 表示幅とテキスト
@@ -435,13 +436,14 @@ require('google-calendar').setup({
 ### float の管理
 
 - float は 1 つのスタックで管理する。開くときはスタックに push し、閉じるときは pop して**親のウィンドウへ `nvim_set_current_win` で明示的に戻す**（Neovim は自動で戻さない。PoC `nvim-month-grid`）
-- 月表示は 1 つだけ。既に開いている場合は再取得してフォーカスする
+- 月表示は 1 つだけ。既に開いている場合はメモリキャッシュを使ってフォーカスする。`r` / `R` で明示的に再取得する
 - アジェンダ・詳細・フォーム・ヘルプ・確認は必要に応じて重ねる。`q` / `<Esc>` で 1 段ずつ閉じる
 
 ### UI の原則
 
-- ウィンドウは内容の行数・表示幅に合わせて縮め、下部・右側に空白を残さない。設定の `width` / `height` は上限として扱う
+- 月表示は各週の最大予定行（`max_events_per_cell + 1`）と横線を含む固定高さにし、取得中と取得完了でウィンドウの高さを変えない。アジェンダ・詳細は内容の 2 倍の高さにして下部に余白を残す。フォーム・ヘルプ・確認は内容に合わせる。幅は表示幅に合わせて右側に空白を残さない
 - 選択中の日付は、日付行と予定行を含むセル全体を `GoogleCalendarSelected` の目立つ背景で示す（今日の `GoogleCalendarToday` と重なっても選択が分かるようにする）。ウィンドウタイトルの `選択: MM-DD` でも示す
+- 月グリッドは `│` の縦線に加えて、各週の上に `─` / `┼` の横線を引いてセルを区切る
 - insert モードの `<Esc>` は insert を抜けるだけにし、normal モードでキャンセルする（Vim の慣習に合わせる）
 - 画面を開いたら、実際のターミナルで代表データ（予定が多い日・長いタイトル・日本語）を使ってキー操作とスクリーンショットを確認する
 

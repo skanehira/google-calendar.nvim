@@ -32,6 +32,10 @@ local function message_for(err)
   return MESSAGES[err.kind] or 'Google Calendar の操作に失敗しました'
 end
 
+function M.message(err)
+  return event.sanitize(message_for(err))
+end
+
 function M.error(err)
   local full = event.sanitize(message_for(err))
   if full == last_message then

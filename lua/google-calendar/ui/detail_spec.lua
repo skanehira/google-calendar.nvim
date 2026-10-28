@@ -196,7 +196,16 @@ describe('ui.detail', function()
 
     detail.open(item)
 
-    assert.are.same('タイトル: 定例ミーテ…', buffer_lines()[1])
+    assert.are.same({
+      'タイトル: 定例ミーテ…',
+      '開始: ' .. event.display_datetime(item.start),
+      '終了: ' .. event.display_datetime(item['end']),
+      '場所: 会議室A',
+      '説明: 議題1',
+      '議題2',
+      'Meet URL: https://meet.google.com/abc-defg-hij',
+      'カレンダー: primary',
+    }, buffer_lines())
   end)
 
   it('Meet URL を持つ予定（fixture）で URL を表示する', function()
@@ -206,10 +215,13 @@ describe('ui.detail', function()
 
     detail.open(item)
 
-    local lines = buffer_lines()
-    assert.is_true(vim.tbl_contains(lines, 'タイトル: Meet 付き'))
-    assert.is_true(vim.tbl_contains(lines, 'Meet URL: https://meet.google.com/abc-defg-hij'))
-    assert.is_true(vim.tbl_contains(lines, 'カレンダー: primary'))
+    assert.are.same({
+      'タイトル: Meet 付き',
+      '開始: ' .. event.display_datetime(item.start),
+      '終了: ' .. event.display_datetime(item['end']),
+      'Meet URL: https://meet.google.com/abc-defg-hij',
+      'カレンダー: primary',
+    }, buffer_lines())
   end)
 
   it('e / d / y / ? の opener をスタブで差し替えてキーが呼ばれる', function()

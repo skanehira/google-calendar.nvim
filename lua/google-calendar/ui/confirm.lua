@@ -12,6 +12,7 @@ local confirm = {
   buf = 0,
   item = nil,
   deleting = false,
+  on_finished = nil,
 }
 
 local function message(item, width)
@@ -64,6 +65,7 @@ local function close()
 
   confirm.active = false
   confirm.item = nil
+  confirm.on_finished = nil
   window.close('confirm')
 end
 
@@ -72,9 +74,13 @@ local function finish()
   confirm.deleting = false
   confirm.item = nil
 
+  local on_finished = confirm.on_finished
+  confirm.on_finished = nil
   window.close('confirm')
-  window.close('detail')
-  require('google-calendar.ui.month_view').refresh()
+
+  if on_finished ~= nil then
+    on_finished()
+  end
 end
 
 local function delete()
@@ -126,18 +132,18 @@ local function set_keymaps(buf)
   end
 end
 
-function M.open(item)
+function M.open(item, opts)
   local width = math.max(1, math.min(70, vim.o.columns - 8))
   local height = 2
   local row = math.max(0, math.floor((vim.o.lines - height) / 2))
   local col = math.max(0, math.floor((vim.o.columns - width) / 2))
-  local opts = { relative = 'editor', width = width, height = height, row = row, col = col }
+  local opts_win = { relative = 'editor', width = width, height = height, row = row, col = col }
 
   local win = state.windows.confirm
   if win ~= nil and vim.api.nvim_win_is_valid(win) then
-    vim.api.nvim_win_set_config(win, opts)
+    vim.api.nvim_win_set_config(win, opts_win)
   else
-    win = window.open('confirm', opts)
+    win = window.open('confirm', opts_win)
   end
 
   confirm.active = true
@@ -145,6 +151,7 @@ function M.open(item)
   confirm.buf = vim.api.nvim_win_get_buf(win)
   confirm.item = item
   confirm.deleting = false
+  confirm.on_finished = opts ~= nil and opts.on_finished or nil
   render()
   set_keymaps(confirm.buf)
   vim.api.nvim_set_current_win(win)

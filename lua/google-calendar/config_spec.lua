@@ -15,6 +15,7 @@ local default_keymaps = {
     refresh = 'r',
     help = '?',
     close = 'q',
+    esc_close = '<Esc>',
   },
   agenda = { next = 'j', prev = 'k', open = '<CR>', help = '?', close = 'q', esc_close = '<Esc>' },
   detail = { edit = 'e', delete = 'd', copy_meet = 'y', help = '?', close = 'q', esc_close = '<Esc>' },
@@ -25,6 +26,7 @@ local default_keymaps = {
     toggle = '<Space>',
     save = '<F2>',
     cancel = '<Esc>',
+    close = 'q',
     help = '?',
   },
   confirm = { yes = 'y', no = 'n', close = 'q', esc_close = '<Esc>' },
@@ -165,6 +167,22 @@ describe('config', function()
     config.apply_highlights()
 
     local header = vim.api.nvim_get_hl(0, { name = 'GoogleCalendarHeader', link = false })
+    assert.are.equal('#7aa2f7', string.format('#%06x', header.fg))
+    assert.is_true(header.bold)
+  end)
+
+  it('highlights に false を指定すると既定のハイライトを無効化する', function()
+    config.setup({ highlights = { GoogleCalendarHeader = false } })
+    config.apply_highlights()
+
+    local header = vim.api.nvim_get_hl(0, { name = 'GoogleCalendarHeader', link = false })
+    assert.is_nil(header.fg)
+    assert.is_nil(header.bold)
+
+    config.setup({})
+    config.apply_highlights()
+
+    header = vim.api.nvim_get_hl(0, { name = 'GoogleCalendarHeader', link = false })
     assert.are.equal('#7aa2f7', string.format('#%06x', header.fg))
     assert.is_true(header.bold)
   end)

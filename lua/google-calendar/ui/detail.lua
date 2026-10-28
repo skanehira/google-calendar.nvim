@@ -12,8 +12,15 @@ M.openers = {
   edit = function(item, opts)
     require('google-calendar.ui.form').open_edit(item, opts)
   end,
-  delete = function(item)
-    require('google-calendar.ui.confirm').open(item)
+  delete = function(item, opts)
+    require('google-calendar.ui.confirm').open(item, {
+      on_finished = function()
+        window.close('detail')
+        if opts ~= nil and opts.on_changed ~= nil then
+          opts.on_changed()
+        end
+      end,
+    })
   end,
   copy_meet = function(item)
     M.copy_meet(item)
@@ -141,7 +148,7 @@ end
 
 local function open_delete()
   if current_item ~= nil then
-    M.openers.delete(current_item)
+    M.openers.delete(current_item, current_opts)
   end
 end
 

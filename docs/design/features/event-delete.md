@@ -47,7 +47,7 @@ gws calendar events delete --params '{"calendarId":"primary","eventId":"<id>"}' 
 | 削除確認の描画とキー処理 | UI | `lua/google-calendar/ui/confirm.lua` |
 | `events delete` の実行（アダプタの `delete_event` を呼ぶ。cwd はアダプタが設定する） | アダプタ | `lua/google-calendar/gws.lua` |
 | 404・API エラーの通知（アダプタの通知を使う） | アダプタ | `lua/google-calendar/notify.lua` |
-| 削除後の月表示の再取得 | UI | `lua/google-calendar/ui/month_view.lua` |
+| 削除後の詳細を閉じる処理と月表示の再取得 | UI | `lua/google-calendar/ui/detail.lua`（confirm の `on_finished` コールバックで詳細を閉じ、`on_changed` で月表示を再取得する。confirm は `month_view` を require しない） |
 | 削除後のアジェンダの再描画 | UI | `lua/google-calendar/ui/agenda.lua` |
 
 ## エッジケースの決定

@@ -271,11 +271,12 @@ describe('e2e crud', function()
 
     local date = state.selected_date
 
-    -- 登録
     feed('a')
     assert.is_true(vim.api.nvim_win_is_valid(state.windows.form))
     assert.are.equal('タイトル: ', form_lines()[1])
     edit_field(1, '登録1')
+    edit_field(2, date .. ' 11:00')
+    edit_field(3, date .. ' 12:00')
     feed('<F2>')
     assert.is_true(vim.wait(10000, function()
       return state.windows.form == nil and not state.loading
@@ -285,26 +286,24 @@ describe('e2e crud', function()
     local items = state_items()
     assert.are.equal(1, #items)
     assert.are.equal('登録1', items[1].summary)
-    assert.are.equal(calendar.rfc3339(date, '09:00'), items[1].start.dateTime)
-    assert.are.equal(calendar.rfc3339(date, '10:00'), items[1]['end'].dateTime)
+    assert.are.equal(calendar.rfc3339(date, '11:00'), items[1].start.dateTime)
+    assert.are.equal(calendar.rfc3339(date, '12:00'), items[1]['end'].dateTime)
     assert_month_matches_state()
-    assert.is_true(has_chunk(' 09:00 ', 'GoogleCalendarEventTime'))
+    assert.is_true(has_chunk(' 11:00 ', 'GoogleCalendarEventTime'))
     assert.is_true(has_chunk('登録1', 'GoogleCalendarEvent'))
 
-    -- 詳細を開く
     feed('<CR>')
     assert.is_true(vim.api.nvim_win_is_valid(state.windows.agenda))
-    assert.are.same({ '09:00-10:00 登録1' }, window_lines('agenda'))
+    assert.are.same({ '11:00-12:00 登録1' }, window_lines('agenda'))
     feed('<CR>')
     assert.is_true(vim.api.nvim_win_is_valid(state.windows.detail))
     assert.are.same({
       'タイトル: 登録1',
-      '開始: ' .. date .. ' 09:00',
-      '終了: ' .. date .. ' 10:00',
+      '開始: ' .. date .. ' 11:00',
+      '終了: ' .. date .. ' 12:00',
       'カレンダー: primary',
     }, window_lines('detail'))
 
-    -- 更新
     feed('e')
     assert.is_true(vim.api.nvim_win_is_valid(state.windows.form))
     assert.are.equal('タイトル: 登録1', form_lines()[1])
@@ -321,24 +320,22 @@ describe('e2e crud', function()
     items = state_items()
     assert.are.equal(1, #items)
     assert.are.equal('更新2', items[1].summary)
-    assert.are.equal(calendar.rfc3339(date, '09:00'), items[1].start.dateTime)
-    assert.are.equal(calendar.rfc3339(date, '10:00'), items[1]['end'].dateTime)
+    assert.are.equal(calendar.rfc3339(date, '11:00'), items[1].start.dateTime)
+    assert.are.equal(calendar.rfc3339(date, '12:00'), items[1]['end'].dateTime)
     assert_month_matches_state()
     assert.is_true(has_chunk('更新2', 'GoogleCalendarEvent'))
     assert.is_false(has_chunk('登録1', 'GoogleCalendarEvent'))
 
-    -- 更新後の詳細を開き直す
     assert.is_true(vim.api.nvim_win_is_valid(state.windows.agenda))
     feed('<CR>')
     assert.is_true(vim.api.nvim_win_is_valid(state.windows.detail))
     assert.are.same({
       'タイトル: 更新2',
-      '開始: ' .. date .. ' 09:00',
-      '終了: ' .. date .. ' 10:00',
+      '開始: ' .. date .. ' 11:00',
+      '終了: ' .. date .. ' 12:00',
       'カレンダー: primary',
     }, window_lines('detail'))
 
-    -- 削除
     feed('d')
     assert.is_true(vim.api.nvim_win_is_valid(state.windows.confirm))
     assert.are.same({

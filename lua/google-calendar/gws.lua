@@ -105,9 +105,9 @@ local function execute(args, callback)
   }, function(out)
     local body, err = M.classify(out)
     if err ~= nil then
-      callback(nil, err)
+      callback(nil, err, out)
     else
-      callback(body, nil)
+      callback(body, nil, out)
     end
   end)
 
@@ -134,7 +134,7 @@ function M.list_events(opts, callback)
   local collected = {}
 
   local function fetch_page(pages)
-    execute({ 'calendar', 'events', 'list', '--params', vim.json.encode(params) }, function(body, err)
+    execute({ 'calendar', 'events', 'list', '--params', vim.json.encode(params) }, function(body, err, out)
       if err ~= nil then
         callback(nil, err)
         return
@@ -145,7 +145,11 @@ function M.list_events(opts, callback)
         items = {}
       end
       if type(items) ~= 'table' then
-        callback(nil, { kind = 'invalid_output', output = first_chars(vim.json.encode(body), 200) })
+        callback(nil, {
+          kind = 'invalid_output',
+          output = first_chars(vim.json.encode(body), 200),
+          stderr = (out and out.stderr) or '',
+        })
         return
       end
       vim.list_extend(collected, items)

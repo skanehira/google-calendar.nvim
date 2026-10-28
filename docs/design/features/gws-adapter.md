@@ -37,15 +37,15 @@
 | `vim.fn.executable(gws_cmd) == 0`、または `pcall(vim.system, ...)` の失敗（ENOENT） | `not_found` | 実行ファイル不在の情報 |
 | 終了コード 2 かつ `error.reason == 'authError'` | `auth` | `error.message` |
 | 終了コード非 0 で `error` を持つ | `api` | `error.code`, `error.message`, `error.reason` |
-| 終了コード 0 だが stdout が JSON でない | `invalid_output` | stdout の先頭 200 文字 |
+| 終了コード 0 だが stdout が JSON でない、または終了コード非 0 で `error` を持たない | `invalid_output` | stdout の先頭 200 文字、stderr |
 | タイムアウト | `network` | `timeout` |
 
-エラーは `{ kind = '<分類>', ... }` の形で返す。`kind` は `not_found` / `auth` / `api` / `invalid_output` / `network`。分類ごとの追加キーは `command`（not_found）、`message`（auth / network）、`code` / `reason`（api）、`output` / `stderr`（invalid_output）。
+エラーは `{ kind = '<分類>', ... }` の形で返す。`kind` は `not_found` / `auth` / `api` / `invalid_output` / `network`。分類ごとの追加キーは `command`（not_found）、`message`（auth / network / api）、`code` / `reason`（api）、`output` / `stderr`（invalid_output）。
 
 **予定モデルへの正規化**:
 
 - `id`, `summary`, `location`, `description`, `start`, `end`, `hangout_link`, `calendar_id`, `status`
-- `start` / `end` は `{ date = 'YYYY-MM-DD' }` または `{ dateTime = 'RFC3339', timeZone = '...' }`
+- `start` / `end` は `{ date = 'YYYY-MM-DD' }` または `{ dateTime = 'RFC3339', timeZone = '...' }`。`timeZone` は時刻付き予定では任意で、終日予定では付与しない（API 応答に `timeZone` があっても落とす）
 - `hangout_link` は `hangoutLink`、なければ `conferenceData.entryPoints` の `entryPointType == 'video'` の `uri`
 - `dateTime` はローカル時刻へ変換して表示用の値を持たせる（変換式は [DESIGN.md](../DESIGN.md)「横断規約」）
 - 更新時に保持する API フィールド（`attendees` / `reminders` / `colorId` / `visibility` / `transparency` / `conferenceData`）は、応答に存在する場合だけモデルへ引き継ぐ（[DESIGN.md](../DESIGN.md)「既知の制約」）

@@ -312,7 +312,7 @@ describe('ui.month_view', function()
     assert.are.equal('2026-10-28', state.selected_date)
     assert.are.equal(' Google Calendar — 2026年10月 ', window_title())
     assert.is_true(has_highlight('GoogleCalendarToday', 5, 55))
-    assert.is_true(has_highlight('GoogleCalendarSelected', 5, 55))
+    assert.is_true(has_highlight('GoogleCalendarSelected', 5, 45))
   end)
 
   it(':GoogleCalendar YYYY-MM が指定月の月表示を開く', function()
@@ -545,5 +545,199 @@ describe('ui.month_view', function()
     assert.are.equal(win, state.windows.month)
     assert.are.equal(win, vim.api.nvim_get_current_win())
     assert.are.equal('2026-10-28', state.selected_date)
+  end)
+  it('<Esc> でも閉じ、esc_close の上書きと false を反映する', function()
+    run_command()
+    wait_loading()
+    local win = state.windows.month
+    feed('<Esc>')
+    assert.is_false(vim.api.nvim_win_is_valid(win))
+
+    plugin.setup({
+      notify = notify,
+      gws_cmd = repo_root .. '/tests/fixtures/fake-gws.py',
+      keymaps = { month = { esc_close = '<C-x>' } },
+    })
+    run_command()
+    wait_loading()
+    win = state.windows.month
+    feed('<Esc>')
+    assert.is_true(vim.api.nvim_win_is_valid(win))
+    feed('<C-x>')
+    assert.is_false(vim.api.nvim_win_is_valid(win))
+
+    plugin.setup({
+      notify = notify,
+      gws_cmd = repo_root .. '/tests/fixtures/fake-gws.py',
+      keymaps = { month = { esc_close = false } },
+    })
+    run_command()
+    wait_loading()
+    win = state.windows.month
+    feed('<Esc>')
+    assert.is_true(vim.api.nvim_win_is_valid(win))
+    feed('q')
+    assert.is_false(vim.api.nvim_win_is_valid(win))
+  end)
+
+  it('タイトル・ボーダー・選択セル・チップ背景にハイライトを適用する', function()
+    gws_handler = function(_, cb)
+      cb({ timed_event('e1', '定例', '2026-10-28T09:00:00+09:00') }, nil)
+    end
+    run_command()
+    wait_loading()
+
+    local win = state.windows.month
+    assert.are.equal('FloatBorder:GoogleCalendarBorder,FloatTitle:GoogleCalendarHeader', vim.wo[win].winhl)
+    assert.is_true(has_highlight('GoogleCalendarHeader', 0, 0))
+    assert.is_true(has_highlight('GoogleCalendarSunday', 2, 11))
+    assert.is_true(has_highlight('GoogleCalendarSaturday', 1, 101))
+    assert.is_true(has_highlight('GoogleCalendarOtherMonth', 1, 10))
+    assert.is_true(has_highlight('GoogleCalendarSelected', 5, 45))
+
+    local rows = assert(virt_lines(5))
+    assert.is_true(has_chunk(rows[1], '定例', 'GoogleCalendarEvent'))
+    for index, chunk in ipairs(rows[1]) do
+      if chunk[1] == '定例' and chunk[2] == 'GoogleCalendarEvent' then
+        assert.are.equal('GoogleCalendarEvent', rows[1][index + 1][2])
+      end
+    end
+  end)
+
+  it('4 件以上の予定 fixture を +N 表示で扱う', function()
+    local body = vim.json.decode(table.concat(vim.fn.readfile('tests/fixtures/many-events.json'), '\n'))
+    local events = event.normalize_list(body.items, { calendar_id = 'primary' })
+    gws_handler = function(_, cb)
+      cb(events, nil)
+    end
+
+    run_command()
+    wait_loading()
+
+    local rows = assert(virt_lines(5))
+    assert.is_true(has_chunk(rows[4], ' +2', 'GoogleCalendarEvent'))
+  end)
+
+  it('取得中は移動・再取得・opener・close の全キーを無視する', function()
+    gws_handler = function(_, cb)
+      table.insert(pending_callbacks, cb)
+    end
+    run_command()
+
+    assert.is_true(state.loading)
+    for _, key in ipairs({ 'h', 'l', 'j', 'k', 'H', 'L', 't', 'r', 'a', '?', '<CR>', '<Esc>', 'q' }) do
+      feed(key)
+    end
+
+    assert.are.equal(2026, state.year)
+    assert.are.equal(10, state.month)
+    assert.are.equal('2026-10-28', state.selected_date)
+    assert.are.same({}, openers)
+    assert.is_true(vim.api.nvim_win_is_valid(state.windows.month))
+
+    pending_callbacks[1]({}, nil)
+    wait_loading()
+  end)
+
+  it('H/L で月末をクランプする', function()
+    run_command('2026-01')
+    wait_loading()
+    assert.are.equal('2026-01-28', state.selected_date)
+
+    feed('l')
+    feed('l')
+    feed('l')
+    assert.are.equal('2026-01-31', state.selected_date)
+
+    feed('L')
+    wait_loading()
+    assert.are.equal(2026, state.year)
+    assert.are.equal(2, state.month)
+    assert.are.equal('2026-02-28', state.selected_date)
+  end)
+
+  it('古いリクエストの応答を破棄する', function()
+    gws_handler = function(_, cb)
+      table.insert(pending_callbacks, cb)
+    end
+    run_command()
+    run_command('2026-11')
+
+    pending_callbacks[1]({ timed_event('e1', '10月', '2026-10-28T09:00:00+09:00') }, nil)
+    vim.wait(100)
+    assert.are.equal(2026, state.year)
+    assert.are.equal(11, state.month)
+    assert.are.equal('2026-11-28', state.selected_date)
+
+    pending_callbacks[2]({}, nil)
+    wait_loading()
+    assert.are.equal(11, state.month)
+  end)
+
+  it('r で表示中の月を再取得する', function()
+    run_command()
+    wait_loading()
+    assert.are.equal(1, #gws_calls)
+
+    feed('r')
+    wait_loading()
+    assert.are.equal(2, #gws_calls)
+  end)
+
+  it('エラー → 成功 → 同じエラーで 2 回目の通知も出す', function()
+    local call = 0
+    gws_handler = function(_, cb)
+      call = call + 1
+      if call == 1 or call == 3 then
+        cb({}, nil)
+      else
+        cb(nil, { kind = 'network' })
+      end
+    end
+
+    run_command()
+    wait_loading()
+    feed('r')
+    wait_loading()
+    feed('r')
+    wait_loading()
+    feed('r')
+    wait_loading()
+
+    assert.are.equal(4, #gws_calls)
+    assert.are.equal(2, #notifications)
+    assert.are.equal(
+      'Google Calendar に接続できません。ネットワークを確認し、r で再試行してください。',
+      notifications[1].message
+    )
+    assert.are.equal(notifications[1].message, notifications[2].message)
+  end)
+
+  it('month.close の上書きと false を反映する', function()
+    plugin.setup({
+      notify = notify,
+      gws_cmd = repo_root .. '/tests/fixtures/fake-gws.py',
+      keymaps = { month = { close = 'Q' } },
+    })
+    run_command()
+    wait_loading()
+    local win = state.windows.month
+    feed('q')
+    assert.is_true(vim.api.nvim_win_is_valid(win))
+    feed('Q')
+    assert.is_false(vim.api.nvim_win_is_valid(win))
+
+    plugin.setup({
+      notify = notify,
+      gws_cmd = repo_root .. '/tests/fixtures/fake-gws.py',
+      keymaps = { month = { close = false } },
+    })
+    run_command()
+    wait_loading()
+    win = state.windows.month
+    feed('q')
+    assert.is_true(vim.api.nvim_win_is_valid(win))
+    feed('<Esc>')
+    assert.is_false(vim.api.nvim_win_is_valid(win))
   end)
 end)

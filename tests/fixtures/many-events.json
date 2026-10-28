@@ -1,0 +1,34 @@
+{
+  "items": [
+    {
+      "id": "evt-many-1",
+      "summary": "朝会",
+      "start": { "dateTime": "2026-10-28T09:00:00+09:00" },
+      "end": { "dateTime": "2026-10-28T09:30:00+09:00" }
+    },
+    {
+      "id": "evt-many-2",
+      "summary": "定例",
+      "start": { "dateTime": "2026-10-28T10:00:00+09:00" },
+      "end": { "dateTime": "2026-10-28T11:00:00+09:00" }
+    },
+    {
+      "id": "evt-many-3",
+      "summary": "レビュー",
+      "start": { "dateTime": "2026-10-28T13:00:00+09:00" },
+      "end": { "dateTime": "2026-10-28T14:00:00+09:00" }
+    },
+    {
+      "id": "evt-many-4",
+      "summary": "1on1",
+      "start": { "dateTime": "2026-10-28T15:00:00+09:00" },
+      "end": { "dateTime": "2026-10-28T15:30:00+09:00" }
+    },
+    {
+      "id": "evt-many-5",
+      "summary": "夕会",
+      "start": { "dateTime": "2026-10-28T17:00:00+09:00" },
+      "end": { "dateTime": "2026-10-28T18:00:00+09:00" }
+    }
+  ]
+}

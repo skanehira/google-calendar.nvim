@@ -498,4 +498,36 @@ describe('ui.confirm', function()
 
     assert.are.equal(1, #delete_calls())
   end)
+  it('on_finished を削除成功時に 1 回だけ呼び、キャンセル時は呼ばない', function()
+    local item = {
+      id = 'evt-on-finished',
+      summary = '定例',
+      start = { date = '2026-10-28' },
+      ['end'] = { date = '2026-10-29' },
+    }
+    write_state({ item })
+
+    local finished = 0
+    confirm.open(item, {
+      on_finished = function()
+        finished = finished + 1
+      end,
+    })
+    feed('n')
+
+    assert.are.equal(0, finished)
+    assert.is_nil(state.windows.confirm)
+
+    confirm.open(item, {
+      on_finished = function()
+        finished = finished + 1
+      end,
+    })
+    feed('y')
+    wait_until(function()
+      return state.windows.confirm == nil
+    end)
+
+    assert.are.equal(1, finished)
+  end)
 end)

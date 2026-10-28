@@ -41,6 +41,7 @@ local defaults = {
       refresh = 'r',
       help = '?',
       close = 'q',
+      esc_close = '<Esc>',
     },
     agenda = { next = 'j', prev = 'k', open = '<CR>', help = '?', close = 'q', esc_close = '<Esc>' },
     detail = { edit = 'e', delete = 'd', copy_meet = 'y', help = '?', close = 'q', esc_close = '<Esc>' },
@@ -51,6 +52,7 @@ local defaults = {
       toggle = '<Space>',
       save = '<F2>',
       cancel = '<Esc>',
+      close = 'q',
       help = '?',
     },
     confirm = { yes = 'y', no = 'n', close = 'q', esc_close = '<Esc>' },
@@ -205,8 +207,13 @@ end
 function M.apply_highlights()
   -- default = true は既存定義を上書きしないため、前回上書きしたグループは default = false で既定へ戻す
   for group, definition in pairs(defaults.highlights) do
-    local options = vim.tbl_extend('force', { default = not applied_highlight_overrides[group] }, definition)
-    vim.api.nvim_set_hl(0, group, options)
+    if M.current.highlights[group] == false then
+      -- false は無効化として扱い、既定の定義を消す
+      vim.api.nvim_set_hl(0, group, {})
+    else
+      local options = vim.tbl_extend('force', { default = not applied_highlight_overrides[group] }, definition)
+      vim.api.nvim_set_hl(0, group, options)
+    end
   end
 
   local next_overrides = {}

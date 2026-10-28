@@ -31,7 +31,7 @@ local function cell_highlights(cell, today, selected_date)
     table.insert(highlights, { hl = 'GoogleCalendarToday', priority = 20 })
   end
   if cell.date == selected_date then
-    table.insert(highlights, { hl = 'GoogleCalendarSelected', priority = 30 })
+    table.insert(highlights, { hl = 'GoogleCalendarSelected', priority = 30, full_cell = true })
   end
 
   return highlights
@@ -45,7 +45,7 @@ local function chip_chunks(item, cell_w)
   end
 
   local used = 1 + vim.fn.strdisplaywidth(prefix) + vim.fn.strdisplaywidth(title)
-  table.insert(chunks, { string.rep(' ', cell_w - used) })
+  table.insert(chunks, { string.rep(' ', cell_w - used), 'GoogleCalendarEvent' })
   return chunks
 end
 
@@ -54,7 +54,7 @@ local function overflow_chunks(count, cell_w)
   local used = 1 + vim.fn.strdisplaywidth(text)
   return {
     { ' ' .. text, 'GoogleCalendarEvent' },
-    { string.rep(' ', cell_w - used) },
+    { string.rep(' ', cell_w - used), 'GoogleCalendarEvent' },
   }
 end
 
@@ -133,9 +133,12 @@ function M.build_view(grid, events_by_date, cfg, today, selected_date, cell_w)
       date_cells[index] = string.rep(' ', cell_w - #day_text) .. day_text
 
       local col = (index - 1) * (cell_w + 3) + (cell_w - #day_text)
+      local cell_start = (index - 1) * (cell_w + 3)
       cells[index] = {
         col = col,
         end_col = col + #day_text,
+        cell_col = cell_start,
+        cell_end_col = cell_start + cell_w,
         highlights = cell_highlights(cell, today, selected_date),
       }
     end
@@ -182,8 +185,10 @@ function M.render(win, view)
     local line = week_index
     for _, cell in ipairs(week.cells) do
       for _, highlight in ipairs(cell.highlights) do
-        vim.api.nvim_buf_set_extmark(buf, ns, line, cell.col, {
-          end_col = cell.end_col,
+        local start_col = highlight.full_cell and cell.cell_col or cell.col
+        local end_col = highlight.full_cell and cell.cell_end_col or cell.end_col
+        vim.api.nvim_buf_set_extmark(buf, ns, line, start_col, {
+          end_col = end_col,
           hl_group = highlight.hl,
           priority = highlight.priority,
         })
@@ -219,6 +224,18 @@ local function render()
   local grid = calendar.month_grid(state.year, state.month, cfg.week_start)
   local view = M.build_view(grid, state.events_by_date, cfg, calendar.today(), state.selected_date, cell_w)
   M.render(win, view)
+end
+
+local function event_date(events_by_date, event_id)
+  local dates = vim.tbl_keys(events_by_date)
+  table.sort(dates)
+  for _, date in ipairs(dates) do
+    for _, item in ipairs(events_by_date[date]) do
+      if item.id == event_id then
+        return date
+      end
+    end
+  end
 end
 
 local function fetch(initial, selected_event_id)
@@ -257,6 +274,12 @@ local function fetch(initial, selected_event_id)
       state.loading = false
       notify.reset()
       state.events_by_date = event.events_by_date(events or {}, start_date, calendar.add_days(end_date, -1))
+      if selected_event_id ~= nil then
+        local date = event_date(state.events_by_date, selected_event_id)
+        if date ~= nil then
+          state.selected_date = date
+        end
+      end
       render()
       require('google-calendar.ui.agenda').refresh(selected_event_id)
     end)
@@ -392,6 +415,7 @@ local key_actions = {
   refresh = M.refresh,
   help = open_help,
   close = close,
+  esc_close = close,
 }
 
 local function set_keymaps(buf)
@@ -430,6 +454,7 @@ function M.open()
 
   local buf = vim.api.nvim_win_get_buf(win)
   vim.bo[buf].modifiable = false
+  vim.wo[win].winhl = 'FloatBorder:GoogleCalendarBorder,FloatTitle:GoogleCalendarHeader'
   set_keymaps(buf)
 
   state.loading = true

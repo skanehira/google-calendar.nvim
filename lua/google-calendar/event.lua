@@ -202,6 +202,32 @@ function M.update_body(fields)
   return body
 end
 
+-- events update は PUT のため、送らなかったフィールドは消える。取得した予定をベースに、変更分だけを上書きする
+function M.merge_update(base, changes)
+  local fields = {
+    id = base.id,
+    calendar_id = base.calendar_id,
+    summary = base.summary,
+    location = base.location,
+    description = base.description,
+    start = base.start,
+    ['end'] = base['end'],
+  }
+
+  for _, field in ipairs(EDITABLE_FIELDS) do
+    local value = present(base[field])
+    if value ~= nil then
+      fields[field] = value
+    end
+  end
+
+  for key, value in pairs(changes or {}) do
+    fields[key] = value
+  end
+
+  return fields
+end
+
 -- 以下は月表示 (#11) が使うローカル時刻・表示幅の整形
 function M.local_datetime(value, local_offset)
   local parsed = parse_rfc3339(value)

@@ -9,8 +9,8 @@ local DESCRIPTION_MAX_LINES = 5
 
 -- 更新フォーム・削除確認・Meet URL コピーの実処理は別機能が持つため、キー処理からは opener 経由で呼ぶ
 M.openers = {
-  edit = function(item)
-    require('google-calendar.ui.form').open_edit(item)
+  edit = function(item, opts)
+    require('google-calendar.ui.form').open_edit(item, opts)
   end,
   delete = function(item)
     require('google-calendar.ui.confirm').open(item)
@@ -22,6 +22,7 @@ M.openers = {
 }
 
 local current_item = nil
+local current_opts = {}
 
 local function value_line(label, value)
   if value == nil or value == '' then
@@ -104,7 +105,7 @@ end
 
 local function open_edit()
   if current_item ~= nil then
-    M.openers.edit(current_item)
+    M.openers.edit(current_item, current_opts)
   end
 end
 
@@ -146,19 +147,20 @@ local function set_keymaps(buf)
   end
 end
 
-function M.open(item)
+function M.open(item, opts)
   local width, height = window_size()
   local row, col = window_position(width, height)
-  local opts = { relative = 'editor', width = width, height = height, row = row, col = col }
+  local opts_win = { relative = 'editor', width = width, height = height, row = row, col = col }
 
   local win = state.windows.detail
   if win ~= nil and vim.api.nvim_win_is_valid(win) then
-    vim.api.nvim_win_set_config(win, opts)
+    vim.api.nvim_win_set_config(win, opts_win)
   else
-    win = window.open('detail', opts)
+    win = window.open('detail', opts_win)
   end
 
   current_item = item
+  current_opts = opts or {}
   render(win, item, width)
   set_keymaps(vim.api.nvim_win_get_buf(win))
   vim.api.nvim_set_current_win(win)

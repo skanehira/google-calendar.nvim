@@ -695,6 +695,25 @@ describe('ui.month_view', function()
     assert.are.equal(2, #gws_calls)
   end)
 
+  it('外部でウィンドウ幅が変わっても設定した幅に戻す', function()
+    plugin.setup({
+      notify = notify,
+      width = 0.7,
+      height = 1.0,
+      gws_cmd = repo_root .. '/tests/fixtures/fake-gws.py',
+    })
+    run_command()
+    wait_loading()
+
+    local layout = month_view.compute_layout(vim.o.columns, vim.o.lines, config.get())
+    window.resize(state.windows.month, vim.o.columns - 2, layout.win_height)
+    assert.are.equal(vim.o.columns - 2, vim.api.nvim_win_get_width(state.windows.month))
+
+    feed('r')
+    wait_loading()
+    assert.are.equal(layout.win_width, vim.api.nvim_win_get_width(state.windows.month))
+  end)
+
   it('取得済みの月に戻るときはキャッシュを使い、gws を呼ばない', function()
     run_command()
     wait_loading()

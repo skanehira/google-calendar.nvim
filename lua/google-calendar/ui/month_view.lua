@@ -255,7 +255,7 @@ function M.render(win, view)
 
   -- 設定した画面サイズ (ウィンドウ高さ) に合わせる。内容が収まらない場合はスクロールする
   local layout = M.compute_layout(vim.o.columns, vim.o.lines, config.get())
-  window.resize(win, vim.fn.strdisplaywidth(view.header), layout.win_height)
+  window.resize(win, layout.win_width, layout.win_height)
 
   -- 高さが足りない場合でも選択中の週が見えるようにスクロール位置を合わせる
   local selected_line = 1
@@ -283,7 +283,7 @@ local function render()
 
   local cfg = config.get()
   local layout = M.compute_layout(vim.o.columns, vim.o.lines, cfg)
-  local cell_w = math.floor((vim.api.nvim_win_get_width(win) - 6) / 7)
+  local cell_w = layout.cell_w
   if cell_w < 7 then
     cfg.notify('ウィンドウが狭すぎます', vim.log.levels.ERROR)
     window.close('month')

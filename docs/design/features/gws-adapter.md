@@ -40,7 +40,7 @@
 | 終了コード 0 だが stdout が JSON でない | `invalid_output` | stdout の先頭 200 文字 |
 | タイムアウト | `network` | `timeout` |
 
-エラーは `{ kind = '<分類>', ... }` の形で返す。`kind` は `not_found` / `auth` / `api` / `invalid_output` / `network`。分類ごとの追加キーは `command`（not_found）、`message`（auth / network）、`code` / `reason`（api）、`output`（invalid_output）。
+エラーは `{ kind = '<分類>', ... }` の形で返す。`kind` は `not_found` / `auth` / `api` / `invalid_output` / `network`。分類ごとの追加キーは `command`（not_found）、`message`（auth / network）、`code` / `reason`（api）、`output` / `stderr`（invalid_output）。
 
 **予定モデルへの正規化**:
 

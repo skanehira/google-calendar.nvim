@@ -133,7 +133,10 @@ local function set_keymaps(buf)
 end
 
 function M.open(item, opts)
-  local width = math.max(1, math.min(70, vim.o.columns - 8))
+  local max_width = math.max(1, math.min(70, vim.o.columns - 8))
+  local message_text = message(item, max_width)
+  local hint = key_hint()
+  local width = math.max(1, math.min(max_width, window.max_display_width({ message_text, hint }) + 2))
   local height = 2
   local row = math.max(0, math.floor((vim.o.lines - height) / 2))
   local col = math.max(0, math.floor((vim.o.columns - width) / 2))

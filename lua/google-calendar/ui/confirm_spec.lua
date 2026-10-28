@@ -530,4 +530,22 @@ describe('ui.confirm', function()
 
     assert.are.equal(1, finished)
   end)
+  it('確認ウィンドウの幅がメッセージとキーの表示幅に一致する', function()
+    local item = {
+      id = 'evt-confirm-width',
+      summary = '短い',
+      start = { date = '2026-10-28' },
+      ['end'] = { date = '2026-10-29' },
+    }
+
+    local win = confirm.open(item)
+    local lines = confirm_lines()
+    local content_width = 0
+    for _, line in ipairs(lines) do
+      content_width = math.max(content_width, vim.fn.strdisplaywidth(line))
+    end
+
+    assert.are.equal(math.min(70, vim.o.columns - 8, content_width + 2), vim.api.nvim_win_get_config(win).width)
+    assert.are.equal(2, vim.api.nvim_win_get_config(win).height)
+  end)
 end)

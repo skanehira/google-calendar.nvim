@@ -302,11 +302,11 @@ GOOGLE_WORKSPACE_CLI_CONFIG_DIR="$PWD/.local/gws-config" gws calendar calendarLi
 | フォーム | `<CR>` | テキストフィールドの編集を開始する |
 | フォーム | `<Space>` | 終日・Meet のトグルを切り替える |
 | フォーム | `<F2>` | 保存する（`<C-s>` は herdr の prefix と衝突するため使わない） |
-| フォーム | `<Esc>` / `q` | キャンセルする（入力は破棄）。`<Esc>` は insert / normal の両モードでキャンセルする |
+| フォーム | `<Esc>` / `q` | キャンセルする（入力は破棄）。`<Esc>` は insert モードでは insert を抜けるだけで、normal モードでキャンセルする。`q` は normal モードのみ |
 | フォーム | `?` | フォームのヘルプを開く |
 | ヘルプ | `q` / `<Esc>` | ヘルプを閉じる |
 
-キーマップは `setup({ keymaps = { ... } })` で画面ごとに上書きできる。`false` を指定するとそのキーを無効にする。すべての画面のキーは `config.keymaps.<screen>.<action>` から解決し、実装に直書きしない。ヘルプを閉じる `q` / `<Esc>` は `help.close` / `help.esc_close`、アジェンダ・詳細を閉じる `q` / `<Esc>` は `agenda.esc_close` / `detail.esc_close`、月表示を閉じる `q` / `<Esc>` は `month.close` / `month.esc_close` で別々に変更・無効化できる。フォームの `<Esc>` / `q` も `form.cancel` / `form.close` で別々に変更・無効化できる（`q` は normal モードのみ）。保存の既定キーは `<F2>`（`<C-s>` は herdr の prefix と衝突するため使わない）。
+キーマップは `setup({ keymaps = { ... } })` で画面ごとに上書きできる。`false` を指定するとそのキーを無効にする。すべての画面のキーは `config.keymaps.<screen>.<action>` から解決し、実装に直書きしない。ヘルプを閉じる `q` / `<Esc>` は `help.close` / `help.esc_close`、アジェンダ・詳細を閉じる `q` / `<Esc>` は `agenda.esc_close` / `detail.esc_close`、月表示を閉じる `q` / `<Esc>` は `month.close` / `month.esc_close` で別々に変更・無効化できる。フォームの `<Esc>` / `q` も `form.cancel` / `form.close` で別々に変更・無効化できる（`q` は normal モードのみ。`form.cancel` は insert モードでは insert を抜けるだけ、normal モードでキャンセルする）。保存の既定キーは `<F2>`（`<C-s>` は herdr の prefix と衝突するため使わない）。
 
 **設定（`setup()`）**:
 
@@ -318,7 +318,7 @@ require('google-calendar').setup({
   week_start = 'sunday',
   -- 1 セルに表示する予定の最大件数
   max_events_per_cell = 3,
-  -- float のサイズ（画面に対する割合）
+  -- float のサイズの上限（画面に対する割合。実際のサイズは内容に合わせて縮む）
   width = 0.9,
   height = 0.85,
   -- 日時の表示形式
@@ -437,6 +437,13 @@ require('google-calendar').setup({
 - float は 1 つのスタックで管理する。開くときはスタックに push し、閉じるときは pop して**親のウィンドウへ `nvim_set_current_win` で明示的に戻す**（Neovim は自動で戻さない。PoC `nvim-month-grid`）
 - 月表示は 1 つだけ。既に開いている場合は再取得してフォーカスする
 - アジェンダ・詳細・フォーム・ヘルプ・確認は必要に応じて重ねる。`q` / `<Esc>` で 1 段ずつ閉じる
+
+### UI の原則
+
+- ウィンドウは内容の行数・表示幅に合わせて縮め、下部・右側に空白を残さない。設定の `width` / `height` は上限として扱う
+- 選択中の日付はセル全体を `GoogleCalendarSelected` の目立つ背景で示す（今日の `GoogleCalendarToday` と重なっても選択が分かるようにする）
+- insert モードの `<Esc>` は insert を抜けるだけにし、normal モードでキャンセルする（Vim の慣習に合わせる）
+- 画面を開いたら、実際のターミナルで代表データ（予定が多い日・長いタイトル・日本語）を使ってキー操作とスクリーンショットを確認する
 
 ### セキュリティ
 

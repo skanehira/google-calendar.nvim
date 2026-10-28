@@ -87,20 +87,6 @@ local function build_lines(item, width)
   return lines
 end
 
-local function window_size()
-  local width = math.max(1, math.min(70, vim.o.columns - 8))
-  local height = math.max(1, math.min(14, vim.o.lines - 4))
-
-  return width, height
-end
-
-local function window_position(width, height)
-  local row = math.max(0, math.floor((vim.o.lines - height) / 2))
-  local col = math.max(0, math.floor((vim.o.columns - width) / 2))
-
-  return row, col
-end
-
 local function render(win, item, width)
   local buf = vim.api.nvim_win_get_buf(win)
   local lines = build_lines(item, width)
@@ -108,6 +94,9 @@ local function render(win, item, width)
   vim.bo[buf].modifiable = true
   vim.api.nvim_buf_set_lines(buf, 0, -1, false, lines)
   vim.bo[buf].modifiable = false
+
+  -- 内容の行数・表示幅に合わせてウィンドウを詰め、下部・右側に空白を残さない
+  window.resize(win, math.min(width, window.max_display_width(lines) + 2), math.max(1, #lines))
 
   vim.api.nvim_win_set_cursor(win, { 1, 0 })
 end
@@ -185,8 +174,12 @@ local function set_keymaps(buf)
 end
 
 function M.open(item, opts)
-  local width, height = window_size()
-  local row, col = window_position(width, height)
+  local max_width = math.max(1, math.min(70, vim.o.columns - 8))
+  local lines = build_lines(item, max_width)
+  local width = math.max(1, math.min(max_width, window.max_display_width(lines) + 2))
+  local height = math.max(1, math.min(#lines, vim.o.lines - 4))
+  local row = math.max(0, math.floor((vim.o.lines - height) / 2))
+  local col = math.max(0, math.floor((vim.o.columns - width) / 2))
   local opts_win = { relative = 'editor', width = width, height = height, row = row, col = col }
 
   local win = state.windows.detail

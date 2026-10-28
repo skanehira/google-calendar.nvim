@@ -50,23 +50,13 @@ local function build_lines(events, width)
   return lines, starts
 end
 
-local function window_size(count)
-  local width = math.max(1, math.min(60, vim.o.columns - 8))
-  local height = math.max(1, math.min(count + 4, 20))
-
-  return width, height
-end
-
-local function window_position(width, height)
+local function window_opts(events)
+  local max_width = math.max(1, math.min(60, vim.o.columns - 8))
+  local lines = build_lines(events, max_width)
+  local width = math.max(1, math.min(max_width, window.max_display_width(lines) + 2))
+  local height = math.max(1, math.min(#lines, vim.o.lines - 4))
   local row = math.max(0, math.floor((vim.o.lines - height) / 2))
   local col = math.max(0, math.floor((vim.o.columns - width) / 2))
-
-  return row, col
-end
-
-local function window_opts(count)
-  local width, height = window_size(count)
-  local row, col = window_position(width, height)
 
   return width, { relative = 'editor', width = width, height = height, row = row, col = col }
 end
@@ -113,6 +103,9 @@ local function render(win, events, width)
   vim.bo[buf].modifiable = true
   vim.api.nvim_buf_set_lines(buf, 0, -1, false, lines)
   vim.bo[buf].modifiable = false
+
+  -- 予定の行数・表示幅に合わせてウィンドウを詰め、下部・右側に空白を残さない
+  window.resize(win, math.min(width, window.max_display_width(lines) + 2), math.max(1, #lines))
 
   place_cursor()
 end
@@ -169,7 +162,7 @@ end
 function M.open(opts)
   current_opts = opts or {}
   local events = current_events()
-  local width, win_opts = window_opts(#events)
+  local width, win_opts = window_opts(events)
 
   local win = state.windows.agenda
   if win ~= nil and vim.api.nvim_win_is_valid(win) then
@@ -200,7 +193,7 @@ function M.refresh(event_id)
   end
   clamp_selection(#events)
 
-  local width, win_opts = window_opts(#events)
+  local width, win_opts = window_opts(events)
   vim.api.nvim_win_set_config(win, win_opts)
   render(win, events, width)
 end

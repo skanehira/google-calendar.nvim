@@ -740,4 +740,54 @@ describe('ui.month_view', function()
     feed('<Esc>')
     assert.is_false(vim.api.nvim_win_is_valid(win))
   end)
+  it('ウィンドウが内容の行数・幅に一致し、下部・右側に空白を残さない', function()
+    local events = {}
+    for index = 1, 5 do
+      table.insert(events, timed_event('e' .. index, '予定' .. index, '2026-10-28T' .. (8 + index) .. ':00:00+09:00'))
+    end
+    gws_handler = function(_, cb)
+      cb(events, nil)
+    end
+
+    run_command()
+    wait_loading()
+
+    local win = state.windows.month
+    local win_config = vim.api.nvim_win_get_config(win)
+    local lines = buffer_lines()
+    local virt = 0
+    for _, mark in ipairs(month_marks()) do
+      if mark[4].virt_lines ~= nil then
+        virt = virt + #mark[4].virt_lines
+      end
+    end
+
+    assert.are.equal(#lines + virt, win_config.height)
+    assert.are.equal(vim.fn.strdisplaywidth(lines[1]), win_config.width)
+  end)
+
+  it('選択セルを全幅で目立つ背景にする', function()
+    gws_handler = function(_, cb)
+      cb({ timed_event('e1', '定例', '2026-10-28T09:00:00+09:00') }, nil)
+    end
+
+    run_command()
+    wait_loading()
+
+    local highlight = vim.api.nvim_get_hl(0, { name = 'GoogleCalendarSelected', link = false })
+    assert.are.equal(tonumber('7aa2f7', 16), highlight.bg)
+    assert.is_true(highlight.bold)
+
+    local selected
+    for _, mark in ipairs(month_marks()) do
+      if mark[4].hl_group == 'GoogleCalendarSelected' then
+        selected = mark
+      end
+    end
+    assert.is_not_nil(selected)
+
+    local win_config = vim.api.nvim_win_get_config(state.windows.month)
+    local cell_w = math.floor((win_config.width - 6) / 7)
+    assert.are.equal(cell_w, selected[4].end_col - selected[3])
+  end)
 end)

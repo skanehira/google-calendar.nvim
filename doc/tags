@@ -1,0 +1,14 @@
+:GoogleCalendar	google-calendar.txt	/*:GoogleCalendar*
+:GoogleCalendar-month	google-calendar.txt	/*:GoogleCalendar-month*
+google-calendar	google-calendar.txt	/*google-calendar*
+google-calendar-behavior	google-calendar.txt	/*google-calendar-behavior*
+google-calendar-commands	google-calendar.txt	/*google-calendar-commands*
+google-calendar-config	google-calendar.txt	/*google-calendar-config*
+google-calendar-contents	google-calendar.txt	/*google-calendar-contents*
+google-calendar-highlights	google-calendar.txt	/*google-calendar-highlights*
+google-calendar-intro	google-calendar.txt	/*google-calendar-intro*
+google-calendar-keymaps	google-calendar.txt	/*google-calendar-keymaps*
+google-calendar-requirements	google-calendar.txt	/*google-calendar-requirements*
+google-calendar-setup	google-calendar.txt	/*google-calendar-setup*
+google-calendar-troubleshooting	google-calendar.txt	/*google-calendar-troubleshooting*
+google-calendar.txt	google-calendar.txt	/*google-calendar.txt*

@@ -91,7 +91,7 @@ describe('ui.agenda', function()
   end)
 
   it(
-    '選択日の予定を開始時刻順（終日が先頭）に並べ、場所を 2 行目に表示する',
+    '選択日の予定を開始時刻順（終日が先頭）に並べ、ドット・開始時刻・タイトルを 1 行で表示する',
     function()
       set_events({
         timed_event('e3', 'ランチ', '2026-10-28T12:00:00+09:00', '2026-10-28T13:00:00+09:00'),
@@ -102,20 +102,68 @@ describe('ui.agenda', function()
       local win = agenda.open()
 
       local win_config = vim.api.nvim_win_get_config(win)
-      local width, height = window.target_size(0.5, 0.5)
+      local width, height = window.target_size(0.5, 0.7)
       assert.are.equal(width, win_config.width)
       assert.are.equal(height, win_config.height)
       assert.are.equal(win, vim.api.nvim_get_current_win())
       assert.are.equal('agenda', state.stack[#state.stack].name)
       assert.are.same({
-        '終日 休み',
-        '09:00-10:00 定例',
-        '@会議室A',
-        '12:00-13:00 ランチ',
+        '● 終日 休み',
+        '● 09:00 定例',
+        '● 12:00 ランチ',
       }, buffer_lines())
       assert.are.same({ 1, 0 }, vim.api.nvim_win_get_cursor(win))
     end
   )
+
+  it('予定の色と状態に応じたドットを表示する', function()
+    set_events({
+      timed_event('e1', '通常', '2026-10-28T09:00:00+09:00', '2026-10-28T10:00:00+09:00'),
+      {
+        id = 'e2',
+        summary = '仮',
+        status = 'tentative',
+        start = { dateTime = '2026-10-28T10:00:00+09:00' },
+        ['end'] = { dateTime = '2026-10-28T11:00:00+09:00' },
+      },
+      {
+        id = 'e3',
+        summary = '空き',
+        transparency = 'transparent',
+        start = { dateTime = '2026-10-28T11:00:00+09:00' },
+        ['end'] = { dateTime = '2026-10-28T12:00:00+09:00' },
+      },
+      {
+        id = 'e4',
+        summary = '色付き',
+        colorId = '6',
+        start = { dateTime = '2026-10-28T12:00:00+09:00' },
+        ['end'] = { dateTime = '2026-10-28T13:00:00+09:00' },
+      },
+    })
+
+    agenda.open()
+
+    assert.are.same({
+      '● 09:00 通常',
+      '○ 10:00 仮',
+      '○ 11:00 空き',
+      '● 12:00 色付き',
+    }, buffer_lines())
+
+    local buf = vim.api.nvim_win_get_buf(state.windows.agenda)
+    local ns = vim.api.nvim_get_namespaces()['google-calendar-agenda']
+    local groups = {}
+    for _, mark in ipairs(vim.api.nvim_buf_get_extmarks(buf, ns, 0, -1, { details = true })) do
+      table.insert(groups, mark[4].hl_group)
+    end
+    assert.are.same({
+      'GoogleCalendarEventColor7',
+      'GoogleCalendarEventColor7',
+      'GoogleCalendarEventColor7',
+      'GoogleCalendarEventColor6',
+    }, groups)
+  end)
 
   it('予定が 0 件の日は予定なしを表示し、<CR> では詳細を開かない', function()
     state.events_by_date = {}
@@ -123,7 +171,7 @@ describe('ui.agenda', function()
 
     local win = agenda.open()
 
-    local _, height = window.target_size(0.5, 0.5)
+    local _, height = window.target_size(0.5, 0.7)
     assert.are.equal(height, vim.api.nvim_win_get_config(win).height)
     assert.are.same({ '予定なし' }, buffer_lines())
 
@@ -268,7 +316,7 @@ describe('ui.agenda', function()
     set_events(events)
 
     local win = agenda.open()
-    local _, height = window.target_size(0.5, 0.5)
+    local _, height = window.target_size(0.5, 0.7)
     assert.are.equal(height, vim.api.nvim_win_get_config(win).height)
 
     for _ = 1, 24 do

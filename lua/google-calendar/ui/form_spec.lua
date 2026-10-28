@@ -1448,7 +1448,7 @@ describe('ui.form', function()
 
       feed('<CR>')
       assert.is_true(vim.api.nvim_win_is_valid(state.windows.agenda))
-      assert.are.same({ '09:00-10:00 AAA', '10:00-11:00 BBB' }, agenda_lines())
+      assert.are.same({ '● 09:00 AAA', '● 10:00 BBB' }, agenda_lines())
       assert.are.same({ 1, 0 }, vim.api.nvim_win_get_cursor(state.windows.agenda))
 
       feed('<CR>')
@@ -1468,7 +1468,7 @@ describe('ui.form', function()
       wait_month_loading()
 
       assert.is_nil(state.windows.detail)
-      assert.are.same({ '10:00-11:00 BBB', '11:00-12:00 AAA' }, agenda_lines())
+      assert.are.same({ '● 10:00 BBB', '● 11:00 AAA' }, agenda_lines())
       assert.are.same({ 2, 0 }, vim.api.nvim_win_get_cursor(state.windows.agenda))
 
       feed('<CR>')

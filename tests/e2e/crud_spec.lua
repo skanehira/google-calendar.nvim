@@ -305,7 +305,7 @@ describe('e2e crud', function()
 
     feed('<CR>')
     assert.is_true(vim.api.nvim_win_is_valid(state.windows.agenda))
-    assert.are.same({ '11:00-12:00 登録1' }, window_lines('agenda'))
+    assert.are.same({ '● 11:00 登録1' }, window_lines('agenda'))
     feed('<CR>')
     assert.is_true(vim.api.nvim_win_is_valid(state.windows.detail))
     assert.are.same({
@@ -488,7 +488,7 @@ describe('e2e crud', function()
 
       feed('<CR>')
       assert.are.equal('agenda', state.stack[#state.stack].name)
-      assert.are.equal(math.floor((vim.o.lines - 2) * 0.5), vim.api.nvim_win_get_config(state.windows.agenda).height)
+      assert.are.equal(math.floor((vim.o.lines - 2) * 0.7), vim.api.nvim_win_get_config(state.windows.agenda).height)
 
       feed('<CR>')
       assert.are.equal('detail', state.stack[#state.stack].name)

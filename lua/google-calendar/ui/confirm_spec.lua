@@ -281,7 +281,7 @@ describe('ui.confirm', function()
       feed('<CR>')
       assert.are.equal('agenda', state.stack[#state.stack].name)
       assert.are.same(
-        { '09:00-10:00 定例' },
+        { '● 09:00 定例' },
         vim.api.nvim_buf_get_lines(vim.api.nvim_win_get_buf(state.windows.agenda), 0, -1, false)
       )
 

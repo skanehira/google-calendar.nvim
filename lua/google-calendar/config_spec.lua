@@ -44,6 +44,17 @@ local default_highlight_groups = {
   'GoogleCalendarDetailTitle',
   'GoogleCalendarError',
   'GoogleCalendarEvent',
+  'GoogleCalendarEventColor1',
+  'GoogleCalendarEventColor10',
+  'GoogleCalendarEventColor11',
+  'GoogleCalendarEventColor2',
+  'GoogleCalendarEventColor3',
+  'GoogleCalendarEventColor4',
+  'GoogleCalendarEventColor5',
+  'GoogleCalendarEventColor6',
+  'GoogleCalendarEventColor7',
+  'GoogleCalendarEventColor8',
+  'GoogleCalendarEventColor9',
   'GoogleCalendarEventTime',
   'GoogleCalendarHeader',
   'GoogleCalendarOtherMonth',
@@ -75,7 +86,7 @@ describe('config', function()
     assert.are.equal(3, cfg.max_events_per_cell)
     assert.are.equal(0.7, cfg.width)
     assert.are.equal(0.7, cfg.height)
-    assert.are.same({ width = 0.5, height = 0.5 }, cfg.agenda)
+    assert.are.same({ width = 0.5, height = 0.7 }, cfg.agenda)
     assert.are.same({ width = 0.5, height = 0.5 }, cfg.detail)
     assert.are.equal('%Y-%m-%d %H:%M', cfg.date_format)
     assert.are.equal('gws', cfg.gws_cmd)
@@ -288,7 +299,7 @@ describe('config', function()
     config.setup({ agenda = { width = 0.6 }, detail = { height = 0.7 } })
 
     local cfg = config.get()
-    assert.are.same({ width = 0.6, height = 0.5 }, cfg.agenda)
+    assert.are.same({ width = 0.6, height = 0.7 }, cfg.agenda)
     assert.are.same({ width = 0.5, height = 0.7 }, cfg.detail)
   end)
 end)

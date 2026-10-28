@@ -111,8 +111,8 @@ require('google-calendar').setup({
       help = '?',
       close = 'q',
     },
-    agenda = { next = 'j', prev = 'k', open = '<CR>', help = '?', close = 'q' },
-    detail = { edit = 'e', delete = 'd', copy_meet = 'y', help = '?', close = 'q' },
+    agenda = { next = 'j', prev = 'k', open = '<CR>', help = '?', close = 'q', esc_close = '<Esc>' },
+    detail = { edit = 'e', delete = 'd', copy_meet = 'y', help = '?', close = 'q', esc_close = '<Esc>' },
     form = {
       next_field = '<Tab>',
       prev_field = '<S-Tab>',

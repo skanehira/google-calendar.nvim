@@ -97,6 +97,10 @@ require('google-calendar').setup({
   gws_cmd = 'gws',
   -- 通知関数 (テストで差し替え可能)
   notify = vim.notify,
+  -- クリップボードへの書き込み関数 (テストで差し替え可能)
+  clipboard = function(url)
+    vim.fn.setreg('+', url)
+  end,
   -- キーマップの上書き (画面ごとに指定。false で無効化)
   keymaps = {
     month = {

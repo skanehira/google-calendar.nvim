@@ -441,7 +441,7 @@ require('google-calendar').setup({
 ### UI の原則
 
 - ウィンドウは内容の行数・表示幅に合わせて縮め、下部・右側に空白を残さない。設定の `width` / `height` は上限として扱う
-- 選択中の日付はセル全体を `GoogleCalendarSelected` の目立つ背景で示す（今日の `GoogleCalendarToday` と重なっても選択が分かるようにする）
+- 選択中の日付はセル全体を `GoogleCalendarSelected` の目立つ背景で示す（今日の `GoogleCalendarToday` と重なっても選択が分かるようにする）。背景色だけに頼らず、セルの左端の `>` マーカーとウィンドウタイトルの `選択: MM-DD` でも示す
 - insert モードの `<Esc>` は insert を抜けるだけにし、normal モードでキャンセルする（Vim の慣習に合わせる）
 - 画面を開いたら、実際のターミナルで代表データ（予定が多い日・長いタイトル・日本語）を使ってキー操作とスクリーンショットを確認する
 

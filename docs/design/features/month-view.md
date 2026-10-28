@@ -46,6 +46,7 @@ Google カレンダーの月表示を Neovim の float window に描画する。
 - 日付行は ` 1`〜`31` の右寄せ。今日は `GoogleCalendarToday`、選択日は `GoogleCalendarSelected`（セル全体・目立つ背景・bold）、日曜は `GoogleCalendarSunday`、土曜は `GoogleCalendarSaturday`、前月・翌月は `GoogleCalendarOtherMonth` でハイライトする
 - ウィンドウの高さは「ヘッダー 1 行 + 6 週分の日付行 + 予定行」、幅は 7 セル + 6 本の区切り線に合わせる。下部・右側に空白を残さない（設定 `width` / `height` は上限）
 - 月タイトルは `FloatTitle`、float のボーダーは `FloatBorder` を `winhl` で `GoogleCalendarHeader` / `GoogleCalendarBorder` に割り当てる。予定チップは `GoogleCalendarEvent` を背景に適用する
+- 選択中のセルは左端に `>` マーカーを表示し、ウィンドウタイトルにも `選択: MM-DD` を表示する（背景色だけに頼らず、どの日が選択中かを判別できるようにする）
 - 予定チップは `HH:MM タイトル`。終日予定は `終日 タイトル`。タイトルはセル幅に合わせて `…` で切り詰める
 - 予定が `max_events_per_cell` を超える日は、`max_events_per_cell` 件までを表示し、最後の行に `+N` を表示する
 - 予定がない日は予定行を描画しない（空行も描画しない）

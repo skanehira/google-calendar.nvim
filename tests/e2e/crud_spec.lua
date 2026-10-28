@@ -110,6 +110,15 @@ local function feed(keys)
   vim.api.nvim_feedkeys(vim.api.nvim_replace_termcodes(keys, true, false, true), 'x', false)
 end
 
+local WEEKDAYS = { '日', '月', '火', '水', '木', '金', '土' }
+
+local function japanese_date(date)
+  local year, month, day = calendar.date_parts(date)
+  year, month, day = assert(year), assert(month), assert(day)
+  local weekday = tonumber(os.date('%w', os.time({ year = year, month = month, day = day, hour = 12 })))
+  return string.format('%d月%d日 (%s曜日)', month, day, WEEKDAYS[weekday + 1])
+end
+
 local function window_lines(name)
   local win = state.windows[name]
   assert.is_true(win ~= nil and vim.api.nvim_win_is_valid(win))
@@ -300,10 +309,10 @@ describe('e2e crud', function()
     feed('<CR>')
     assert.is_true(vim.api.nvim_win_is_valid(state.windows.detail))
     assert.are.same({
-      'タイトル: 登録1',
-      '開始: ' .. date .. ' 11:00',
-      '終了: ' .. date .. ' 12:00',
-      'カレンダー: primary',
+      '▣ 登録1',
+      '  ' .. japanese_date(date) .. '・11:00〜12:00',
+      '',
+      '▣ primary',
     }, window_lines('detail'))
 
     feed('e')
@@ -332,10 +341,10 @@ describe('e2e crud', function()
     feed('<CR>')
     assert.is_true(vim.api.nvim_win_is_valid(state.windows.detail))
     assert.are.same({
-      'タイトル: 更新2',
-      '開始: ' .. date .. ' 11:00',
-      '終了: ' .. date .. ' 12:00',
-      'カレンダー: primary',
+      '▣ 更新2',
+      '  ' .. japanese_date(date) .. '・11:00〜12:00',
+      '',
+      '▣ primary',
     }, window_lines('detail'))
 
     feed('d')

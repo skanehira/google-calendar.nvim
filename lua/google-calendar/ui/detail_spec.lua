@@ -1,4 +1,5 @@
 ---@diagnostic disable: undefined-field
+local calendar = require('google-calendar.calendar')
 local config = require('google-calendar.config')
 local detail = require('google-calendar.ui.detail')
 local event = require('google-calendar.event')
@@ -56,6 +57,28 @@ local function copy_via_key(item)
   detail.openers.copy_meet = original_openers.copy_meet
   detail.open(item)
   feed('y')
+end
+
+local WEEKDAYS = { '日', '月', '火', '水', '木', '金', '土' }
+
+local function japanese_when(item)
+  local date = event.start_date(item)
+  local year, month, day = calendar.date_parts(date)
+  year, month, day = assert(year), assert(month), assert(day)
+  local weekday = tonumber(os.date('%w', os.time({ year = year, month = month, day = day, hour = 12 })))
+  local label = string.format('%d月%d日 (%s曜日)', month, day, WEEKDAYS[weekday + 1])
+  if event.is_all_day(item) then
+    return label
+  end
+  local start_time = event.start_time(item)
+  if start_time == nil then
+    return label
+  end
+  local end_time = event.end_time(item)
+  if end_time == nil then
+    return label .. '・' .. start_time
+  end
+  return label .. '・' .. start_time .. '〜' .. end_time
 end
 
 local function buffer_lines()
@@ -137,14 +160,16 @@ describe('ui.detail', function()
     assert.are.equal('detail', state.stack[#state.stack].name)
     assert.are.equal(parent, state.stack[#state.stack].parent)
     assert.are.same({
-      'タイトル: 定例',
-      '開始: 2026-10-28 09:00',
-      '終了: 2026-10-28 10:00',
-      '場所: 会議室A',
-      '説明: 議題1',
-      '議題2',
-      'Meet URL: https://meet.google.com/abc-defg-hij',
-      'カレンダー: primary',
+      '▣ 定例',
+      '  10月28日 (水曜日)・09:00〜10:00',
+      '↗ https://meet.google.com/abc-defg-hij',
+      '',
+      '⌖ 会議室A',
+      '',
+      '☰ 議題1',
+      '  議題2',
+      '',
+      '▣ primary',
     }, buffer_lines())
   end)
 
@@ -161,33 +186,32 @@ describe('ui.detail', function()
     detail.open(item)
 
     assert.are.same({
-      'タイトル: 休み',
-      '開始: 2026-10-28',
-      '終了: 2026-10-29',
+      '▣ 休み',
+      '  10月28日 (水曜日)',
     }, buffer_lines())
   end)
 
-  it('説明が 5 行を超える場合は 5 行で … を付けて切り詰める', function()
+  it('説明を幅に合わせて折り返し、10 行を超える場合は … を付ける', function()
     local item = {
       id = 'evt-3',
       summary = '議題',
-      description = '1\n2\n3\n4\n5\n6\n7',
+      description = '1\n2\n3\n4\n5\n6\n7\n8\n9\n10\n11\n12',
       start = { dateTime = '2026-10-28T09:00:00+09:00' },
       ['end'] = { dateTime = '2026-10-28T10:00:00+09:00' },
     }
 
     detail.open(item)
 
-    assert.are.same({
-      'タイトル: 議題',
-      '開始: 2026-10-28 09:00',
-      '終了: 2026-10-28 10:00',
-      '説明: 1',
-      '2',
-      '3',
-      '4',
-      '5…',
-    }, buffer_lines())
+    local lines = buffer_lines()
+    assert.are.equal('▣ 議題', lines[1])
+    assert.are.equal('  10月28日 (水曜日)・09:00〜10:00', lines[2])
+    assert.are.equal('', lines[3])
+    assert.are.equal('☰ 1', lines[4])
+    for index = 2, 9 do
+      assert.are.equal('  ' .. index, lines[index + 3])
+    end
+    assert.are.equal('  10…', lines[13])
+    assert.are.equal(13, #lines)
   end)
 
   it('タイトルが 1 行に収まらない場合は … で切り詰める', function()
@@ -198,14 +222,16 @@ describe('ui.detail', function()
     detail.open(item)
 
     assert.are.same({
-      'タイトル: …',
-      '開始: ' .. event.display_datetime(item.start),
-      '終了: ' .. event.display_datetime(item['end']),
-      '場所: 会議室A',
-      '説明: 議題1',
-      '議題2',
-      'Meet URL: https://meet.google.com/abc-defg-hij',
-      'カレンダー: primary',
+      '▣ 定例ミー…',
+      '  10月28日 …',
+      '↗ https://m…',
+      '',
+      '⌖ 会議室A',
+      '',
+      '☰ 議題1',
+      '  議題2',
+      '',
+      '▣ primary',
     }, buffer_lines())
   end)
 
@@ -217,13 +243,58 @@ describe('ui.detail', function()
     detail.open(item)
 
     assert.are.same({
-      'タイトル: Meet 付き',
-      '開始: ' .. event.display_datetime(item.start),
-      '終了: ' .. event.display_datetime(item['end']),
-      'Meet URL: https://meet.google.com/abc-defg-hij',
-      'カレンダー: primary',
+      '▣ Meet 付き',
+      '  ' .. japanese_when(item),
+      '↗ https://meet.google.com/abc-defg-hij',
+      '',
+      '▣ primary',
     }, buffer_lines())
   end)
+
+  it(
+    'ゲスト、参加状況、主催者、説明、カレンダーを Google カレンダー風に表示する',
+    function()
+      local item = {
+        id = 'evt-guest',
+        summary = 'クセのある映画を見ようの会',
+        location = '千葉オフィス-4-リビング (100)',
+        description = '配信等がなくレンタルビデオ店も縮小し...',
+        start = { dateTime = '2026-10-24T13:00:00+09:00' },
+        ['end'] = { dateTime = '2026-10-24T15:00:00+09:00' },
+        organizer = { email = 'onizawa.yuji@gb-sense.com' },
+        attendees = {
+          {
+            email = 'onizawa.yuji@gb-sense.com',
+            displayName = 'onizawa.yuji@gb-sense.com',
+            responseStatus = 'accepted',
+            organizer = true,
+          },
+          { email = 'all@gb-sense.com', responseStatus = 'needsAction' },
+        },
+        calendar_id = 'primary',
+      }
+
+      detail.open(item)
+
+      assert.are.same({
+        '▣ クセのある映画を見ようの会',
+        '  10月24日 (土曜日)・13:00〜15:00',
+        '',
+        '⌖ 千葉オフィス-4-リビング (100)',
+        '',
+        '☷ 2人のゲスト',
+        '  参加: 1人',
+        '  返答待ち: 1人',
+        '  ✓ onizawa.yuji@gb-sense.com',
+        '    主催者',
+        '  ○ all@gb-sense.com',
+        '',
+        '☰ 配信等がなくレンタルビデオ店も縮小し...',
+        '',
+        '▣ onizawa.yuji@gb-sense.com',
+      }, buffer_lines())
+    end
+  )
 
   it('e / d / y / ? の opener をスタブで差し替えてキーが呼ばれる', function()
     local item = full_event()

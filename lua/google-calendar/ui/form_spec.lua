@@ -1454,7 +1454,7 @@ describe('ui.form', function()
       feed('<CR>')
       assert.is_true(vim.api.nvim_win_is_valid(state.windows.detail))
       assert.are.equal(
-        'タイトル: AAA',
+        '▣ AAA',
         vim.api.nvim_buf_get_lines(vim.api.nvim_win_get_buf(state.windows.detail), 0, 1, false)[1]
       )
 
@@ -1474,7 +1474,7 @@ describe('ui.form', function()
       feed('<CR>')
       assert.is_true(vim.api.nvim_win_is_valid(state.windows.detail))
       assert.are.equal(
-        'タイトル: AAA',
+        '▣ AAA',
         vim.api.nvim_buf_get_lines(vim.api.nvim_win_get_buf(state.windows.detail), 0, 1, false)[1]
       )
     end
@@ -1644,7 +1644,7 @@ describe('ui.form', function()
       feed('<CR>')
       assert.is_true(vim.api.nvim_win_is_valid(state.windows.detail))
       local lines = vim.api.nvim_buf_get_lines(vim.api.nvim_win_get_buf(state.windows.detail), 0, -1, false)
-      assert.are.equal('タイトル: 定例', lines[1])
+      assert.are.equal('▣ 定例', lines[1])
     end
   )
 

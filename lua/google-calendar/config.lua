@@ -10,6 +10,13 @@ local default_highlights = {
   -- 予定チップは背景を付けず、通常の文字色で表示する
   GoogleCalendarEvent = {},
   GoogleCalendarEventTime = { fg = '#bb9af7' },
+  GoogleCalendarDetailTitle = { fg = '#e0e6ea', bold = true },
+  GoogleCalendarDetailIcon = { fg = '#ff9e64', bold = true },
+  GoogleCalendarDetailMuted = { fg = '#565f89' },
+  GoogleCalendarDetailMeet = { fg = '#7dcfff' },
+  GoogleCalendarDetailAccepted = { fg = '#9ece6a' },
+  GoogleCalendarDetailPending = { fg = '#e0af68' },
+  GoogleCalendarDetailDeclined = { fg = '#f7768e' },
   GoogleCalendarBorder = { fg = '#7aa2f7' },
   GoogleCalendarError = { fg = '#f7768e', bold = true },
 }

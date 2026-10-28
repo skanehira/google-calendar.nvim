@@ -289,8 +289,8 @@ describe('e2e crud', function()
     assert.are.equal(calendar.rfc3339(date, '11:00'), items[1].start.dateTime)
     assert.are.equal(calendar.rfc3339(date, '12:00'), items[1]['end'].dateTime)
     assert_month_matches_state()
-    assert.is_true(has_chunk(' 11:00 ', 'GoogleCalendarEventTime'))
-    assert.is_true(has_chunk('登録1', 'GoogleCalendarEvent'))
+    assert.is_true(has_chunk(' 11:00 ', 'GoogleCalendarSelected'))
+    assert.is_true(has_chunk('登録1', 'GoogleCalendarSelected'))
 
     feed('<CR>')
     assert.is_true(vim.api.nvim_win_is_valid(state.windows.agenda))
@@ -323,7 +323,7 @@ describe('e2e crud', function()
     assert.are.equal(calendar.rfc3339(date, '11:00'), items[1].start.dateTime)
     assert.are.equal(calendar.rfc3339(date, '12:00'), items[1]['end'].dateTime)
     assert_month_matches_state()
-    assert.is_true(has_chunk('更新2', 'GoogleCalendarEvent'))
+    assert.is_true(has_chunk('更新2', 'GoogleCalendarSelected'))
     assert.is_false(has_chunk('登録1', 'GoogleCalendarEvent'))
 
     assert.is_true(vim.api.nvim_win_is_valid(state.windows.agenda))
@@ -350,7 +350,7 @@ describe('e2e crud', function()
     assert.are.equal(0, #state_items())
     assert_month_matches_state()
     assert.are.same({}, month_virt_lines())
-    assert.is_false(has_chunk('更新2', 'GoogleCalendarEvent'))
+    assert.is_false(has_chunk('更新2', 'GoogleCalendarSelected'))
     assert.are.same({
       { message = '予定を作成しました', level = vim.log.levels.INFO },
       { message = '予定を更新しました', level = vim.log.levels.INFO },

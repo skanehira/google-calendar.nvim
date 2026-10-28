@@ -1,5 +1,6 @@
 {
   "runtime.version": "LuaJIT",
   "diagnostics.globals": ["vim", "describe", "it", "before_each", "after_each"],
-  "workspace.checkThirdParty": false
+  "workspace.checkThirdParty": false,
+  "workspace.ignoreDir": [".luarocks", ".git", ".tmp-state", ".claude", ".local", ".poc"]
 }

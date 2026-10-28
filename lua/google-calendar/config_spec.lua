@@ -35,6 +35,13 @@ local default_keymaps = {
 
 local default_highlight_groups = {
   'GoogleCalendarBorder',
+  'GoogleCalendarDetailAccepted',
+  'GoogleCalendarDetailDeclined',
+  'GoogleCalendarDetailIcon',
+  'GoogleCalendarDetailMeet',
+  'GoogleCalendarDetailMuted',
+  'GoogleCalendarDetailPending',
+  'GoogleCalendarDetailTitle',
   'GoogleCalendarError',
   'GoogleCalendarEvent',
   'GoogleCalendarEventTime',

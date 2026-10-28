@@ -181,6 +181,7 @@ function M.normalize(raw, opts)
     hangout_link = M.extract_hangout_link(raw),
     calendar_id = present(opts.calendar_id),
     status = present(raw.status),
+    organizer = present(raw.organizer),
   }
 
   for _, field in ipairs(EDITABLE_FIELDS) do

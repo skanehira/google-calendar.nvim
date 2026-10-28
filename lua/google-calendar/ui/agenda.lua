@@ -23,31 +23,64 @@ local function current_events()
   return state.events_by_date[state.selected_date] or {}
 end
 
+local EVENT_COLOR_GROUPS = {
+  [1] = 'GoogleCalendarEventColor1',
+  [2] = 'GoogleCalendarEventColor2',
+  [3] = 'GoogleCalendarEventColor3',
+  [4] = 'GoogleCalendarEventColor4',
+  [5] = 'GoogleCalendarEventColor5',
+  [6] = 'GoogleCalendarEventColor6',
+  [7] = 'GoogleCalendarEventColor7',
+  [8] = 'GoogleCalendarEventColor8',
+  [9] = 'GoogleCalendarEventColor9',
+  [10] = 'GoogleCalendarEventColor10',
+  [11] = 'GoogleCalendarEventColor11',
+}
+
+local function event_dot(item)
+  if item.status == 'tentative' or item.transparency == 'transparent' then
+    return '○'
+  end
+  return '●'
+end
+
+local function event_color(item)
+  local color_id = tonumber(item.colorId)
+  return EVENT_COLOR_GROUPS[color_id] or 'GoogleCalendarEventColor7'
+end
+
 local function build_lines(events, width)
   if #events == 0 then
-    return { '予定なし' }, {}
+    return { '予定なし' }, {}, {}
   end
 
   local lines = {}
   local starts = {}
+  local highlights = {}
   for index, item in ipairs(events) do
-    local prefix = event.time_range(item) or ''
-    local available = math.max(0, width - vim.fn.strdisplaywidth(prefix) - 1)
+    local dot = event_dot(item)
+    local time
+    if event.is_all_day(item) then
+      time = '終日'
+    else
+      time = event.start_time(item) or ''
+    end
+
+    local prefix = dot .. ' ' .. time .. ' '
+    local available = math.max(0, width - vim.fn.strdisplaywidth(prefix))
     local title = event.truncate(event.sanitize(item.summary), available)
 
     starts[index] = #lines + 1
-    if title == '' then
-      table.insert(lines, prefix)
-    else
-      table.insert(lines, prefix .. ' ' .. title)
-    end
-
-    if item.location ~= nil and item.location ~= '' then
-      table.insert(lines, '@' .. event.truncate(event.sanitize(item.location), math.max(0, width - 1)))
-    end
+    table.insert(lines, prefix .. title)
+    table.insert(highlights, {
+      line = #lines - 1,
+      start_col = 0,
+      end_col = #dot,
+      group = event_color(item),
+    })
   end
 
-  return lines, starts
+  return lines, starts, highlights
 end
 
 local function window_opts()
@@ -99,12 +132,21 @@ local function render(win, events)
   local max_width = math.max(1, width - 2)
 
   local buf = vim.api.nvim_win_get_buf(win)
-  local lines, starts = build_lines(events, max_width)
+  local lines, starts, highlights = build_lines(events, max_width)
   line_starts = starts
 
   vim.bo[buf].modifiable = true
   vim.api.nvim_buf_set_lines(buf, 0, -1, false, lines)
   vim.bo[buf].modifiable = false
+
+  local ns = vim.api.nvim_create_namespace('google-calendar-agenda')
+  vim.api.nvim_buf_clear_namespace(buf, ns, 0, -1)
+  for _, highlight in ipairs(highlights) do
+    vim.api.nvim_buf_set_extmark(buf, ns, highlight.line, highlight.start_col, {
+      end_col = highlight.end_col,
+      hl_group = highlight.group,
+    })
+  end
 
   window.resize(win, width, height)
 

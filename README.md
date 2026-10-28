@@ -92,7 +92,7 @@ require('google-calendar').setup({
   width = 0.7,
   height = 0.7,
   -- アジェンダ / 詳細のサイズ (同じく利用可能領域に対する割合)
-  agenda = { width = 0.5, height = 0.5 },
+  agenda = { width = 0.5, height = 0.7 },
   detail = { width = 0.5, height = 0.5 },
   -- 日時の表示形式
   date_format = '%Y-%m-%d %H:%M',

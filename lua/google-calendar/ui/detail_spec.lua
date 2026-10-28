@@ -17,6 +17,20 @@ local deleted
 local copied
 local opened_help
 
+local notifications
+local clipboard_url
+local clipboard_calls
+local original_has
+
+local function capture_notify(message, level)
+  table.insert(notifications, { message = message, level = level })
+end
+
+local function capture_clipboard(url)
+  clipboard_calls = clipboard_calls + 1
+  clipboard_url = url
+end
+
 local function fake_local_datetime(value)
   return value:sub(1, 10), value:sub(12, 16)
 end
@@ -38,6 +52,12 @@ local function feed(key)
   vim.api.nvim_feedkeys(vim.api.nvim_replace_termcodes(key, true, false, true), 'x', false)
 end
 
+local function copy_via_key(item)
+  detail.openers.copy_meet = original_openers.copy_meet
+  detail.open(item)
+  feed('y')
+end
+
 local function buffer_lines()
   return vim.api.nvim_buf_get_lines(vim.api.nvim_win_get_buf(state.windows.detail), 0, -1, false)
 end
@@ -55,6 +75,10 @@ describe('ui.detail', function()
     deleted = nil
     copied = nil
     opened_help = nil
+    notifications = {}
+    clipboard_url = nil
+    clipboard_calls = 0
+    original_has = vim.fn.has
 
     original_columns = vim.o.columns
     original_lines = vim.o.lines
@@ -86,6 +110,7 @@ describe('ui.detail', function()
     state.reset()
 
     rawset(event, 'local_datetime', original_local_datetime)
+    rawset(vim.fn, 'has', nil)
     detail.openers = original_openers
     vim.o.columns = original_columns
     vim.o.lines = original_lines
@@ -234,5 +259,122 @@ describe('ui.detail', function()
 
     assert.is_false(vim.api.nvim_win_is_valid(win))
     assert.are.equal(parent, vim.api.nvim_get_current_win())
+  end)
+
+  it(
+    'Meet URL を持つ予定の詳細で y を押すと、URL をコピーしてコピーした旨を通知する',
+    function()
+      local item = full_event()
+      config.setup({ notify = capture_notify, clipboard = capture_clipboard })
+
+      copy_via_key(item)
+
+      assert.are.equal(1, clipboard_calls)
+      assert.are.equal('https://meet.google.com/abc-defg-hij', clipboard_url)
+      assert.are.same({
+        {
+          message = 'Meet URL をコピーしました: https://meet.google.com/abc-defg-hij',
+          level = vim.log.levels.INFO,
+        },
+      }, notifications)
+    end
+  )
+
+  it(
+    'hangout_link がなく conferenceData の video entryPoint だけを持つ予定は、その URL をコピーする',
+    function()
+      local item = {
+        id = 'evt-meet-conf',
+        summary = 'Meet 付き',
+        start = { dateTime = '2026-10-28T09:00:00+09:00' },
+        ['end'] = { dateTime = '2026-10-28T10:00:00+09:00' },
+        conferenceData = {
+          entryPoints = {
+            { entryPointType = 'phone', uri = 'tel:+1-555-0100' },
+            { entryPointType = 'video', uri = 'https://meet.google.com/fallback-url' },
+          },
+        },
+      }
+      config.setup({ notify = capture_notify, clipboard = capture_clipboard })
+
+      copy_via_key(item)
+
+      assert.are.equal(1, clipboard_calls)
+      assert.are.equal('https://meet.google.com/fallback-url', clipboard_url)
+      assert.are.same({
+        {
+          message = 'Meet URL をコピーしました: https://meet.google.com/fallback-url',
+          level = vim.log.levels.INFO,
+        },
+      }, notifications)
+    end
+  )
+
+  it('Meet URL を持たない予定ではコピーせず、コピーできない旨を通知する', function()
+    local item = {
+      id = 'evt-2',
+      summary = '休み',
+      start = { date = '2026-10-28' },
+      ['end'] = { date = '2026-10-29' },
+    }
+    config.setup({ notify = capture_notify, clipboard = capture_clipboard })
+
+    copy_via_key(item)
+
+    assert.are.equal(0, clipboard_calls)
+    assert.are.same({
+      { message = 'この予定には Meet URL がありません', level = vim.log.levels.WARN },
+    }, notifications)
+  end)
+
+  it('空文字の Meet URL は「なし」として扱い、コピーしない', function()
+    local item = full_event()
+    item.hangout_link = ''
+    config.setup({ notify = capture_notify, clipboard = capture_clipboard })
+
+    copy_via_key(item)
+
+    assert.are.equal(0, clipboard_calls)
+    assert.are.same({
+      { message = 'この予定には Meet URL がありません', level = vim.log.levels.WARN },
+    }, notifications)
+  end)
+
+  it('has("clipboard") が 0 の環境ではコピーせず、失敗と URL を通知する', function()
+    rawset(vim.fn, 'has', function(feature)
+      if feature == 'clipboard' then
+        return 0
+      end
+      return original_has(feature)
+    end)
+    config.setup({ notify = capture_notify, clipboard = capture_clipboard })
+
+    copy_via_key(full_event())
+
+    assert.are.equal(0, clipboard_calls)
+    assert.are.same({
+      {
+        message = 'クリップボードにコピーできませんでした: https://meet.google.com/abc-defg-hij',
+        level = vim.log.levels.ERROR,
+      },
+    }, notifications)
+  end)
+
+  it('config.clipboard が失敗したときは、失敗と URL を通知する', function()
+    config.setup({
+      notify = capture_notify,
+      clipboard = function()
+        error('clipboard unavailable')
+      end,
+    })
+
+    copy_via_key(full_event())
+
+    assert.are.same({
+      {
+        message = 'クリップボードにコピーできませんでした: https://meet.google.com/abc-defg-hij',
+        level = vim.log.levels.ERROR,
+      },
+    }, notifications)
   end)
 end)

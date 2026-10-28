@@ -13,6 +13,10 @@ local default_highlights = {
   GoogleCalendarError = { fg = '#f7768e', bold = true },
 }
 
+local function set_clipboard(url)
+  vim.fn.setreg('+', url)
+end
+
 local defaults = {
   calendars = { 'primary' },
   week_start = 'sunday',
@@ -22,6 +26,7 @@ local defaults = {
   date_format = '%Y-%m-%d %H:%M',
   gws_cmd = 'gws',
   notify = vim.notify,
+  clipboard = set_clipboard,
   keymaps = {
     month = {
       prev_day = 'h',
@@ -158,6 +163,9 @@ function M.setup(opts)
   end
   if opts.gws_cmd ~= nil then
     current.gws_cmd = opts.gws_cmd
+  end
+  if opts.clipboard ~= nil then
+    current.clipboard = opts.clipboard
   end
 
   current.week_start = validate_week_start(notify, opts.week_start or defaults.week_start)

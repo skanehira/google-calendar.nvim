@@ -198,4 +198,34 @@ describe('event', function()
       assert.is_nil(event.description_lines(nil, 5))
     end)
   end)
+
+  describe('meet_url', function()
+    it('hangout_link を優先し、なければ conferenceData の video entryPoint を使う', function()
+      assert.are.equal(
+        'https://meet.google.com/primary-url',
+        event.meet_url({
+          hangout_link = 'https://meet.google.com/primary-url',
+          conferenceData = {
+            entryPoints = { { entryPointType = 'video', uri = 'https://meet.google.com/fallback-url' } },
+          },
+        })
+      )
+      assert.are.equal(
+        'https://meet.google.com/fallback-url',
+        event.meet_url({
+          conferenceData = {
+            entryPoints = {
+              { entryPointType = 'phone', uri = 'tel:+1-555-0100' },
+              { entryPointType = 'video', uri = 'https://meet.google.com/fallback-url' },
+            },
+          },
+        })
+      )
+    end)
+
+    it('空文字または未設定の Meet URL は nil を返す', function()
+      assert.is_nil(event.meet_url({ hangout_link = '' }))
+      assert.is_nil(event.meet_url({}))
+    end)
+  end)
 end)

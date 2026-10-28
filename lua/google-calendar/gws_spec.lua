@@ -351,7 +351,7 @@ describe('gws adapter', function()
     end)
 
     assert.is_nil(events)
-    assert.are.same({ kind = 'invalid_output', output = 'not-json\n' }, err)
+    assert.are.same({ kind = 'invalid_output', output = 'not-json\n', stderr = '' }, err)
   end)
 
   it('タイムアウトした実行をネットワークエラーとして分類する', function()

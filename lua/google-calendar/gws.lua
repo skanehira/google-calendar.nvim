@@ -50,7 +50,12 @@ function M.classify(out)
   local body = decode_stdout(out.stdout)
   if out.code == 0 then
     if type(body) ~= 'table' then
-      return nil, { kind = 'invalid_output', output = first_chars(out.stdout, 200) }
+      return nil,
+        {
+          kind = 'invalid_output',
+          output = first_chars(out.stdout, 200),
+          stderr = out.stderr or '',
+        }
     end
     return body, nil
   end
@@ -74,7 +79,12 @@ function M.classify(out)
         reason = error_body.reason,
       }
   end
-  return nil, { kind = 'invalid_output', output = first_chars(out.stdout, 200) }
+  return nil,
+    {
+      kind = 'invalid_output',
+      output = first_chars(out.stdout, 200),
+      stderr = out.stderr or '',
+    }
 end
 
 local function execute(args, callback)

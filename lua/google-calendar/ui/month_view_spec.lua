@@ -2,8 +2,11 @@
 local plugin = require('google-calendar')
 local calendar = require('google-calendar.calendar')
 local event = require('google-calendar.event')
+local notify_module = require('google-calendar.notify')
 local state = require('google-calendar.state')
 local window = require('google-calendar.ui.window')
+
+local repo_root = vim.fn.getcwd()
 
 local notifications = {}
 local gws_calls = {}
@@ -185,6 +188,7 @@ describe('ui.month_view', function()
     end
 
     state.reset()
+    notify_module.reset()
     stub_module('google-calendar.gws', fake_gws)
     stub_module('google-calendar.ui.agenda', fake_agenda)
     stub_module('google-calendar.ui.form', fake_form)
@@ -203,7 +207,12 @@ describe('ui.month_view', function()
       return value:sub(1, 10), value:sub(12, 16)
     end)
 
-    plugin.setup({ notify = notify, width = 0.9, height = 0.85 })
+    plugin.setup({
+      notify = notify,
+      width = 0.9,
+      height = 0.85,
+      gws_cmd = repo_root .. '/tests/fixtures/fake-gws.py',
+    })
     vim.cmd('runtime! plugin/google-calendar.lua')
   end)
 
@@ -382,7 +391,7 @@ describe('ui.month_view', function()
       if call == 1 then
         cb({ timed_event('e1', '定例', '2026-10-27T12:00:00+09:00') }, nil)
       else
-        cb(nil, { kind = 'api', code = 404, message = 'Not Found', reason = 'notFound' })
+        cb(nil, { kind = 'api', code = 500, message = 'Backend Error', reason = 'backendError' })
       end
     end
 
@@ -394,7 +403,7 @@ describe('ui.month_view', function()
     wait_loading()
 
     assert.are.equal(1, #notifications)
-    assert.are.equal('Google Calendar の予定を取得できませんでした: Not Found', notifications[1].message)
+    assert.are.equal('Google Calendar API エラー: Backend Error', notifications[1].message)
     assert.are.equal(vim.log.levels.ERROR, notifications[1].level)
     assert.is_true(vim.api.nvim_win_is_valid(state.windows.month))
     assert.are.equal('2026-10-28', state.selected_date)
@@ -434,7 +443,7 @@ describe('ui.month_view', function()
 
     assert.are.equal(1, #notifications)
     assert.are.equal(
-      'Google Calendar の予定を取得できませんでした: Request had invalid authentication credentials.',
+      'gws の認証が切れています。gws auth login を実行してください。',
       notifications[1].message
     )
     assert.are.equal(vim.log.levels.ERROR, notifications[1].level)

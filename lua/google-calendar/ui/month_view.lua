@@ -1,6 +1,7 @@
 local calendar = require('google-calendar.calendar')
 local config = require('google-calendar.config')
 local event = require('google-calendar.event')
+local notify = require('google-calendar.notify')
 local state = require('google-calendar.state')
 local window = require('google-calendar.ui.window')
 
@@ -220,20 +221,6 @@ local function render()
   M.render(win, view)
 end
 
-local function error_message(err)
-  local detail
-  if type(err) == 'string' then
-    detail = err
-  elseif type(err) == 'table' then
-    detail = err.message or err.reason
-  end
-  if detail == nil then
-    detail = '不明なエラー'
-  end
-
-  return 'Google Calendar の予定を取得できませんでした: ' .. detail
-end
-
 local function fetch(initial)
   local cfg = config.get()
   local start_date, end_date, time_min, time_max = calendar.fetch_range(state.year, state.month, cfg.week_start)
@@ -258,7 +245,7 @@ local function fetch(initial)
 
       if err ~= nil then
         state.loading = false
-        cfg.notify(error_message(err), vim.log.levels.ERROR)
+        notify.error(err)
         if initial then
           window.close('month')
         else
@@ -268,6 +255,7 @@ local function fetch(initial)
       end
 
       state.loading = false
+      notify.reset()
       state.events_by_date = event.events_by_date(events or {}, start_date, calendar.add_days(end_date, -1))
       render()
     end)

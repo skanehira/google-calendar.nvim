@@ -151,7 +151,7 @@ flowchart TB
 | `lua/google-calendar/ui/help.lua` | 画面ごとのキー一覧 |
 | `lua/google-calendar/ui/confirm.lua` | 削除確認（`y` / `n`） |
 
-**依存の向き**: `init` → `config` / `state` / `ui` / `gws`。`ui` → `calendar` / `event` / `gws` / `state` / `window`。`gws` → `config` / `event` / `notify`。循環依存を作らない。
+**依存の向き**: `init` → `config` / `notify` / `state` / `ui` / `gws`。`ui` → `calendar` / `event` / `gws` / `notify` / `state` / `window`。`gws` → `config` / `event` / `notify`。`notify` → `config` / `event`。循環依存を作らない。
 
 **状態管理**:
 

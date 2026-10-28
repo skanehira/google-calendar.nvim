@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<title>issue #11 保留レビュー項目</title>
+<style>
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; margin: 2rem auto; max-width: 960px; line-height: 1.6; color: #1f2328; }
+  h1 { font-size: 1.4rem; }
+  .meta { color: #57606a; font-size: 0.9rem; margin-bottom: 1.5rem; }
+  .item { border: 1px solid #d0d7de; border-radius: 6px; padding: 0.9rem 1rem; margin-bottom: 1rem; }
+  .item.high { border-left: 4px solid #cf222e; }
+  .item.medium { border-left: 4px solid #bf8700; }
+  .item label { font-weight: 600; }
+  .badge { display: inline-block; font-size: 0.75rem; padding: 0.1rem 0.45rem; border-radius: 999px; margin-right: 0.4rem; }
+  .badge.high { background: #ffebe9; color: #cf222e; }
+  .badge.medium { background: #fff8c5; color: #7d4e00; }
+  .loc { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.85rem; color: #57606a; }
+  dl { margin: 0.6rem 0 0; }
+  dt { font-weight: 600; font-size: 0.85rem; margin-top: 0.5rem; }
+  dd { margin: 0 0 0 0; }
+</style>
+</head>
+<body>
+<h1>issue #11 保留レビュー項目</h1>
+<p class="meta">run: dev-impl 2026-10-28 / review: review-11-r1.json (base 502712b) / 保留 high 0 件・保留 medium 3 件</p>
+<p>merge を止めない指摘を事後確認用に記録する。対応する場合はチェックを付けて修正し、このファイルを削除する。</p>
+
+<div class="item medium" data-severity="medium" data-category="spec-compliance">
+  <label><input type="checkbox"> 月タイトル / float ボーダーに Header / Border ハイライトが未適用</label>
+  <span class="badge medium">medium</span><span class="badge">spec-compliance</span>
+  <div class="loc">lua/google-calendar/ui/month_view.lua:419</div>
+  <dl>
+    <dt>summary</dt>
+    <dd>月タイトル / float ボーダーに `GoogleCalendarHeader` / `GoogleCalendarBorder` が未適用（winhl 未設定、Header は曜日ヘッダー行のみ、Border は未参照）。Selected / Event も日付数字・タイトルのみで、設計の「セル」「チップ背景」を字義通りには満たさない。Header / Sunday / Saturday / OtherMonth / Border のテストも無い。</dd>
+    <dt>evidence</dt>
+    <dd>レビュワーが month_view.lua と DESIGN.md のハイライト表を突合。make test 84 passed / make check exit 0。</dd>
+    <dt>fix_hint</dt>
+    <dd>float の `winhl` に Normal / FloatBorder を設定し、タイトル行とボーダーに Header / Border を適用する。Selected / Event のセル・チップ背景を設計どおりにする。各ハイライトの extmark hl_group をテストで pin する。</dd>
+  </dl>
+</div>
+
+<div class="item medium" data-severity="medium" data-category="spec-compliance">
+  <label><input type="checkbox"> 月表示の &lt;Esc&gt; 閉じるが未実装</label>
+  <span class="badge medium">medium</span><span class="badge">spec-compliance</span>
+  <div class="loc">lua/google-calendar/ui/month_view.lua:393</div>
+  <dl>
+    <dt>summary</dt>
+    <dd>DESIGN.md:287 / month-view.md:39 / plugin-setup.md:38 は月表示を `q` / `<Esc>` で閉じると定めるが、config.lua:38 は `close='q'` のみで、month_view.lua:393 は解決した 1 キーだけを map している。</dd>
+    <dt>evidence</dt>
+    <dd>レビュワーが docs と config / month_view を突合。</dd>
+    <dt>fix_hint</dt>
+    <dd>ヘルプと同様に `esc_close` アクションを `config.keymaps.month` に追加し、`config.resolve` で解決して `<Esc>` を割り当てる。`false` で無効化できることをテストで pin する。</dd>
+  </dl>
+</div>
+
+<div class="item medium" data-severity="medium" data-category="test-quality">
+  <label><input type="checkbox"> キーマップ上書き / loading 中のキー無視 / H/L クランプ / 古い応答の破棄 / r 再取得が spec 未 pin</label>
+  <span class="badge medium">medium</span><span class="badge">test-quality</span>
+  <div class="loc">lua/google-calendar/ui/month_view_spec.lua:487</div>
+  <dl>
+    <dt>summary</dt>
+    <dd>`config.keymaps.month` の上書き / `false`、取得中の全キー無視（現状 `l`/`q` のみ）、`H`/`L` の月末クランプ、要求 ID による古い応答の破棄、`r` 成功時の再取得が spec で未 pin。実装側は各ハンドラで loading を guard し clamp_day / request_seq を使っており、コード上の欠陥は見つからない。</dd>
+    <dt>evidence</dt>
+    <dd>レビュワーが month_view_spec.lua を走査。make test 84 passed / make test-file month_view 16 passed。</dd>
+    <dt>fix_hint</dt>
+    <dd>上記 5 点をそれぞれ振る舞いとして pin する（キー上書きで旧キーが効かない、loading 中は移動しない、1/31 → 2/28 のクランプ、古い応答が反映されない、r で再取得される）。</dd>
+  </dl>
+</div>
+</body>
+</html>

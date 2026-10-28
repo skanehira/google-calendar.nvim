@@ -151,7 +151,7 @@ flowchart TB
 | `lua/google-calendar/ui/help.lua` | 画面ごとのキー一覧 |
 | `lua/google-calendar/ui/confirm.lua` | 削除確認（`y` / `n`） |
 
-**依存の向き**: `init` → `config` / `state` / `ui` / `gws`。`ui` → `calendar` / `event` / `gws` / `state` / `window`。`gws` → `event` / `notify`。循環依存を作らない。
+**依存の向き**: `init` → `config` / `state` / `ui` / `gws`。`ui` → `calendar` / `event` / `gws` / `state` / `window`。`gws` → `config` / `event` / `notify`。循環依存を作らない。
 
 **状態管理**:
 
@@ -207,9 +207,10 @@ nvim --headless -u tests/minimal_init.lua \
 
 実測値:
 
-- `make test`: 34 tests passed / 0 failed / 0 errors、exit 0（config 13、plugin 3、ui.window 4、test_harness 14）
+- `make test`: 51 tests passed / 0 failed / 0 errors、exit 0（config 13、plugin 3、ui.window 4、test_harness 14、gws 17）
 - `make test-file FILE=lua/google-calendar/config_spec.lua`: 13 tests passed、exit 0
-- `XDG_STATE_HOME="$PWD/.tmp-state" make test`: 34 tests passed、exit 0
+- `make test-file FILE=lua/google-calendar/gws_spec.lua`: 17 tests passed、exit 0
+- `XDG_STATE_HOME="$PWD/.tmp-state" make test`: 51 tests passed、exit 0
 - `make test TEST_DIR=<空ディレクトリ>`: exit 2、`spec が 0 件です` を出力（0 件のまま成功しない）
 
 `TEST_DIR` は既定 `lua/`。spec は実装ファイルの隣 (`lua/**/*_spec.lua`) に置く。テストハーネスの spec も `lua/google-calendar/test_harness_spec.lua` に置き、`make test` の走査対象に含める。E2E の spec は `tests/e2e/` に置き、`make test-e2e` で実行する。
@@ -228,7 +229,7 @@ make check         # lint + format-check + typecheck + test
 
 実測値:
 
-- `make lint`: 0 warnings / 0 errors in 11 files、exit 0
+- `make lint`: 0 warnings / 0 errors in 14 files、exit 0
 - `make format-check`: exit 0
 - `make typecheck`: exit 0。陽性対照として未定義グローバルを 1 つ置くと `1 problems found` で exit 1（make 経由では exit 2）
 - `make check`: exit 0
@@ -466,9 +467,11 @@ require('google-calendar').setup({
 - 終日予定の `end.date` は排他日付。10 月 27 日の終日予定は `end.date = 2026-10-28` にする
 - Neovim の float を閉じても、親の float へ自動でフォーカスは戻らない。`nvim_set_current_win` で明示的に戻す（PoC `nvim-month-grid`）
 - `vim.system` は実行ファイル不在時に同期で `ENOENT` を raise する（コールバックの `err` では返らない）。呼び出し前に `vim.fn.executable(gws_cmd)` で確認し、`pcall` で包む
+- `vim.system` の `timeout` はプロセスを TERM で終了し、コールバックの `code` は 124、`signal` は 15 になる。124 をタイムアウトとして `network` に分類する
 - `vim.system` は Neovim 0.10 以上が必要
 - 日本語の表示幅は `strdisplaywidth` / `strcharpart` で扱う。バイト長や `string.sub` では列がずれる
 - `os.date('%z')` のローカルオフセットを使う変換式は、夏時間の境界では厳密でない。MVP は Asia/Tokyo を想定し、イベントのオフセットを優先する
+- `os.date('%z')` は `+0900` 形式（コロンなし）を返す。RFC3339 のオフセットは `+09:00` 形式なので、変換時は両方を受け付ける
 - サンドボックス環境では `gws` が `~/.config/gws` に書き込めない。開発時は `GOOGLE_WORKSPACE_CLI_CONFIG_DIR` をワークスペース内に向ける（PoC `gws-sandbox-config`）
 - 月表示の予定は `singleEvents=true` で取得する。繰り返し予定のルール編集はできない
 - `PlenaryBustedDirectory` は spec が 0 件のディレクトリで終了コード 0 を返す。`tests/minimal_init.lua` で 0 件なら `cquit 1` にして、テストが 0 件のまま成功しないようにする

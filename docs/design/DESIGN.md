@@ -246,7 +246,7 @@ make test-e2e
 
 `scripts/e2e.sh` は `tests/fixtures/fake-gws.py` への `gws` シンボリックリンクを一時 `PATH` の先頭に置き、`FAKE_GWS_STATE` / `XDG_STATE_HOME` / `FAKE_GWS_CWD_LOG` / `FAKE_GWS_CALL_LOG` を一時ディレクトリに設定して `tests/e2e` を plenary で実行する。実カレンダーは変更しない。
 
-実測値: `make test-e2e` は 5 tests passed / 0 failed / 0 errors、exit 0。スモークテストは偽 gws が PATH の先頭にあること、空の `events list`、`+insert` 後の `list` への反映、`:GoogleCalendar` の登録、`setup()` の既定値を確認する。月表示の CRUD 通し検証は #19 が担う。
+実測値: `make test-e2e` は 11 tests passed / 0 failed / 0 errors、exit 0。スモークテストは偽 gws が PATH の先頭にあること、空の `events list`、`+insert` 後の `list` への反映、`:GoogleCalendar` の登録、`setup()` の既定値を確認する。`tests/e2e/crud_spec.lua` は偽 gws を使い、月表示を開いて登録・更新・削除を通しで検証し、`+N`、認証エラー、作成失敗、`<F2>` 連打、各操作後の状態ファイルとバッファ内容の一致を確認する。
 
 **実 API の手動確認**（任意）:
 

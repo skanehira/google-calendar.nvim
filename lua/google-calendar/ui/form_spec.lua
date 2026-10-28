@@ -971,9 +971,9 @@ describe('ui.form', function()
       assert.are.equal('2026-10-28T09:00:00' .. offset_suffix(), stored.items[1].start.dateTime)
 
       local rows = assert(virt_lines(5))
-      assert.are.equal(1, #rows)
+      assert.are.equal(4, #rows)
       assert.are.equal(row('', '', '', ' 09:00 定例', '', '', ''), chunks_text(rows[1]))
-      assert.is_nil(virt_lines(1))
+      assert.are.equal(4, #assert(virt_lines(1)))
     end
   )
 
@@ -1060,7 +1060,7 @@ describe('ui.form', function()
       assert.are.equal('定例2', stored.items[1].summary)
 
       local rows = assert(virt_lines(5))
-      assert.are.equal(1, #rows)
+      assert.are.equal(4, #rows)
       assert.are.equal(row('', '', '', ' 09:00 定例2', '', '', ''), chunks_text(rows[1]))
     end
   )
@@ -1121,7 +1121,9 @@ describe('ui.form', function()
       assert.are.same({ 'calendar', 'events', 'get' }, { calls[2].argv[1], calls[2].argv[2], calls[2].argv[3] })
       assert.are.same({ 'calendar', 'events', 'list' }, { calls[3].argv[1], calls[3].argv[2], calls[3].argv[3] })
       assert.are.equal(2, #list_calls())
-      assert.is_nil(virt_lines(5))
+      local rows = assert(virt_lines(5))
+      assert.are.equal(4, #rows)
+      assert.are.equal(row('', '', '', '', '', '', ''), chunks_text(rows[1]))
     end
   )
 

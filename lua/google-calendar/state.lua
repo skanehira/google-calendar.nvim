@@ -6,6 +6,7 @@ local M = {
   loading = false,
   windows = {},
   stack = {},
+  month_cache = {},
 }
 
 function M.reset()
@@ -16,6 +17,7 @@ function M.reset()
   M.loading = false
   M.windows = {}
   M.stack = {}
+  M.month_cache = {}
 end
 
 return M

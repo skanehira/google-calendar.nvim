@@ -1,6 +1,7 @@
 ---@diagnostic disable: undefined-field
 local plugin = require('google-calendar')
 local calendar = require('google-calendar.calendar')
+local config = require('google-calendar.config')
 local event = require('google-calendar.event')
 local notify_module = require('google-calendar.notify')
 local state = require('google-calendar.state')
@@ -350,7 +351,7 @@ describe('ui.month_view', function()
       assert.are.equal(row('', '', '', ' 13:00 会議2', '', '', ''), chunks_text(rows[2]))
       assert.are.equal(row('', '', '', ' 14:00 会議3', '', '', ''), chunks_text(rows[3]))
       assert.are.equal(row('', '', '', ' +2', '', '', ''), chunks_text(rows[4]))
-      assert.is_nil(virt_lines(1))
+      assert.are.equal(4, #assert(virt_lines(1)))
       assert.is_true(has_chunk(rows[1], ' 12:00 ', 'GoogleCalendarEventTime'))
       assert.is_true(has_chunk(rows[1], '定例', 'GoogleCalendarEvent'))
       assert.is_true(has_chunk(rows[4], ' +2', 'GoogleCalendarSelected'))
@@ -366,10 +367,13 @@ describe('ui.month_view', function()
     wait_loading()
 
     local rows = assert(virt_lines(5))
-    assert.are.equal(1, #rows)
+    assert.are.equal(4, #rows)
     assert.are.equal(row('', '', ' 12:00 定例', '', '', '', ''), chunks_text(rows[1]))
-    assert.is_nil(virt_lines(1))
-    assert.is_nil(virt_lines(2))
+    for index = 2, 4 do
+      assert.are.equal(row('', '', '', '', '', '', ''), chunks_text(rows[index]))
+    end
+    assert.are.equal(4, #assert(virt_lines(1)))
+    assert.are.equal(4, #assert(virt_lines(2)))
   end)
 
   it('予定が 0 件の月はエラーにせず、全ての日に予定行を表示しない', function()
@@ -381,7 +385,12 @@ describe('ui.month_view', function()
     assert.is_false(state.loading)
     assert.are.equal(7, #buffer_lines())
     for _, mark in ipairs(month_marks()) do
-      assert.is_nil(mark[4].virt_lines)
+      if mark[4].virt_lines ~= nil and mark[4].virt_lines_above ~= true then
+        assert.are.equal(4, #mark[4].virt_lines)
+        for _, event_row in ipairs(mark[4].virt_lines) do
+          assert.are.equal(row('', '', '', '', '', '', ''), chunks_text(event_row))
+        end
+      end
     end
   end)
 
@@ -398,7 +407,7 @@ describe('ui.month_view', function()
 
     run_command()
     wait_loading()
-    assert.are.equal(1, #assert(virt_lines(5)))
+    assert.are.equal(4, #assert(virt_lines(5)))
 
     feed('r')
     wait_loading()
@@ -408,7 +417,7 @@ describe('ui.month_view', function()
     assert.are.equal(vim.log.levels.ERROR, notifications[1].level)
     assert.is_true(vim.api.nvim_win_is_valid(state.windows.month))
     assert.are.equal('2026-10-28', state.selected_date)
-    assert.are.equal(1, #assert(virt_lines(5)))
+    assert.are.equal(4, #assert(virt_lines(5)))
     assert.are.equal(gws_calls[1].time_min, gws_calls[2].time_min)
   end)
 
@@ -491,7 +500,7 @@ describe('ui.month_view', function()
     assert.are.equal(2026, state.year)
     assert.are.equal(10, state.month)
     assert.are.equal('2026-10-28', state.selected_date)
-    assert.are.equal(3, #gws_calls)
+    assert.are.equal(2, #gws_calls)
   end)
 
   it('取得中はキー操作を無視し、ヘッダーに読み込み中を表示する', function()
@@ -530,7 +539,7 @@ describe('ui.month_view', function()
     assert.are.equal(0, #gws_calls)
   end)
 
-  it(':GoogleCalendar を再度実行すると既存の月表示を再取得してフォーカスする', function()
+  it(':GoogleCalendar を再度実行すると既存の月表示を再利用してフォーカスする', function()
     local parent = vim.api.nvim_get_current_win()
     run_command()
     wait_loading()
@@ -540,7 +549,7 @@ describe('ui.month_view', function()
     run_command()
     wait_loading()
 
-    assert.are.equal(2, #gws_calls)
+    assert.are.equal(1, #gws_calls)
     assert.are.equal(1, #state.stack)
     assert.are.equal(win, state.windows.month)
     assert.are.equal(win, vim.api.nvim_get_current_win())
@@ -684,6 +693,47 @@ describe('ui.month_view', function()
     assert.are.equal(2, #gws_calls)
   end)
 
+  it('取得済みの月に戻るときはキャッシュを使い、gws を呼ばない', function()
+    run_command()
+    wait_loading()
+    assert.are.equal(1, #gws_calls)
+
+    feed('L')
+    wait_loading()
+    assert.are.equal(2, #gws_calls)
+
+    feed('H')
+    wait_loading()
+    assert.are.equal(2, #gws_calls)
+
+    feed('L')
+    wait_loading()
+    assert.are.equal(2, #gws_calls)
+  end)
+
+  it('R でも表示中の月を再取得する', function()
+    run_command()
+    wait_loading()
+    assert.are.equal(1, #gws_calls)
+
+    feed('R')
+    wait_loading()
+    assert.are.equal(2, #gws_calls)
+  end)
+
+  it('月表示を閉じるとキャッシュを破棄する', function()
+    run_command()
+    wait_loading()
+    assert.are.equal(1, #gws_calls)
+
+    feed('q')
+    assert.is_nil(state.windows.month)
+
+    run_command()
+    wait_loading()
+    assert.are.equal(2, #gws_calls)
+  end)
+
   it('エラー → 成功 → 同じエラーで 2 回目の通知も出す', function()
     local call = 0
     gws_handler = function(_, cb)
@@ -764,6 +814,42 @@ describe('ui.month_view', function()
 
     assert.are.equal(#lines + virt, win_config.height)
     assert.are.equal(vim.fn.strdisplaywidth(lines[1]), win_config.width)
+  end)
+
+  it('各週の上に横線を引き、セルのグリッドを作る', function()
+    run_command()
+    wait_loading()
+
+    local header_width = vim.fn.strdisplaywidth(buffer_lines()[1])
+    local count = 0
+    for _, mark in ipairs(month_marks()) do
+      if mark[4].virt_lines_above == true then
+        local line = mark[4].virt_lines[1][1][1]
+        assert.are.equal(header_width, vim.fn.strdisplaywidth(line))
+        assert.is_not_nil(line:find('┼', 1, true))
+        count = count + 1
+      end
+    end
+    assert.are.equal(6, count)
+  end)
+
+  it('取得中と取得完了でウィンドウの高さが変わらない', function()
+    gws_handler = function(_, cb)
+      table.insert(pending_callbacks, cb)
+    end
+
+    run_command()
+    local win = state.windows.month
+    local expected = 1 + 6 + 6 + 6 * (config.get().max_events_per_cell + 1)
+    expected = math.min(expected, vim.o.lines - 2)
+
+    assert.is_true(state.loading)
+    assert.are.equal(expected, vim.api.nvim_win_get_config(win).height)
+
+    pending_callbacks[1]({}, nil)
+    wait_loading()
+
+    assert.are.equal(expected, vim.api.nvim_win_get_config(win).height)
   end)
 
   it('選択セルを全幅で目立つ背景にする', function()

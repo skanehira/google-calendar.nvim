@@ -655,11 +655,16 @@ describe('ui.form', function()
     assert.are.same({}, notifications)
   end)
 
-  it('入力中の Esc でもフォームを閉じ、予定を作成しない', function()
+  it('入力中の Esc は insert を抜けるだけでフォームを閉じない', function()
     form.open_create()
     select_field(1)
 
     feed('<CR><C-u>破棄する予定<Esc>')
+
+    assert.is_true(vim.api.nvim_win_is_valid(state.windows.form))
+    assert.are.equal('タイトル: 破棄する予定', form_lines()[1])
+
+    feed('<Esc>')
 
     assert.is_nil(state.windows.form)
     assert.are.equal(0, #insert_calls())

@@ -71,4 +71,31 @@ function M.close(name)
   return true
 end
 
+function M.max_display_width(lines)
+  local width = 0
+  for _, line in ipairs(lines) do
+    width = math.max(width, vim.fn.strdisplaywidth(line))
+  end
+  return width
+end
+
+function M.resize(win, width, height)
+  if win == nil or not vim.api.nvim_win_is_valid(win) then
+    return
+  end
+
+  width = math.max(1, math.min(width, vim.o.columns - 2))
+  height = math.max(1, math.min(height, vim.o.lines - 2))
+
+  local row = math.max(0, math.floor((vim.o.lines - height) / 2))
+  local col = math.max(0, math.floor((vim.o.columns - width) / 2))
+  vim.api.nvim_win_set_config(win, {
+    relative = 'editor',
+    width = width,
+    height = height,
+    row = row,
+    col = col,
+  })
+end
+
 return M

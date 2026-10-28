@@ -72,7 +72,7 @@ require('google-calendar').setup()
 | フォーム | `<CR>` | テキストフィールドの編集を開始する |
 | フォーム | `<Space>` | 終日・Meet のトグルを切り替える |
 | フォーム | `<F2>` | 保存する |
-| フォーム | `<Esc>` / `q` | キャンセルする |
+| フォーム | `<Esc>` / `q` | キャンセルする（`<Esc>` は insert では insert を抜けるだけ、normal でキャンセル。`q` は normal のみ） |
 | フォーム | `?` | フォームのヘルプを開く |
 | ヘルプ | `q` / `<Esc>` | ヘルプを閉じる |
 
@@ -88,7 +88,7 @@ require('google-calendar').setup({
   week_start = 'sunday',
   -- 1 セルに表示する予定の最大件数 (1〜10)
   max_events_per_cell = 3,
-  -- float のサイズ (画面に対する割合)
+  -- float のサイズの上限 (画面に対する割合。実際は内容に合わせて縮む)
   width = 0.9,
   height = 0.85,
   -- 日時の表示形式

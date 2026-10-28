@@ -113,18 +113,14 @@ local function apply_keymaps(buf)
   applied_help_keys[buf] = current
 end
 
-local function window_size(line_count)
-  local width = math.max(1, math.min(70, vim.o.columns - 8))
-  local height = math.min(line_count + 4, 20)
-
-  return width, height
-end
-
-local function window_position(width, height)
+local function window_opts(lines)
+  local max_width = math.max(1, math.min(70, vim.o.columns - 8))
+  local width = math.max(1, math.min(max_width, window.max_display_width(lines) + 2))
+  local height = math.max(1, math.min(#lines, vim.o.lines - 4))
   local row = math.max(0, math.floor((vim.o.lines - height) / 2))
   local col = math.max(0, math.floor((vim.o.columns - width) / 2))
 
-  return row, col
+  return { relative = 'editor', width = width, height = height, row = row, col = col }
 end
 
 local function set_lines(buf, lines)
@@ -135,9 +131,7 @@ end
 
 function M.open(screen)
   local lines = M.lines(screen)
-  local width, height = window_size(#lines)
-  local row, col = window_position(width, height)
-  local opts = { relative = 'editor', width = width, height = height, row = row, col = col }
+  local opts = window_opts(lines)
 
   local win = state.windows.help
   local reuse = win ~= nil and vim.api.nvim_win_is_valid(win)

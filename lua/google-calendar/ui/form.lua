@@ -611,13 +611,17 @@ local function set_keymaps(buf)
     vim.cmd('stopinsert')
     save()
   end)
-  map({ 'n', 'i' }, 'cancel', cancel)
+  map('n', 'cancel', cancel)
+  -- insert モードの Esc は Vim の慣習どおり insert を抜けるだけにし、フォームは閉じない
+  map('i', 'cancel', function()
+    vim.cmd('stopinsert')
+  end)
   map('n', 'close', cancel)
   map('n', 'help', open_help)
 end
 
 local function open_window(title)
-  local width = math.min(80, math.max(40, vim.o.columns - 8))
+  local width = math.max(1, math.min(80, vim.o.columns - 8))
   local height = #FIELDS + 2
   local row = math.max(0, math.floor((vim.o.lines - height - 2) / 2))
   local col = math.max(0, math.floor((vim.o.columns - width) / 2))

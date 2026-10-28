@@ -121,8 +121,12 @@ describe('ui.help', function()
     local win = help.open('month')
 
     local win_config = vim.api.nvim_win_get_config(win)
-    assert.are.equal(math.min(70, vim.o.columns - 8), win_config.width)
-    assert.are.equal(math.min(#default_month_lines + 4, 20), win_config.height)
+    local content_width = 0
+    for _, line in ipairs(default_month_lines) do
+      content_width = math.max(content_width, vim.fn.strdisplaywidth(line))
+    end
+    assert.are.equal(math.min(70, vim.o.columns - 8, content_width + 2), win_config.width)
+    assert.are.equal(#default_month_lines, win_config.height)
     assert.are.equal(win, vim.api.nvim_get_current_win())
     assert.are.equal('help', state.stack[#state.stack].name)
     assert.are.equal(parent, state.stack[#state.stack].parent)

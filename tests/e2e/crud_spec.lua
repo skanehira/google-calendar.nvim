@@ -442,4 +442,59 @@ describe('e2e crud', function()
     assert.are.equal('連打', state_items()[1].summary)
     assert_month_matches_state()
   end)
+  it(
+    'UI ジャーニー: 各画面のサイズとフォーカスが崩れず、insert の Esc でフォームが閉じない',
+    function()
+      open_month('2026-10')
+      state.selected_date = '2026-10-28'
+      write_state({ timed_raw('evt-ui-1', '定例', '2026-10-28', '09:00', '10:00') })
+      feed('r')
+      wait_month_loaded()
+
+      local month_win = state.windows.month
+      local month_config = vim.api.nvim_win_get_config(month_win)
+      local content_lines = month_lines()
+      local virt = 0
+      for _, rows in pairs(month_virt_lines()) do
+        virt = virt + #rows
+      end
+      assert.are.equal(#content_lines + virt, month_config.height)
+      assert.are.equal(vim.fn.strdisplaywidth(content_lines[1]), month_config.width)
+
+      feed('<CR>')
+      assert.are.equal('agenda', state.stack[#state.stack].name)
+      assert.are.equal(#window_lines('agenda'), vim.api.nvim_win_get_config(state.windows.agenda).height)
+
+      feed('<CR>')
+      assert.are.equal('detail', state.stack[#state.stack].name)
+      assert.are.equal(#window_lines('detail'), vim.api.nvim_win_get_config(state.windows.detail).height)
+
+      feed('e')
+      assert.are.equal('form', state.stack[#state.stack].name)
+      feed('<CR><C-u>変更<Esc>')
+      assert.is_true(vim.api.nvim_win_is_valid(state.windows.form))
+      feed('<Esc>')
+      assert.is_nil(state.windows.form)
+      assert.are.equal('detail', state.stack[#state.stack].name)
+
+      feed('d')
+      assert.are.equal('confirm', state.stack[#state.stack].name)
+      assert.are.equal(2, vim.api.nvim_win_get_config(state.windows.confirm).height)
+      feed('n')
+      assert.are.equal('detail', state.stack[#state.stack].name)
+
+      feed('?')
+      assert.are.equal('help', state.stack[#state.stack].name)
+      assert.are.equal(#window_lines('help'), vim.api.nvim_win_get_config(state.windows.help).height)
+      feed('q')
+      assert.are.equal('detail', state.stack[#state.stack].name)
+
+      feed('q')
+      assert.are.equal('agenda', state.stack[#state.stack].name)
+      feed('q')
+      assert.are.equal('month', state.stack[#state.stack].name)
+      feed('q')
+      assert.is_nil(state.windows.month)
+    end
+  )
 end)

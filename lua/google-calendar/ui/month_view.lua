@@ -106,13 +106,16 @@ local function build_event_rows(week, events_by_date, max_events, cell_w)
 end
 
 function M.compute_layout(columns, lines, cfg)
-  local win_width = math.min(120, math.floor(columns * cfg.width))
+  local max_width = math.min(120, math.floor(columns * cfg.width))
+  local cell_w = math.floor((max_width - 6) / 7)
+  -- 7 セル + 6 本の区切り線に合わせて幅を丸め、右側に余白を残さない
+  local win_width = 7 * cell_w + 6
   local win_height = math.min(40, math.floor(lines * cfg.height))
 
   return {
     win_width = win_width,
     win_height = win_height,
-    cell_w = math.floor((win_width - 6) / 7),
+    cell_w = cell_w,
     row = math.floor((lines - win_height) / 2),
     col = math.floor((columns - win_width) / 2),
   }
@@ -203,6 +206,13 @@ function M.render(win, view)
   end
 
   vim.bo[buf].modifiable = false
+
+  -- 日付行・予定行の実数に合わせて高さを詰め、下部に空白を残さない
+  local content_height = 1
+  for _, week in ipairs(view.weeks) do
+    content_height = content_height + 1 + #week.event_rows
+  end
+  window.resize(win, vim.fn.strdisplaywidth(view.header), content_height)
 end
 
 local function render()
@@ -439,10 +449,12 @@ function M.open()
       return false
     end
 
+    -- 初回は日付行 6 週分だけの高さで開き、取得後に内容へ合わせて広げる
+    local initial_height = math.min(7, layout.win_height)
     win = window.open('month', {
       width = layout.win_width,
-      height = layout.win_height,
-      row = layout.row,
+      height = initial_height,
+      row = math.floor((vim.o.lines - initial_height) / 2),
       col = layout.col,
       title = month_title(true),
       border = 'rounded',

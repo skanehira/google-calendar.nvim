@@ -136,6 +136,19 @@ local function set_keymaps(buf)
   end
 end
 
+function M.refresh()
+  local win = state.windows.agenda
+  if win == nil or not vim.api.nvim_win_is_valid(win) then
+    return false
+  end
+
+  local events = current_events()
+  selected_index = math.max(1, math.min(#events, selected_index))
+  render(win, events, vim.api.nvim_win_get_width(win))
+
+  return true
+end
+
 function M.open()
   local events = current_events()
   local width, height = window_size(#events)

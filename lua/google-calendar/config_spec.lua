@@ -27,7 +27,7 @@ local default_keymaps = {
     cancel = '<Esc>',
     help = '?',
   },
-  confirm = { yes = 'y', no = 'n' },
+  confirm = { yes = 'y', no = 'n', close = 'q', esc_close = '<Esc>' },
   help = { close = 'q', esc_close = '<Esc>' },
 }
 

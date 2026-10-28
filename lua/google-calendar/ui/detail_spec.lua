@@ -282,9 +282,10 @@ describe('ui.detail', function()
         '',
         '⌖ 千葉オフィス-4-リビング (100)',
         '',
-        '☷ 2人のゲスト',
+        '☷ 2人のゲスト ▾',
         '  参加: 1人',
         '  返答待ち: 1人',
+        '  g でゲストを折り畳む',
         '  ✓ onizawa.yuji@gb-sense.com',
         '    主催者',
         '  ○ all@gb-sense.com',
@@ -295,6 +296,52 @@ describe('ui.detail', function()
       }, buffer_lines())
     end
   )
+
+  it('ゲストが多い場合は折り畳んで表示し、g で展開・折り畳みを切り替える', function()
+    local attendees = {}
+    for index = 1, 6 do
+      table.insert(attendees, {
+        email = string.format('guest%d@example.com', index),
+        responseStatus = 'accepted',
+      })
+    end
+
+    local item = {
+      id = 'evt-many',
+      summary = '多人数',
+      start = { dateTime = '2026-10-28T09:00:00+09:00' },
+      ['end'] = { dateTime = '2026-10-28T10:00:00+09:00' },
+      attendees = attendees,
+      calendar_id = 'primary',
+    }
+
+    detail.open(item)
+
+    local lines = buffer_lines()
+    assert.are.equal('☷ 6人のゲスト ▸', lines[4])
+    assert.are.equal('  参加: 6人', lines[5])
+    assert.are.equal('  g でゲストを表示', lines[6])
+    assert.is_nil(vim.tbl_filter(function(line)
+      return line:find('guest1@example.com', 1, true) ~= nil
+    end, lines)[1])
+
+    feed('g')
+
+    lines = buffer_lines()
+    assert.are.equal('☷ 6人のゲスト ▾', lines[4])
+    assert.are.equal('  g でゲストを折り畳む', lines[6])
+    assert.is_not_nil(vim.tbl_filter(function(line)
+      return line:find('guest1@example.com', 1, true) ~= nil
+    end, lines)[1])
+
+    feed('g')
+
+    lines = buffer_lines()
+    assert.are.equal('☷ 6人のゲスト ▸', lines[4])
+    assert.is_nil(vim.tbl_filter(function(line)
+      return line:find('guest1@example.com', 1, true) ~= nil
+    end, lines)[1])
+  end)
 
   it('e / d / y / ? の opener をスタブで差し替えてキーが呼ばれる', function()
     local item = full_event()

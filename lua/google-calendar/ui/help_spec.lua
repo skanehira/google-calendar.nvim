@@ -47,6 +47,7 @@ describe('ui.help', function()
       'e:更新',
       'd:削除',
       'y:Meet URL コピー',
+      'g:ゲスト折り畳み',
       'q/<Esc>:戻る',
     }, help.lines('detail'))
   end)

@@ -28,6 +28,7 @@ local layouts = {
     { { action = 'edit', label = '更新' } },
     { { action = 'delete', label = '削除' } },
     { { action = 'copy_meet', label = 'Meet URL コピー' } },
+    { { action = 'toggle_guests', label = 'ゲスト折り畳み' } },
     { { action = 'close', label = '戻る' }, { action = 'esc_close', label = '戻る' } },
   },
   form = {

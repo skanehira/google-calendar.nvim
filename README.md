@@ -66,6 +66,8 @@ require('google-calendar').setup()
 | 詳細 | `d` | 削除確認を開く |
 | 詳細 | `y` | Meet URL をコピーする |
 | 詳細 | `q` / `<Esc>` | アジェンダに戻る |
+| 確認 | `y` | 予定を削除する |
+| 確認 | `n` / `q` / `<Esc>` | 確認を閉じる（削除しない） |
 | フォーム | `<Tab>` / `<S-Tab>` | 次のフィールド / 前のフィールド |
 | フォーム | `<CR>` | テキストフィールドの編集を開始する |
 | フォーム | `<Space>` | 終日・Meet のトグルを切り替える |
@@ -122,7 +124,7 @@ require('google-calendar').setup({
       cancel = '<Esc>',
       help = '?',
     },
-    confirm = { yes = 'y', no = 'n' },
+    confirm = { yes = 'y', no = 'n', close = 'q', esc_close = '<Esc>' },
     help = { close = 'q', esc_close = '<Esc>' },
   },
   -- ハイライトの上書き

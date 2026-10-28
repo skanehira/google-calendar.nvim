@@ -34,7 +34,7 @@ gws calendar events delete --params '{"calendarId":"primary","eventId":"<id>"}' 
 - 終了コード 0 を成功とする。stdout の `saved_file` などは無視する
 - 成功時は詳細と確認を閉じ、月表示を再取得する
 
-キーマップは `config.keymaps.confirm` から解決し、`setup()` で上書きできる。
+キーマップは `config.keymaps.confirm` から解決し、`setup()` で上書きできる。`y` / `n` は `confirm.yes` / `confirm.no`、`q` / `<Esc>` は `confirm.close` / `confirm.esc_close` で別々に変更・無効化できる。
 
 ## API
 
@@ -47,7 +47,8 @@ gws calendar events delete --params '{"calendarId":"primary","eventId":"<id>"}' 
 | 削除確認の描画とキー処理 | UI | `lua/google-calendar/ui/confirm.lua` |
 | `events delete` の実行（アダプタの `delete_event` を呼ぶ。cwd はアダプタが設定する） | アダプタ | `lua/google-calendar/gws.lua` |
 | 404・API エラーの通知（アダプタの通知を使う） | アダプタ | `lua/google-calendar/notify.lua` |
-| 削除後の月表示の再取得 | エントリポイント | `lua/google-calendar/init.lua` |
+| 削除後の月表示の再取得 | UI | `lua/google-calendar/ui/month_view.lua` |
+| 削除後のアジェンダの再描画 | UI | `lua/google-calendar/ui/agenda.lua` |
 
 ## エッジケースの決定
 

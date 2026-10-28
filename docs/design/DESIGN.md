@@ -295,6 +295,8 @@ GOOGLE_WORKSPACE_CLI_CONFIG_DIR="$PWD/.local/gws-config" gws calendar calendarLi
 | 詳細 | `d` | 削除確認を開く |
 | 詳細 | `y` | Meet URL をコピーする |
 | 詳細 | `q` / `<Esc>` | アジェンダに戻る |
+| 確認 | `y` | 予定を削除する |
+| 確認 | `n` / `q` / `<Esc>` | 確認を閉じる（削除しない） |
 | フォーム | `<Tab>` / `<S-Tab>` | 次のフィールド / 前のフィールド |
 | フォーム | `<CR>` | テキストフィールドの編集を開始する |
 | フォーム | `<Space>` | 終日・Meet のトグルを切り替える |
@@ -337,7 +339,7 @@ require('google-calendar').setup({
       next_field = '<Tab>', prev_field = '<S-Tab>', edit = '<CR>',
       toggle = '<Space>', save = '<F2>', cancel = '<Esc>', help = '?',
     },
-    confirm = { yes = 'y', no = 'n' },
+    confirm = { yes = 'y', no = 'n', close = 'q', esc_close = '<Esc>' },
     help = { close = 'q', esc_close = '<Esc>' },
   },
   -- ハイライトの上書き
@@ -376,11 +378,12 @@ require('google-calendar').setup({
 
 - `gws` 呼び出し中は `state.loading = true`。月表示のヘッダーに `読み込み中...` を表示し、キー操作を無視する
 - フォームの保存中は `<F2>` を無効化し、フッターに `保存中...` を表示する
+- 削除の確認中は `y` を無効化し、確認 float に `削除中...` を表示する
 - 二重送信を防ぐため、同じ画面で同時に 1 リクエストだけを実行する
 
 ### 確認と取り消し
 
-- 削除は専用の確認 float で `y` / `n` を取る。`vim.fn.confirm` は使わない（headless テストの再現性のため）
+- 削除は専用の確認 float で `y` / `n` を取る。`q` / `<Esc>` でも閉じられる。`vim.fn.confirm` は使わない（headless テストの再現性のため）
 - フォームのキャンセルは入力を破棄し、`gws` を呼ばない
 - 更新フォームで変更がない場合は `gws` を呼ばずに閉じる
 

@@ -191,7 +191,7 @@ describe('ui.detail', function()
     }, buffer_lines())
   end)
 
-  it('説明を幅に合わせて折り返し、10 行を超える場合は … を付ける', function()
+  it('説明を幅に合わせて折り返し、全行を省略せずに表示する', function()
     local item = {
       id = 'evt-3',
       summary = '議題',
@@ -207,11 +207,10 @@ describe('ui.detail', function()
     assert.are.equal('  10月28日 (水曜日)・09:00〜10:00', lines[2])
     assert.are.equal('', lines[3])
     assert.are.equal('☰ 1', lines[4])
-    for index = 2, 9 do
+    for index = 2, 12 do
       assert.are.equal('  ' .. index, lines[index + 3])
     end
-    assert.are.equal('  10…', lines[13])
-    assert.are.equal(13, #lines)
+    assert.are.equal(15, #lines)
   end)
 
   it('タイトルが 1 行に収まらない場合は … で切り詰める', function()

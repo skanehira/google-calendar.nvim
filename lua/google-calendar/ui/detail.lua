@@ -33,7 +33,6 @@ local current_item = nil
 local guests_expanded = true
 local current_opts = {}
 
-local DESCRIPTION_MAX_LINES = 10
 local GUESTS_COLLAPSE_THRESHOLD = 5
 local WEEKDAYS = { '日', '月', '火', '水', '木', '金', '土' }
 local ICON_CALENDAR = '▣'
@@ -229,10 +228,6 @@ local function build_lines(item, width)
   if description ~= nil and description ~= '' then
     add('')
     local description_lines = wrap_text(description, math.max(1, width - 2))
-    if #description_lines > DESCRIPTION_MAX_LINES then
-      description_lines = vim.list_slice(description_lines, 1, DESCRIPTION_MAX_LINES)
-      description_lines[DESCRIPTION_MAX_LINES] = description_lines[DESCRIPTION_MAX_LINES] .. '…'
-    end
     for index, text in ipairs(description_lines) do
       if index == 1 then
         add_icon_line(ICON_NOTES, text)

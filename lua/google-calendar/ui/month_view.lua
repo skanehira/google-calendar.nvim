@@ -221,7 +221,7 @@ local function render()
   M.render(win, view)
 end
 
-local function fetch(initial)
+local function fetch(initial, selected_event_id)
   local cfg = config.get()
   local start_date, end_date, time_min, time_max = calendar.fetch_range(state.year, state.month, cfg.week_start)
   request_seq = request_seq + 1
@@ -258,7 +258,7 @@ local function fetch(initial)
       notify.reset()
       state.events_by_date = event.events_by_date(events or {}, start_date, calendar.add_days(end_date, -1))
       render()
-      require('google-calendar.ui.agenda').refresh()
+      require('google-calendar.ui.agenda').refresh(selected_event_id)
     end)
   end)
 end
@@ -310,7 +310,7 @@ local function go_today()
   fetch(false)
 end
 
-function M.refresh()
+local function refresh(changed_event)
   if state.loading then
     return false
   end
@@ -320,10 +320,19 @@ function M.refresh()
     return false
   end
 
+  local selected_event_id
+  if type(changed_event) == 'table' then
+    selected_event_id = changed_event.id
+  end
+
   state.loading = true
   render()
-  fetch(false)
+  fetch(false, selected_event_id)
   return true
+end
+
+function M.refresh()
+  return refresh(nil)
 end
 
 local function close()
@@ -339,7 +348,7 @@ local function open_agenda()
     return
   end
 
-  require('google-calendar.ui.agenda').open()
+  require('google-calendar.ui.agenda').open({ on_changed = refresh })
 end
 
 local function open_create()

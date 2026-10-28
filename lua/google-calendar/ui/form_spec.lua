@@ -1,6 +1,8 @@
 ---@diagnostic disable: undefined-field
 local calendar = require('google-calendar.calendar')
 local config = require('google-calendar.config')
+local detail = require('google-calendar.ui.detail')
+local event = require('google-calendar.event')
 local form = require('google-calendar.ui.form')
 local state = require('google-calendar.state')
 local window = require('google-calendar.ui.window')
@@ -71,6 +73,12 @@ end
 
 local function form_buf()
   return vim.api.nvim_win_get_buf(state.windows.form)
+end
+
+local function agenda_lines()
+  local win = state.windows.agenda
+  assert.is_true(win ~= nil and vim.api.nvim_win_is_valid(win))
+  return vim.api.nvim_buf_get_lines(vim.api.nvim_win_get_buf(win), 0, -1, false)
 end
 
 local function form_lines()
@@ -203,6 +211,109 @@ end
 local function offset_suffix()
   local offset = tostring(os.date('%z'))
   return offset:sub(1, 3) .. ':' .. offset:sub(4, 5)
+end
+
+local function write_json(path, value)
+  vim.fn.writefile({ vim.json.encode(value) }, path)
+end
+
+local function normalized(raw)
+  return event.normalize(raw, { calendar_id = 'primary' })
+end
+
+local function timed_raw(id, summary, date, start_time, end_time, extra)
+  local raw = {
+    id = id,
+    summary = summary,
+    start = { dateTime = date .. 'T' .. start_time .. ':00' .. offset_suffix() },
+    ['end'] = { dateTime = date .. 'T' .. end_time .. ':00' .. offset_suffix() },
+  }
+  for key, value in pairs(extra or {}) do
+    raw[key] = value
+  end
+  return raw
+end
+
+local function all_day_raw(id, summary, start_date, end_date)
+  return {
+    id = id,
+    summary = summary,
+    start = { date = start_date },
+    ['end'] = { date = end_date },
+  }
+end
+
+local function calls_matching(action)
+  local result = {}
+  for _, call in ipairs(gws_calls()) do
+    if call.argv[2] == 'events' and call.argv[3] == action then
+      table.insert(result, call)
+    end
+  end
+  return result
+end
+
+local function list_calls()
+  local result = {}
+  for _, call in ipairs(gws_calls()) do
+    if call.argv[2] == 'events' and call.argv[3] == 'list' then
+      table.insert(result, call)
+    end
+  end
+  return result
+end
+
+local function update_call()
+  local calls = calls_matching('update')
+  assert.are.equal(1, #calls)
+  return calls[1]
+end
+
+local function form_title()
+  local title = vim.api.nvim_win_get_config(state.windows.form).title
+  if type(title) == 'string' then
+    return title
+  end
+
+  local parts = {}
+  for _, chunk in ipairs(title) do
+    table.insert(parts, chunk[1])
+  end
+  return table.concat(parts)
+end
+
+local function edit_initial_lines(item)
+  return {
+    'タイトル: ' .. (item.summary or ''),
+    '開始:     ' .. (event.display_datetime(item.start) or ''),
+    '終了:     ' .. (event.display_datetime(item['end']) or ''),
+    '終日:     ' .. (event.is_all_day(item) and 'on' or 'off'),
+    '場所:     ' .. (item.location or ''),
+    '説明:     ' .. event.sanitize(item.description or ''),
+    'Meet:     ' .. (item.hangout_link or ''),
+    '',
+    '<Tab>/<S-Tab>:移動  <CR>:編集  <Space>:切替  <F2>:保存  <Esc>:取消',
+  }
+end
+
+local function open_edit_from_detail(item)
+  detail.open(item)
+  feed('e')
+  assert.is_true(vim.api.nvim_win_is_valid(state.windows.form))
+end
+
+local function open_month_with(items)
+  write_json(state_path, { items = items })
+  vim.cmd('runtime! plugin/google-calendar.lua')
+  vim.cmd('GoogleCalendar')
+  wait_month_loading()
+end
+
+local function open_detail_from_month()
+  feed('<CR>')
+  assert.is_true(vim.api.nvim_win_is_valid(state.windows.agenda))
+  feed('<CR>')
+  assert.is_true(vim.api.nvim_win_is_valid(state.windows.detail))
 end
 
 local function initial_lines(date)
@@ -845,6 +956,502 @@ describe('ui.form', function()
       assert.are.equal(1, #rows)
       assert.are.equal(row('', '', '', ' 09:00 定例', '', '', ''), chunks_text(rows[1]))
       assert.is_nil(virt_lines(1))
+    end
+  )
+
+  it('詳細で e を押すと、現在の値が入力された更新フォームが開く', function()
+    local raw = timed_raw('evt-edit-1', '定例', '2026-10-28', '09:00', '10:00', {
+      location = '会議室A',
+      description = '週次の進捗確認',
+      hangoutLink = 'https://meet.google.com/abc-defg-hij',
+    })
+    local item = normalized(raw)
+
+    detail.open(item)
+    feed('e')
+
+    assert.is_true(vim.api.nvim_win_is_valid(state.windows.form))
+    assert.are.equal('form', state.stack[#state.stack].name)
+    assert.are.equal(' 予定を更新 ', form_title())
+    assert.are.same(edit_initial_lines(item), form_lines())
+    assert.are.equal(1, cursor_line())
+  end)
+
+  it('更新フォームで値を変えずに <F2> を押すと、gws を呼ばずフォームを閉じる', function()
+    local item = normalized(timed_raw('evt-edit-2', '定例', '2026-10-28', '09:00', '10:00'))
+    open_edit_from_detail(item)
+
+    press_save()
+
+    assert.is_nil(state.windows.form)
+    assert.is_true(vim.api.nvim_win_is_valid(state.windows.detail))
+    assert.are.equal(0, #calls_matching('get'))
+    assert.are.equal(0, #calls_matching('update'))
+    assert.are.same({}, notifications)
+  end)
+
+  it('更新フォームで Esc を押すと閉じ、予定は変更されない', function()
+    local raw = timed_raw('evt-edit-3', '定例', '2026-10-28', '09:00', '10:00')
+    write_json(state_path, { items = { raw } })
+    open_edit_from_detail(normalized(raw))
+    edit_field(1, '破棄するタイトル')
+
+    feed('<Esc>')
+
+    assert.is_nil(state.windows.form)
+    assert.is_true(vim.api.nvim_win_is_valid(state.windows.detail))
+    assert.are.equal(0, #calls_matching('get'))
+    assert.are.equal(0, #calls_matching('update'))
+    assert.are.same({ items = { raw } }, read_json(state_path))
+  end)
+
+  it(
+    '詳細からタイトルを変更して <F2> を押すと、gws 経由で予定が更新され、月表示の該当セルに新しいタイトルが表示される',
+    function()
+      local raw = timed_raw('evt-edit-4', '定例', '2026-10-28', '09:00', '10:00')
+      open_month_with({ raw })
+      open_detail_from_month()
+
+      feed('e')
+      assert.is_true(vim.api.nvim_win_is_valid(state.windows.form))
+      edit_field(1, '定例2')
+
+      press_save()
+      wait_form_closed()
+      wait_month_loading()
+
+      assert.is_nil(state.windows.detail)
+
+      local calls = gws_calls()
+      assert.are.equal(4, #calls)
+      assert.are.same({ 'calendar', 'events', 'list' }, { calls[1].argv[1], calls[1].argv[2], calls[1].argv[3] })
+      assert.are.same({ 'calendar', 'events', 'get' }, { calls[2].argv[1], calls[2].argv[2], calls[2].argv[3] })
+      assert.are.same({ calendarId = 'primary', eventId = 'evt-edit-4' }, vim.json.decode(calls[2].argv[5]))
+      assert.are.same({ 'calendar', 'events', 'update' }, { calls[3].argv[1], calls[3].argv[2], calls[3].argv[3] })
+      assert.are.same({ calendarId = 'primary', eventId = 'evt-edit-4' }, vim.json.decode(calls[3].argv[5]))
+      assert.are.same({
+        summary = '定例2',
+        start = { dateTime = '2026-10-28T09:00:00' .. offset_suffix() },
+        ['end'] = { dateTime = '2026-10-28T10:00:00' .. offset_suffix() },
+      }, vim.json.decode(calls[3].argv[7]))
+      assert.are.same({ 'calendar', 'events', 'list' }, { calls[4].argv[1], calls[4].argv[2], calls[4].argv[3] })
+
+      assert.are.same({ message = '予定を更新しました', level = vim.log.levels.INFO }, notifications[1])
+
+      local stored = read_json(state_path)
+      assert.are.equal('定例2', stored.items[1].summary)
+
+      local rows = assert(virt_lines(5))
+      assert.are.equal(1, #rows)
+      assert.are.equal(row('', '', '', ' 09:00 定例2', '', '', ''), chunks_text(rows[1]))
+    end
+  )
+
+  it(
+    '詳細から開始時刻を変更して <F2> を押すと、予定の開始時刻が更新され、月表示の該当セルに反映される',
+    function()
+      local raw = timed_raw('evt-edit-5', '定例', '2026-10-28', '09:00', '10:00')
+      open_month_with({ raw })
+      open_detail_from_month()
+
+      feed('e')
+      edit_field(2, '2026-10-28 09:30')
+
+      press_save()
+      wait_form_closed()
+      wait_month_loading()
+
+      local update = update_call()
+      assert.are.same({
+        summary = '定例',
+        start = { dateTime = '2026-10-28T09:30:00' .. offset_suffix() },
+        ['end'] = { dateTime = '2026-10-28T10:00:00' .. offset_suffix() },
+      }, vim.json.decode(update.argv[7]))
+
+      local stored = read_json(state_path)
+      assert.are.equal('2026-10-28T09:30:00' .. offset_suffix(), stored.items[1].start.dateTime)
+
+      local rows = assert(virt_lines(5))
+      assert.are.equal(row('', '', '', ' 09:30 定例', '', '', ''), chunks_text(rows[1]))
+    end
+  )
+
+  it(
+    '他者によって削除済みの予定を更新しようとすると、404 を通知し、フォームと詳細を閉じて月表示を再取得する',
+    function()
+      local raw = timed_raw('evt-edit-6', '定例', '2026-10-28', '09:00', '10:00')
+      open_month_with({ raw })
+      open_detail_from_month()
+
+      feed('e')
+      edit_field(1, '変更後の定例')
+
+      write_json(state_path, { items = {} })
+      press_save()
+      wait_form_closed()
+      wait_month_loading()
+
+      assert.is_nil(state.windows.form)
+      assert.is_nil(state.windows.detail)
+      assert.are.same(
+        { { message = '予定が既に削除されています。', level = vim.log.levels.ERROR } },
+        notifications
+      )
+
+      local calls = gws_calls()
+      assert.are.equal(3, #calls)
+      assert.are.same({ 'calendar', 'events', 'get' }, { calls[2].argv[1], calls[2].argv[2], calls[2].argv[3] })
+      assert.are.same({ 'calendar', 'events', 'list' }, { calls[3].argv[1], calls[3].argv[2], calls[3].argv[3] })
+      assert.are.equal(2, #list_calls())
+      assert.is_nil(virt_lines(5))
+    end
+  )
+
+  it(
+    '更新に失敗した場合はフォームを閉じず、入力値を保持したままエラーを表示し、再実行で更新できる',
+    function()
+      local raw = timed_raw('evt-edit-7', '定例', '2026-10-28', '09:00', '10:00')
+      write_json(state_path, { items = { raw } })
+
+      local script = tmp_root .. '/update-failure-gws'
+      write_script(script, {
+        '#!/bin/sh',
+        'echo "$@" >> "$FAKE_GWS_CALL_LOG"',
+        'if [ "$3" = "get" ]; then',
+        "echo '" .. vim.json.encode(raw) .. "'",
+        'exit 0',
+        'fi',
+        'echo \'{"error":{"code":500,"message":"Backend Error","reason":"backendError"}}\'',
+        'exit 1',
+      })
+      setup({ gws_cmd = script })
+
+      open_edit_from_detail(normalized(raw))
+      edit_field(1, '失敗する更新')
+      edit_field(5, '会議室B')
+
+      press_save()
+      wait_form_error()
+
+      assert.is_true(vim.api.nvim_win_is_valid(state.windows.form))
+      assert.are.equal('エラー: 予定を更新できませんでした: Backend Error', footer())
+      local lines = form_lines()
+      assert.are.equal('タイトル: 失敗する更新', lines[1])
+      assert.are.equal('場所:     会議室B', lines[5])
+      assert.are.same({
+        { message = '予定を更新できませんでした: Backend Error', level = vim.log.levels.ERROR },
+      }, notifications)
+      assert.are.equal(2, #read_lines(call_log))
+
+      setup({ gws_cmd = fake_gws })
+      press_save()
+      wait_form_closed()
+
+      assert.are.equal('失敗する更新', read_json(state_path).items[1].summary)
+    end
+  )
+
+  it(
+    '終日予定を時刻付き予定に変更して <F2> を押すと、時刻付き予定として更新される',
+    function()
+      local raw = all_day_raw('evt-edit-8', '終日予定', '2026-10-28', '2026-10-29')
+      write_json(state_path, { items = { raw } })
+
+      open_edit_from_detail(normalized(raw))
+
+      select_field(4)
+      feed('<Space>')
+      assert.are.equal('終日:     off', form_lines()[4])
+      assert.are.equal('開始:     2026-10-28 09:00', form_lines()[2])
+      assert.are.equal('終了:     2026-10-28 10:00', form_lines()[3])
+
+      press_save()
+      wait_form_closed()
+
+      local update = update_call()
+      assert.are.same({
+        calendarId = 'primary',
+        eventId = 'evt-edit-8',
+      }, vim.json.decode(update.argv[5]))
+      assert.are.same({
+        summary = '終日予定',
+        start = { dateTime = '2026-10-28T09:00:00' .. offset_suffix() },
+        ['end'] = { dateTime = '2026-10-28T10:00:00' .. offset_suffix() },
+      }, vim.json.decode(update.argv[7]))
+
+      local stored = read_json(state_path).items[1]
+      assert.are.equal('2026-10-28T09:00:00' .. offset_suffix(), stored.start.dateTime)
+      assert.is_nil(stored.start.date)
+    end
+  )
+
+  it(
+    'conferenceData を含む予定を更新しても Meet URL を保持し、conferenceDataVersion=1 を付けて events update する',
+    function()
+      local conference = {
+        entryPoints = {
+          { entryPointType = 'video', uri = 'https://meet.google.com/abc-defg-hij' },
+        },
+      }
+      local raw = timed_raw('evt-edit-9', 'Meet 付き', '2026-10-28', '13:00', '14:00', {
+        conferenceData = conference,
+      })
+      write_json(state_path, { items = { raw } })
+
+      open_edit_from_detail(normalized(raw))
+      assert.are.equal('Meet:     https://meet.google.com/abc-defg-hij', form_lines()[7])
+
+      select_field(7)
+      feed('<Space>')
+      assert.are.equal('Meet:     https://meet.google.com/abc-defg-hij', form_lines()[7])
+
+      edit_field(1, 'Meet 付き更新')
+      press_save()
+      wait_form_closed()
+
+      local get_call = calls_matching('get')[1]
+      assert.are.same({ calendarId = 'primary', eventId = 'evt-edit-9' }, vim.json.decode(get_call.argv[5]))
+
+      local update = update_call()
+      assert.are.same({
+        calendarId = 'primary',
+        eventId = 'evt-edit-9',
+        conferenceDataVersion = 1,
+      }, vim.json.decode(update.argv[5]))
+      assert.are.same({
+        summary = 'Meet 付き更新',
+        start = { dateTime = '2026-10-28T13:00:00' .. offset_suffix() },
+        ['end'] = { dateTime = '2026-10-28T14:00:00' .. offset_suffix() },
+        conferenceData = conference,
+      }, vim.json.decode(update.argv[7]))
+
+      local stored = read_json(state_path).items[1]
+      assert.are.equal('Meet 付き更新', stored.summary)
+      assert.are.same(conference, stored.conferenceData)
+    end
+  )
+
+  it(
+    '更新フォームで ? を押すとフォームのキー一覧のヘルプを開き、閉じるとフォームに戻る',
+    function()
+      open_edit_from_detail(normalized(timed_raw('evt-edit-10', '定例', '2026-10-28', '09:00', '10:00')))
+
+      feed('?')
+
+      local help_win = state.windows.help
+      assert.is_true(vim.api.nvim_win_is_valid(help_win))
+      assert.are.equal(help_win, vim.api.nvim_get_current_win())
+      assert.are.same({
+        '<Tab>/<S-Tab>:移動',
+        '<CR>:編集',
+        '<Space>:切替',
+        '<F2>:保存',
+        '<Esc>:取消',
+      }, vim.api.nvim_buf_get_lines(vim.api.nvim_win_get_buf(help_win), 0, -1, false))
+
+      feed('q')
+
+      assert.is_false(vim.api.nvim_win_is_valid(help_win))
+      assert.are.equal(state.windows.form, vim.api.nvim_get_current_win())
+    end
+  )
+
+  it(
+    '更新フォームでタイトルを空にして <F2> を押すと、エラーを表示し gws を呼ばない',
+    function()
+      open_edit_from_detail(normalized(timed_raw('evt-edit-11', '定例', '2026-10-28', '09:00', '10:00')))
+      set_field(1, '')
+
+      press_save()
+
+      assert.is_true(vim.api.nvim_win_is_valid(state.windows.form))
+      assert.are.equal('エラー: タイトルを入力してください', footer())
+      assert.are.equal(0, #calls_matching('get'))
+      assert.are.equal(0, #calls_matching('update'))
+    end
+  )
+
+  it(
+    '更新した予定が表示中の月の範囲外に移動した場合は、通知にその旨を含める',
+    function()
+      state.year = 2026
+      state.month = 10
+      local raw = timed_raw('evt-edit-12', '定例', '2026-10-28', '09:00', '10:00')
+      write_json(state_path, { items = { raw } })
+
+      open_edit_from_detail(normalized(raw))
+      edit_field(2, '2026-11-15 09:00')
+      edit_field(3, '2026-11-15 10:00')
+
+      press_save()
+      wait_form_closed()
+
+      assert.are.same({
+        {
+          message = '予定を更新しました（表示中の月には表示されません）',
+          level = vim.log.levels.INFO,
+        },
+      }, notifications)
+    end
+  )
+
+  it(
+    '取得後に他者によって削除された予定の更新が 404 になった場合も、フォームと詳細を閉じて通知する',
+    function()
+      local raw = timed_raw('evt-edit-13', '定例', '2026-10-28', '09:00', '10:00')
+      local script = tmp_root .. '/update-404-gws'
+      write_script(script, {
+        '#!/bin/sh',
+        'echo "$@" >> "$FAKE_GWS_CALL_LOG"',
+        'if [ "$3" = "get" ]; then',
+        "echo '" .. vim.json.encode(raw) .. "'",
+        'exit 0',
+        'fi',
+        'echo \'{"error":{"code":404,"message":"Not Found","reason":"notFound"}}\'',
+        'exit 1',
+      })
+      setup({ gws_cmd = script })
+
+      open_edit_from_detail(normalized(raw))
+      edit_field(1, '変更後の定例')
+
+      press_save()
+      wait_form_closed()
+
+      assert.is_nil(state.windows.form)
+      assert.is_nil(state.windows.detail)
+      assert.are.same(
+        { { message = '予定が既に削除されています。', level = vim.log.levels.ERROR } },
+        notifications
+      )
+      assert.are.equal(2, #read_lines(call_log))
+    end
+  )
+
+  it(
+    '説明に改行がある予定でも更新フォームを開け、変更しなければ元の説明を保持する',
+    function()
+      local raw = timed_raw('evt-edit-14', '定例', '2026-10-28', '09:00', '10:00', {
+        description = '議題1\n議題2',
+      })
+      write_json(state_path, { items = { raw } })
+
+      open_edit_from_detail(normalized(raw))
+      assert.are.equal('説明:     議題1 議題2', form_lines()[6])
+
+      edit_field(1, '定例2')
+      press_save()
+      wait_form_closed()
+
+      local update = update_call()
+      assert.are.same({
+        summary = '定例2',
+        description = '議題1\n議題2',
+        start = { dateTime = '2026-10-28T09:00:00' .. offset_suffix() },
+        ['end'] = { dateTime = '2026-10-28T10:00:00' .. offset_suffix() },
+      }, vim.json.decode(update.argv[7]))
+    end
+  )
+
+  local normalization_cases = {
+    { field = 'summary', name = 'タイトル', line = 1, value = ' 定例\n改行 ', displayed = '定例 改行' },
+    { field = 'location', name = '場所', line = 5, value = ' 会議室A\nB ', displayed = '会議室A B' },
+    { field = 'description', name = '説明', line = 6, value = '議題1\n議題2\n', displayed = '議題1 議題2' },
+  }
+
+  for index, case in ipairs(normalization_cases) do
+    it(
+      case.name
+        .. 'に改行や前後の空白がある予定でも更新フォームを開け、正規化した値を表示し、変更がなければ gws を呼ばない',
+      function()
+        local raw = timed_raw('evt-edit-norm-' .. index, '定例', '2026-10-28', '09:00', '10:00')
+        raw[case.field] = case.value
+        write_json(state_path, { items = { raw } })
+
+        open_edit_from_detail(normalized(raw))
+
+        local lines = form_lines()
+        assert.are.equal(9, #lines)
+        assert.are.equal(FIELD_PREFIXES[case.line] .. case.displayed, lines[case.line])
+
+        press_save()
+
+        assert.is_nil(state.windows.form)
+        assert.is_true(vim.api.nvim_win_is_valid(state.windows.detail))
+        assert.are.equal(0, #calls_matching('get'))
+        assert.are.equal(0, #calls_matching('update'))
+        assert.are.same({}, notifications)
+      end
+    )
+  end
+
+  for index, case in ipairs(normalization_cases) do
+    it(
+      case.name
+        .. 'に改行や前後の空白があっても、タイトルを変更すると元の'
+        .. case.name
+        .. 'を保持して更新する',
+      function()
+        local raw = timed_raw('evt-edit-norm-changed-' .. index, '定例', '2026-10-28', '09:00', '10:00')
+        raw[case.field] = case.value
+        write_json(state_path, { items = { raw } })
+
+        open_edit_from_detail(normalized(raw))
+        edit_field(1, '変更後')
+        press_save()
+        wait_form_closed()
+
+        local expected = {
+          summary = '変更後',
+          start = { dateTime = '2026-10-28T09:00:00' .. offset_suffix() },
+          ['end'] = { dateTime = '2026-10-28T10:00:00' .. offset_suffix() },
+        }
+        if case.field ~= 'summary' then
+          expected[case.field] = case.value
+        end
+        assert.are.same(expected, vim.json.decode(update_call().argv[7]))
+      end
+    )
+  end
+
+  it(
+    '開始時刻の変更で並び順が変わっても、再取得後にアジェンダを再描画し、選択中の予定 ID を維持する',
+    function()
+      local first = timed_raw('evt-edit-15', 'AAA', '2026-10-28', '09:00', '10:00')
+      local second = timed_raw('evt-edit-16', 'BBB', '2026-10-28', '10:00', '11:00')
+      open_month_with({ first, second })
+
+      feed('<CR>')
+      assert.is_true(vim.api.nvim_win_is_valid(state.windows.agenda))
+      assert.are.same({ '09:00-10:00 AAA', '10:00-11:00 BBB' }, agenda_lines())
+      assert.are.same({ 1, 0 }, vim.api.nvim_win_get_cursor(state.windows.agenda))
+
+      feed('<CR>')
+      assert.is_true(vim.api.nvim_win_is_valid(state.windows.detail))
+      assert.are.equal(
+        'タイトル: AAA',
+        vim.api.nvim_buf_get_lines(vim.api.nvim_win_get_buf(state.windows.detail), 0, 1, false)[1]
+      )
+
+      feed('e')
+      assert.is_true(vim.api.nvim_win_is_valid(state.windows.form))
+      edit_field(2, '2026-10-28 11:00')
+      edit_field(3, '2026-10-28 12:00')
+
+      press_save()
+      wait_form_closed()
+      wait_month_loading()
+
+      assert.is_nil(state.windows.detail)
+      assert.are.same({ '10:00-11:00 BBB', '11:00-12:00 AAA' }, agenda_lines())
+      assert.are.same({ 2, 0 }, vim.api.nvim_win_get_cursor(state.windows.agenda))
+
+      feed('<CR>')
+      assert.is_true(vim.api.nvim_win_is_valid(state.windows.detail))
+      assert.are.equal(
+        'タイトル: AAA',
+        vim.api.nvim_buf_get_lines(vim.api.nvim_win_get_buf(state.windows.detail), 0, 1, false)[1]
+      )
     end
   )
 end)

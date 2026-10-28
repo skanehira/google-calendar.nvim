@@ -33,6 +33,8 @@
 | 説明 | 予定の `description` |
 | Meet | 読み取り専用（既存の Meet URL を表示。変更・新規作成はしない） |
 
+説明に改行が含まれる場合、フォームには空白へ置換して 1 行で表示する。変更しなければ `events get` で取得した説明をそのまま送る。
+
 **更新の手順**:
 
 1. フォームの値を検証する（[event-create.md](event-create.md) と同じ規則）
@@ -59,7 +61,7 @@
 | 予定の取得と編集可能フィールドのマージ | ドメイン | `lua/google-calendar/event.lua` |
 | `events get` / `events update` の実行（アダプタの `get_event` / `update_event` を呼ぶ） | アダプタ | `lua/google-calendar/gws.lua` |
 | 404・API エラーの通知（アダプタの通知を使う） | アダプタ | `lua/google-calendar/notify.lua` |
-| 更新後の月表示の再取得 | エントリポイント | `lua/google-calendar/init.lua` |
+| 更新後の月表示の再取得 | UI | `lua/google-calendar/ui/month_view.lua`（月表示が `on_changed` コールバックをアジェンダ・詳細経由でフォームへ渡し、フォームが更新後に呼ぶ） |
 
 ## エッジケースの決定
 

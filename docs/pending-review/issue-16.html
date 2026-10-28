@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<title>issue #16 保留レビュー項目</title>
+<style>
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; margin: 2rem auto; max-width: 960px; line-height: 1.6; color: #1f2328; }
+  h1 { font-size: 1.4rem; }
+  .meta { color: #57606a; font-size: 0.9rem; margin-bottom: 1.5rem; }
+  .item { border: 1px solid #d0d7de; border-radius: 6px; padding: 0.9rem 1rem; margin-bottom: 1rem; }
+  .item.high { border-left: 4px solid #cf222e; }
+  .item.medium { border-left: 4px solid #bf8700; }
+  .item label { font-weight: 600; }
+  .badge { display: inline-block; font-size: 0.75rem; padding: 0.1rem 0.45rem; border-radius: 999px; margin-right: 0.4rem; }
+  .badge.high { background: #ffebe9; color: #cf222e; }
+  .badge.medium { background: #fff8c5; color: #7d4e00; }
+  .loc { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.85rem; color: #57606a; }
+  dl { margin: 0.6rem 0 0; }
+  dt { font-weight: 600; font-size: 0.85rem; margin-top: 0.5rem; }
+  dd { margin: 0 0 0 0; }
+</style>
+</head>
+<body>
+<h1>issue #16 保留レビュー項目</h1>
+<p class="meta">run: dev-impl 2026-10-28 / review: review-16-r1.json + review-16-r2.json (base 2a713cd) / 保留 high 0 件・保留 medium 6 件</p>
+<p>merge を止めない指摘を事後確認用に記録する。対応する場合はチェックを付けて修正し、このファイルを削除する。</p>
+
+<div class="item medium" data-severity="medium" data-category="test-quality">
+  <label><input type="checkbox"> EDITABLE_FIELDS の保持が conferenceData のみ pin</label>
+  <span class="badge medium">medium</span><span class="badge">test-quality</span>
+  <div class="loc">lua/google-calendar/ui/form_spec.lua:746</div>
+  <dl>
+    <dt>summary</dt>
+    <dd>更新時の編集可能フィールド保持は `conferenceData` のみ検証され、`attendees` / `reminders` / `colorId` / `visibility` / `transparency` は未検証。変異検証で survived。</dd>
+    <dt>evidence</dt>
+    <dd>r1 / r2 のレビュワーが form_spec を走査し、変異が survived することを確認。</dd>
+    <dt>fix_hint</dt>
+    <dd>5 フィールドすべてをパラメータ化テストで保持されることを pin する。</dd>
+  </dl>
+</div>
+
+<div class="item medium" data-severity="medium" data-category="test-quality">
+  <label><input type="checkbox"> 時刻付き → 終日の逆方向トグルが未検証</label>
+  <span class="badge medium">medium</span><span class="badge">test-quality</span>
+  <div class="loc">lua/google-calendar/ui/form_spec.lua:746</div>
+  <dl>
+    <dt>summary</dt>
+    <dd>終日 → 時刻付きの方向は検証されているが、時刻付き → 終日の逆方向トグルが未検証。変異が survived。</dd>
+    <dt>evidence</dt>
+    <dd>r1 のレビュワーが form_spec を走査。</dd>
+    <dt>fix_hint</dt>
+    <dd>時刻付き予定を終日に切り替えて `events update` の body が `date` 形式になることを pin する。</dd>
+  </dl>
+</div>
+
+<div class="item medium" data-severity="medium" data-category="test-quality">
+  <label><input type="checkbox"> 場所・説明を空にする更新が未検証</label>
+  <span class="badge medium">medium</span><span class="badge">test-quality</span>
+  <div class="loc">lua/google-calendar/ui/form_spec.lua:746</div>
+  <dl>
+    <dt>summary</dt>
+    <dd>場所・説明を空文字にして保存する更新が未検証。変異が survived。</dd>
+    <dt>evidence</dt>
+    <dd>r1 のレビュワーが form_spec を走査。</dd>
+    <dt>fix_hint</dt>
+    <dd>空文字の場所・説明を送る更新を pin し、API に空文字が渡ることを assert する。</dd>
+  </dl>
+</div>
+
+<div class="item medium" data-severity="medium" data-category="spec-compliance">
+  <label><input type="checkbox"> フォームの q キャンセルが未実装</label>
+  <span class="badge medium">medium</span><span class="badge">spec-compliance</span>
+  <div class="loc">lua/google-calendar/ui/form.lua:438</div>
+  <dl>
+    <dt>summary</dt>
+    <dd>`event-update.md:21` / `DESIGN.md:300` は `<Esc>` / `q` をキャンセルと定義するが、form.lua は cancel（`<Esc>`）のみマップしている。config.keymaps.form に対応するアクションが無い。</dd>
+    <dt>evidence</dt>
+    <dd>r1 のレビュワーが headless で確認。q は閉じずマクロ記録が始まる。</dd>
+    <dt>fix_hint</dt>
+    <dd>`form.cancel` とは別に `q` 用のアクション（例: `form.close`）を config.keymaps.form に追加して解決するか、docs の `q` を削除して `<Esc>` のみに統一する。</dd>
+  </dl>
+</div>
+
+<div class="item medium" data-severity="medium" data-category="spec-compliance">
+  <label><input type="checkbox"> 非 404 の gws エラーが notify.lua の分類メッセージを使わない</label>
+  <span class="badge medium">medium</span><span class="badge">spec-compliance</span>
+  <div class="loc">lua/google-calendar/ui/form.lua:539</div>
+  <dl>
+    <dt>summary</dt>
+    <dd>更新時の非 404 gws エラーが notify.lua の kind 別メッセージを使わず、not_found / invalid_output が「不明なエラー」になる。</dd>
+    <dt>evidence</dt>
+    <dd>r1 のレビュワーが form.lua と notify.lua を突合。</dd>
+    <dt>fix_hint</dt>
+    <dd>form のエラー表示を notify.lua の分類に委譲し、kind ごとの文言を出す。</dd>
+  </dl>
+</div>
+
+<div class="item medium" data-severity="medium" data-category="spec-compliance">
+  <label><input type="checkbox"> 日付移動時に選択中の予定 ID が維持されない</label>
+  <span class="badge medium">medium</span><span class="badge">spec-compliance</span>
+  <div class="loc">lua/google-calendar/ui/agenda.lua:198</div>
+  <dl>
+    <dt>summary</dt>
+    <dd>更新で予定が別の日付に移動すると、agenda.refresh の ID 不一致フォールバックが位置ベースのまま。10/28 の AAA を 10/29 に移動すると BBB が選択され、`<CR>` で BBB が開く。`event-update.md:72` の「選択中の予定 ID を維持」に反する（月内の日付移動は設計が未規定＝曖昧さ）。</dd>
+    <dt>evidence</dt>
+    <dd>r2 のレビュワーが headless probe で再現。同日の並び替えは ID で維持され pin 済み。</dd>
+    <dt>fix_hint</dt>
+    <dd>日付移動時は移動先の日付のアジェンダへ切り替えて ID を選択するか、設計で「日付移動時は選択をリセットする」と明記する。</dd>
+  </dl>
+</div>
+</body>
+</html>

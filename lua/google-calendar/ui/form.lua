@@ -1,6 +1,7 @@
 local calendar = require('google-calendar.calendar')
 local config = require('google-calendar.config')
 local event = require('google-calendar.event')
+local notify_adapter = require('google-calendar.notify')
 local state = require('google-calendar.state')
 local window = require('google-calendar.ui.window')
 
@@ -24,6 +25,10 @@ local FIELDS = {
 
 ---@class GoogleCalendarForm
 ---@field active boolean
+---@field mode string
+---@field event_id string|nil
+---@field initial_values table|nil
+---@field on_changed function|nil
 ---@field win integer
 ---@field buf integer
 ---@field selected integer
@@ -36,6 +41,10 @@ local FIELDS = {
 ---@type GoogleCalendarForm
 local form = {
   active = false,
+  mode = 'create',
+  event_id = nil,
+  initial_values = nil,
+  on_changed = nil,
   win = 0,
   buf = 0,
   selected = 1,
@@ -54,7 +63,14 @@ local function pad_label(label)
   return label .. string.rep(' ', LABEL_WIDTH - vim.fn.strdisplaywidth(label))
 end
 
+local function is_readonly(field)
+  return form.mode == 'edit' and field.key == 'meet'
+end
+
 local function format_value(field, value)
+  if is_readonly(field) then
+    return value or ''
+  end
   if field.type == 'toggle' then
     return value and 'on' or 'off'
   end
@@ -160,12 +176,14 @@ end
 local function read_values()
   local lines = vim.api.nvim_buf_get_lines(form.buf, 0, #FIELDS, false)
   for index, field in ipairs(FIELDS) do
-    local line = lines[index] or ''
-    if field.type == 'toggle' then
-      form.values[field.key] = line:match('^' .. field.label .. '%s*(%a+)$') == 'on'
-    else
-      local value = line:match('^' .. field.label .. '%s*(.*)$')
-      form.values[field.key] = vim.trim(value or line)
+    if not is_readonly(field) then
+      local line = lines[index] or ''
+      if field.type == 'toggle' then
+        form.values[field.key] = line:match('^' .. field.label .. '%s*(%a+)$') == 'on'
+      else
+        local value = line:match('^' .. field.label .. '%s*(.*)$')
+        form.values[field.key] = vim.trim(value or line)
+      end
     end
   end
 end
@@ -187,7 +205,7 @@ local function edit_selected()
 
   sync_selection()
   local field = FIELDS[form.selected]
-  if field.type ~= 'text' then
+  if field.type ~= 'text' or is_readonly(field) then
     return
   end
 
@@ -202,7 +220,7 @@ local function toggle_selected()
 
   sync_selection()
   local field = FIELDS[form.selected]
-  if field.type ~= 'toggle' then
+  if field.type ~= 'toggle' or is_readonly(field) then
     return
   end
 
@@ -326,25 +344,150 @@ local function in_display_range(created)
   return date >= grid.weeks[1][1].date and date <= grid.weeks[6][7].date
 end
 
-local function save()
-  if not form.active or form.saving then
+local CHANGE_KEYS = { 'summary', 'start', 'end', 'all_day', 'location', 'description' }
+
+local function changed_fields()
+  local changed = {}
+  for _, key in ipairs(CHANGE_KEYS) do
+    changed[key] = form.values[key] ~= form.initial_values[key]
+  end
+  return changed
+end
+
+local function has_changes(changed)
+  for _, key in ipairs(CHANGE_KEYS) do
+    if changed[key] then
+      return true
+    end
+  end
+  return false
+end
+
+local function update_changes(fields, changed)
+  local changes = {}
+
+  if changed.summary then
+    changes.summary = fields.summary
+  end
+  if changed.location then
+    changes.location = fields.location
+  end
+  if changed.description then
+    changes.description = fields.description
+  end
+
+  local function time_value(value)
+    if fields.all_day then
+      return { date = value }
+    end
+    return { dateTime = value }
+  end
+
+  if changed.start then
+    changes.start = time_value(fields.start)
+  end
+  if changed['end'] then
+    changes['end'] = time_value(fields['end'])
+  end
+
+  return changes
+end
+
+local function close_edit_windows()
+  form.saving = false
+  form.active = false
+  local on_changed = form.on_changed
+  form.on_changed = nil
+
+  window.close('form')
+  window.close('detail')
+
+  return on_changed
+end
+
+local function close_after_update(updated)
+  local on_changed = close_edit_windows()
+
+  if in_display_range(updated) then
+    notify('予定を更新しました', vim.log.levels.INFO)
+  else
+    notify('予定を更新しました（表示中の月には表示されません）', vim.log.levels.INFO)
+  end
+
+  if on_changed ~= nil then
+    on_changed(updated)
+  end
+end
+
+local function close_after_deleted(err)
+  local on_changed = close_edit_windows()
+
+  notify_adapter.error(err)
+
+  if on_changed ~= nil then
+    on_changed()
+  end
+end
+
+local function handle_edit_error(err, prefix)
+  if err.kind == 'api' and err.code == 404 then
+    close_after_deleted(err)
     return
   end
 
-  read_values()
-  local fields, message, error_field = validate(form.values)
-  if fields == nil then
-    form.error = message
-    form.error_field = error_field
-    render()
-    return
-  end
-
-  form.saving = true
-  form.error = nil
+  form.saving = false
+  form.error = prefix .. ': ' .. error_detail(err)
   form.error_field = nil
   render()
+  notify(form.error, vim.log.levels.ERROR)
+end
 
+local function save_edit(fields)
+  local changed = changed_fields()
+  if not has_changes(changed) then
+    form.saving = false
+    form.active = false
+    form.on_changed = nil
+    window.close('form')
+    return
+  end
+
+  local changes = update_changes(fields, changed)
+  local gws = require('google-calendar.gws')
+
+  gws.get_event(form.event_id, function(base, err)
+    vim.schedule(function()
+      if not form.active or not vim.api.nvim_win_is_valid(form.win) then
+        return
+      end
+
+      if err ~= nil then
+        handle_edit_error(err, '予定を取得できませんでした')
+        return
+      end
+
+      local update_fields = event.merge_update(base, changes)
+      update_fields.calendar_id = base.calendar_id or config.get().calendars[1] or 'primary'
+
+      gws.update_event(update_fields, function(updated, update_err)
+        vim.schedule(function()
+          if not form.active or not vim.api.nvim_win_is_valid(form.win) then
+            return
+          end
+
+          if update_err ~= nil then
+            handle_edit_error(update_err, '予定を更新できませんでした')
+            return
+          end
+
+          close_after_update(updated)
+        end)
+      end)
+    end)
+  end)
+end
+
+local function save_create(fields)
   fields.calendar_id = config.get().calendars[1] or 'primary'
   local gws = require('google-calendar.gws')
   gws.create_event(fields, function(created, err)
@@ -387,6 +530,32 @@ local function save()
   end)
 end
 
+local function save()
+  if not form.active or form.saving then
+    return
+  end
+
+  read_values()
+  local fields, message, error_field = validate(form.values)
+  if fields == nil then
+    form.error = message
+    form.error_field = error_field
+    render()
+    return
+  end
+
+  form.saving = true
+  form.error = nil
+  form.error_field = nil
+  render()
+
+  if form.mode == 'edit' then
+    save_edit(fields)
+  else
+    save_create(fields)
+  end
+end
+
 local function cancel()
   if not form.active or form.saving then
     return
@@ -394,6 +563,7 @@ local function cancel()
 
   form.active = false
   form.on_created = nil
+  form.on_changed = nil
   window.close('form')
 end
 
@@ -439,15 +609,7 @@ local function set_keymaps(buf)
   map('n', 'help', open_help)
 end
 
-function M.open_create(opts)
-  opts = opts or {}
-
-  if form.active and vim.api.nvim_win_is_valid(form.win) then
-    vim.api.nvim_set_current_win(form.win)
-    return form.win
-  end
-
-  local date = state.selected_date or calendar.today()
+local function open_window(title)
   local width = math.min(80, math.max(40, vim.o.columns - 8))
   local height = #FIELDS + 2
   local row = math.max(0, math.floor((vim.o.lines - height - 2) / 2))
@@ -458,14 +620,48 @@ function M.open_create(opts)
     height = height,
     row = row,
     col = col,
-    title = ' 予定を登録 ',
+    title = title,
     border = 'rounded',
   })
   local buf = vim.api.nvim_win_get_buf(win)
   vim.wo[win].wrap = false
   vim.wo[win].cursorline = true
 
+  set_keymaps(buf)
+  vim.api.nvim_create_autocmd('InsertLeave', { buffer = buf, callback = on_insert_leave })
+
+  return win, buf
+end
+
+-- 表示と変更検知は read_values の正規化 (改行の空白置換・前後空白の除去) と揃える。揃えないと、初期値のままでも変更ありと判定して gws を呼び、元の値を平坦化してしまう
+local function edit_values(item)
+  return {
+    summary = vim.trim(event.sanitize(item.summary)),
+    start = event.display_datetime(item.start) or '',
+    ['end'] = event.display_datetime(item['end']) or '',
+    all_day = event.is_all_day(item),
+    location = vim.trim(event.sanitize(item.location)),
+    description = vim.trim(event.sanitize(item.description)),
+    meet = item.hangout_link or '',
+  }
+end
+
+function M.open_create(opts)
+  opts = opts or {}
+
+  if form.active and vim.api.nvim_win_is_valid(form.win) then
+    vim.api.nvim_set_current_win(form.win)
+    return form.win
+  end
+
+  local date = state.selected_date or calendar.today()
+  local win, buf = open_window(' 予定を登録 ')
+
   form.active = true
+  form.mode = 'create'
+  form.event_id = nil
+  form.initial_values = nil
+  form.on_changed = nil
   form.win = win
   form.buf = buf
   form.selected = 1
@@ -483,8 +679,39 @@ function M.open_create(opts)
     meet = false,
   }
 
-  set_keymaps(buf)
-  vim.api.nvim_create_autocmd('InsertLeave', { buffer = buf, callback = on_insert_leave })
+  render()
+
+  return win
+end
+
+function M.open_edit(item, opts)
+  if item == nil then
+    return nil
+  end
+
+  opts = opts or {}
+
+  if form.active and vim.api.nvim_win_is_valid(form.win) then
+    vim.api.nvim_set_current_win(form.win)
+    return form.win
+  end
+
+  local win, buf = open_window(' 予定を更新 ')
+
+  form.active = true
+  form.mode = 'edit'
+  form.event_id = item.id
+  form.on_created = nil
+  form.on_changed = opts.on_changed
+  form.win = win
+  form.buf = buf
+  form.selected = 1
+  form.saving = false
+  form.error = nil
+  form.error_field = nil
+  form.values = edit_values(item)
+  form.initial_values = vim.deepcopy(form.values)
+
   render()
 
   return win

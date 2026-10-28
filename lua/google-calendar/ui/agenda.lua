@@ -7,8 +7,8 @@ local M = {}
 
 -- 予定詳細とヘルプの実装は別機能が持つため、キー処理からは opener 経由で呼ぶ
 M.openers = {
-  open_detail = function(item)
-    require('google-calendar.ui.detail').open(item)
+  open_detail = function(item, opts)
+    require('google-calendar.ui.detail').open(item, opts)
   end,
   help = function(screen)
     require('google-calendar.ui.help').open(screen)
@@ -17,6 +17,7 @@ M.openers = {
 
 local selected_index = 1
 local line_starts = {}
+local current_opts = {}
 
 local function current_events()
   return state.events_by_date[state.selected_date] or {}
@@ -63,6 +64,35 @@ local function window_position(width, height)
   return row, col
 end
 
+local function window_opts(count)
+  local width, height = window_size(count)
+  local row, col = window_position(width, height)
+
+  return width, { relative = 'editor', width = width, height = height, row = row, col = col }
+end
+
+local function event_index(events, event_id)
+  if event_id == nil then
+    return nil
+  end
+
+  for index, item in ipairs(events) do
+    if item.id == event_id then
+      return index
+    end
+  end
+
+  return nil
+end
+
+local function clamp_selection(count)
+  if count == 0 then
+    selected_index = 1
+  elseif selected_index > count then
+    selected_index = count
+  end
+end
+
 local function place_cursor()
   local win = state.windows.agenda
   if win == nil or not vim.api.nvim_win_is_valid(win) then
@@ -103,7 +133,7 @@ local function open_detail()
     return
   end
 
-  M.openers.open_detail(item)
+  M.openers.open_detail(item, current_opts)
 end
 
 local function open_help()
@@ -136,30 +166,16 @@ local function set_keymaps(buf)
   end
 end
 
-function M.refresh()
-  local win = state.windows.agenda
-  if win == nil or not vim.api.nvim_win_is_valid(win) then
-    return false
-  end
-
+function M.open(opts)
+  current_opts = opts or {}
   local events = current_events()
-  selected_index = math.max(1, math.min(#events, selected_index))
-  render(win, events, vim.api.nvim_win_get_width(win))
-
-  return true
-end
-
-function M.open()
-  local events = current_events()
-  local width, height = window_size(#events)
-  local row, col = window_position(width, height)
-  local opts = { relative = 'editor', width = width, height = height, row = row, col = col }
+  local width, win_opts = window_opts(#events)
 
   local win = state.windows.agenda
   if win ~= nil and vim.api.nvim_win_is_valid(win) then
-    vim.api.nvim_win_set_config(win, opts)
+    vim.api.nvim_win_set_config(win, win_opts)
   else
-    win = window.open('agenda', opts)
+    win = window.open('agenda', win_opts)
   end
 
   selected_index = 1
@@ -169,6 +185,24 @@ function M.open()
   vim.api.nvim_set_current_win(win)
 
   return win
+end
+
+function M.refresh(event_id)
+  local win = state.windows.agenda
+  if win == nil or not vim.api.nvim_win_is_valid(win) then
+    return
+  end
+
+  local events = current_events()
+  local index = event_index(events, event_id)
+  if index ~= nil then
+    selected_index = index
+  end
+  clamp_selection(#events)
+
+  local width, win_opts = window_opts(#events)
+  vim.api.nvim_win_set_config(win, win_opts)
+  render(win, events, width)
 end
 
 return M

@@ -22,22 +22,8 @@
 </head>
 <body>
 <h1>issue #9 保留レビュー項目</h1>
-<p class="meta">run: dev-impl 2026-10-27 / review: review-9-r1.json + review-9-r2.json (base 258385a) / 保留 high 1 件・保留 medium 4 件</p>
+<p class="meta">run: dev-impl 2026-10-27〜28 / review: review-9-r1.json + review-9-r2.json + 再実行 r1 (base 258385a) / 保留 high 0 件・保留 medium 4 件</p>
 <p>merge を止めない指摘を事後確認用に記録する。対応する場合はチェックを付けて修正し、このファイルを削除する。</p>
-
-<div class="item high" data-severity="high" data-category="spec-compliance">
-  <label><input type="checkbox"> 複数回 setup で前回の highlight 上書きが残る</label>
-  <span class="badge high">high</span><span class="badge">spec-compliance</span>
-  <div class="loc">lua/google-calendar/config.lua:201</div>
-  <dl>
-    <dt>summary</dt>
-    <dd>apply_highlights は今回の setup の上書きだけを適用するため、以前の setup で上書きしたハイライトが残る。setup() を複数回呼ぶと最後の設定が有効になる契約 (plugin-setup.md:30) に反する。</dd>
-    <dt>evidence</dt>
-    <dd>`setup({highlights={GoogleCalendarHeader={fg='#ff0000'}}})` 後の nvim_get_hl は #ff0000 / bold=true。続けて `setup()` を呼ぶと config.get() は #7aa2f7 に戻るが、nvim_get_hl は #ff0000 のまま。defaults ループの `default = true` が既存定義を上書きしないため。</dd>
-    <dt>fix_hint</dt>
-    <dd>適用済みの上書きグループの集合を持ち、今回の setup で上書きされないグループは既定定義に戻す (`nvim_set_hl(0, group, vim.tbl_extend('force', { default = false }, defaults.highlights[group]))` 等)。複数回 setup の highlight を assert するテストを追加する。</dd>
-  </dl>
-</div>
 
 <div class="item medium" data-severity="medium" data-category="spec-compliance">
   <label><input type="checkbox"> highlights に false を指定しても無効化されない</label>

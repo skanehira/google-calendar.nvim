@@ -51,6 +51,42 @@ function M.date_parts(date)
   return tonumber(year), tonumber(month), tonumber(day)
 end
 
+function M.parse_date(value)
+  local year, month, day = value:match('^(%d%d%d%d)%-(%d%d)%-(%d%d)$')
+  if year == nil then
+    return nil
+  end
+
+  year, month, day = tonumber(year), tonumber(month), tonumber(day)
+  if month < 1 or month > 12 then
+    return nil
+  end
+  if day < 1 or day > M.days_in_month(year, month) then
+    return nil
+  end
+
+  return year, month, day
+end
+
+function M.parse_datetime(value)
+  local date, hour, minute = value:match('^(%d%d%d%d%-%d%d%-%d%d) (%d%d):(%d%d)$')
+  if date == nil then
+    return nil
+  end
+
+  local year, month, day = M.parse_date(date)
+  if year == nil then
+    return nil
+  end
+
+  hour, minute = tonumber(hour), tonumber(minute)
+  if hour > 23 or minute > 59 then
+    return nil
+  end
+
+  return year, month, day, hour, minute
+end
+
 function M.today()
   return os.date('%Y-%m-%d')
 end
@@ -115,6 +151,10 @@ end
 function M.rfc3339(date, time)
   local year, month, day = M.date_parts(date)
   local hour, minute, second = (time or '00:00:00'):match('^(%d%d):(%d%d):(%d%d)$')
+  if hour == nil then
+    hour, minute = (time or '00:00'):match('^(%d%d):(%d%d)$')
+    second = '00'
+  end
   local epoch = os.time({
     year = assert(year),
     month = assert(month),

@@ -268,6 +268,7 @@ describe('e2e crud', function()
     open_month('2026-10')
 
     assert.is_true(vim.api.nvim_win_is_valid(state.windows.month))
+    local month_width = vim.api.nvim_win_get_width(state.windows.month)
     assert.are.equal(7, #month_lines())
     assert.are.equal(
       '     日      │     月      │     火      │     水      │     木      │     金      │     土      ',
@@ -360,6 +361,7 @@ describe('e2e crud', function()
 
     assert.are.equal(0, #state_items())
     assert_month_matches_state()
+    assert.are.equal(month_width, vim.api.nvim_win_get_width(state.windows.month))
     local rows = month_virt_lines()
     local layout = month_view.compute_layout(vim.o.columns, vim.o.lines, config.get())
     assert.are.equal(6, #rows)

@@ -88,10 +88,9 @@ require('google-calendar').setup({
   week_start = 'sunday',
   -- 1 セルに表示する予定の最大件数 (1〜10)
   max_events_per_cell = 3,
-  -- float の幅の上限 (画面に対する割合。実際の幅は内容に合わせる)
-  width = 0.9,
-  -- 月表示は固定高さ、アジェンダ・詳細は内容の 2 倍のため、height は互換用 (現在は未使用)
-  height = 0.85,
+  -- float のサイズ (ボーダーを除く利用可能領域に対する割合。1.0 で画面いっぱい)
+  width = 1.0,
+  height = 1.0,
   -- 日時の表示形式
   date_format = '%Y-%m-%d %H:%M',
   -- gws の実行ファイル

@@ -185,7 +185,9 @@ local function assert_month_matches_state()
   local last_date = grid.weeks[6][7].date
   local normalized = event.normalize_list(state_items(), { calendar_id = cfg.calendars[1] })
   local by_date = event.events_by_date(normalized, first_date, last_date)
-  local expected = month_view.build_view(grid, by_date, cfg, calendar.today(), state.selected_date, cell_w)
+  local layout = month_view.compute_layout(vim.o.columns, vim.o.lines, cfg)
+  local expected =
+    month_view.build_view(grid, by_date, cfg, calendar.today(), state.selected_date, cell_w, layout.rows_per_week)
 
   local actual = month_virt_lines()
   for week_index, week in ipairs(expected.weeks) do
@@ -259,11 +261,11 @@ describe('e2e crud', function()
     assert.is_true(vim.api.nvim_win_is_valid(state.windows.month))
     assert.are.equal(7, #month_lines())
     assert.are.equal(
-      '     日     │     月     │     火     │     水     │     木     │     金     │     土     ',
+      '     日      │     月      │     火      │     水      │     木      │     金      │     土      ',
       month_lines()[1]
     )
     assert.are.equal(
-      '          27│          28│          29│          30│           1│           2│           3',
+      '           27│           28│           29│           30│            1│            2│            3',
       month_lines()[2]
     )
     assert.are.equal(0, #state_items())
@@ -350,9 +352,10 @@ describe('e2e crud', function()
     assert.are.equal(0, #state_items())
     assert_month_matches_state()
     local rows = month_virt_lines()
+    local layout = month_view.compute_layout(vim.o.columns, vim.o.lines, config.get())
     assert.are.equal(6, #rows)
     for week = 1, 6 do
-      assert.are.equal(4, #rows[week])
+      assert.are.equal(layout.rows_per_week[week], #rows[week])
     end
     assert.is_false(has_chunk('更新2', 'GoogleCalendarSelected'))
     assert.are.same({

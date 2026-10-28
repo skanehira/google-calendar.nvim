@@ -6,6 +6,7 @@ local event = require('google-calendar.event')
 local notify_module = require('google-calendar.notify')
 local state = require('google-calendar.state')
 local window = require('google-calendar.ui.window')
+local month_view = require('google-calendar.ui.month_view')
 
 local repo_root = vim.fn.getcwd()
 
@@ -198,8 +199,9 @@ describe('ui.month_view', function()
 
     original_columns = vim.o.columns
     original_lines = vim.o.lines
-    vim.o.columns = 100
-    vim.o.lines = 40
+    -- 既存の期待値 (セル幅 12) を維持しつつ、余白のない幅・高さにする
+    vim.o.columns = 94
+    vim.o.lines = 39
 
     original_today = override_field(calendar, 'today', function()
       return '2026-10-28'
@@ -211,8 +213,8 @@ describe('ui.month_view', function()
 
     plugin.setup({
       notify = notify,
-      width = 0.9,
-      height = 0.85,
+      width = 1.0,
+      height = 1.0,
       gws_cmd = repo_root .. '/tests/fixtures/fake-gws.py',
     })
     vim.cmd('runtime! plugin/google-calendar.lua')
@@ -831,6 +833,36 @@ describe('ui.month_view', function()
       end
     end
     assert.are.equal(6, count)
+  end)
+
+  it('画面いっぱいに広がり、余った高さを各週に配分する', function()
+    vim.o.columns = 120
+    vim.o.lines = 40
+
+    run_command()
+    wait_loading()
+
+    local layout = month_view.compute_layout(vim.o.columns, vim.o.lines, config.get())
+    assert.are.equal(118, layout.win_width)
+    assert.are.equal(38, layout.win_height)
+    assert.are.equal(16, layout.cell_w)
+    assert.are.same({ 5, 4, 4, 4, 4, 4 }, layout.rows_per_week)
+
+    local win_config = vim.api.nvim_win_get_config(state.windows.month)
+    assert.are.equal(118, win_config.width)
+    assert.are.equal(38, win_config.height)
+    assert.are.equal(0, win_config.row)
+    assert.are.equal(0, win_config.col)
+
+    assert.are.equal(5, #assert(virt_lines(1)))
+
+    local small = month_view.compute_layout(120, 40, {
+      width = 0.8,
+      height = 0.8,
+      max_events_per_cell = 3,
+    })
+    assert.are.equal(90, small.win_width)
+    assert.are.equal(30, small.win_height)
   end)
 
   it('取得中と取得完了でウィンドウの高さが変わらない', function()

@@ -87,8 +87,9 @@ function M.resize(win, width, height)
   width = math.max(1, math.min(width, vim.o.columns - 2))
   height = math.max(1, math.min(height, vim.o.lines - 2))
 
-  local row = math.max(0, math.floor((vim.o.lines - height) / 2))
-  local col = math.max(0, math.floor((vim.o.columns - width) / 2))
+  -- ボーダー 2 列/行を含めて画面内に収め、中央に置く
+  local row = math.max(0, math.floor((vim.o.lines - (height + 2)) / 2))
+  local col = math.max(0, math.floor((vim.o.columns - (width + 2)) / 2))
   vim.api.nvim_win_set_config(win, {
     relative = 'editor',
     width = width,

@@ -340,7 +340,7 @@ local function open_create()
     return
   end
 
-  require('google-calendar.ui.form').open_create()
+  require('google-calendar.ui.form').open_create({ on_created = refresh })
 end
 
 local function open_help()

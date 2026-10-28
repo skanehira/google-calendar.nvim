@@ -21,7 +21,7 @@
 │ 説明:     週次の進捗確認                 │
 │ Meet:     on                             │
 │                                          │
-│ Tab:移動  Enter:編集  Space:切替  C-s:保存  Esc:取消 │
+│ Tab:移動  Enter:編集  Space:切替  F2:保存  Esc:取消 │
 └──────────────────────────────────────────┘
 ```
 
@@ -88,7 +88,7 @@
 | 予定モデルの組み立て、応答の正規化 | ドメイン | `lua/google-calendar/event.lua` |
 | `+insert` / `events insert` の実行（アダプタの `create_event` を呼ぶ） | アダプタ | `lua/google-calendar/gws.lua` |
 | 成功・失敗・Meet 失敗の通知（アダプタの通知を使う） | アダプタ | `lua/google-calendar/notify.lua` |
-| 作成後の月表示の再取得 | エントリポイント | `lua/google-calendar/init.lua` |
+| 作成後の月表示の再取得 | UI | `lua/google-calendar/ui/month_view.lua`（`open_create` がフォームへ再取得コールバックを渡す） |
 
 作成した予定の Meet URL の詳細表示は [event-detail.md](event-detail.md)、終日予定の月表示は [month-view.md](month-view.md) が担う。本機能は作成された予定モデルに `hangout_link` / `start.date` が入ることを保証する。
 

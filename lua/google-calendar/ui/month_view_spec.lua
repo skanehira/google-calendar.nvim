@@ -553,7 +553,11 @@ describe('ui.month_view', function()
     feed('<Esc>')
     assert.is_false(vim.api.nvim_win_is_valid(win))
 
-    plugin.setup({ notify = notify, keymaps = { month = { esc_close = '<C-x>' } } })
+    plugin.setup({
+      notify = notify,
+      gws_cmd = repo_root .. '/tests/fixtures/fake-gws.py',
+      keymaps = { month = { esc_close = '<C-x>' } },
+    })
     run_command()
     wait_loading()
     win = state.windows.month
@@ -562,7 +566,11 @@ describe('ui.month_view', function()
     feed('<C-x>')
     assert.is_false(vim.api.nvim_win_is_valid(win))
 
-    plugin.setup({ notify = notify, keymaps = { month = { esc_close = false } } })
+    plugin.setup({
+      notify = notify,
+      gws_cmd = repo_root .. '/tests/fixtures/fake-gws.py',
+      keymaps = { month = { esc_close = false } },
+    })
     run_command()
     wait_loading()
     win = state.windows.month
@@ -706,7 +714,11 @@ describe('ui.month_view', function()
   end)
 
   it('month.close の上書きと false を反映する', function()
-    plugin.setup({ notify = notify, keymaps = { month = { close = 'Q' } } })
+    plugin.setup({
+      notify = notify,
+      gws_cmd = repo_root .. '/tests/fixtures/fake-gws.py',
+      keymaps = { month = { close = 'Q' } },
+    })
     run_command()
     wait_loading()
     local win = state.windows.month
@@ -715,7 +727,11 @@ describe('ui.month_view', function()
     feed('Q')
     assert.is_false(vim.api.nvim_win_is_valid(win))
 
-    plugin.setup({ notify = notify, keymaps = { month = { close = false } } })
+    plugin.setup({
+      notify = notify,
+      gws_cmd = repo_root .. '/tests/fixtures/fake-gws.py',
+      keymaps = { month = { close = false } },
+    })
     run_command()
     wait_loading()
     win = state.windows.month

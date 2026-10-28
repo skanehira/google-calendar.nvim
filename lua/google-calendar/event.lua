@@ -1,3 +1,5 @@
+local calendar = require('google-calendar.calendar')
+
 local M = {}
 
 -- 更新時に保持する API フィールド。events update は PUT のため、送らないフィールドは消える
@@ -202,6 +204,168 @@ function M.update_body(fields)
     end
   end
   return body
+end
+
+-- 以下は月表示 (#11) が使うローカル時刻・表示幅の整形
+function M.local_datetime(value, local_offset)
+  local parsed = parse_rfc3339(value)
+  if parsed == nil then
+    return nil
+  end
+
+  local display_offset = parse_offset(local_offset or os.date('%z'))
+  if display_offset == nil then
+    display_offset = 0
+  end
+
+  local epoch = os.time({
+    year = parsed.year,
+    month = parsed.month,
+    day = parsed.day,
+    hour = parsed.hour,
+    min = parsed.minute,
+    sec = parsed.second,
+  }) + local_offset() - parsed.offset
+
+  local local_time = os.date('!*t', epoch + display_offset)
+  return string.format('%04d-%02d-%02d', local_time.year, local_time.month, local_time.day),
+    string.format('%02d:%02d', local_time.hour, local_time.min)
+end
+
+function M.is_all_day(item)
+  return item.start ~= nil and item.start.date ~= nil
+end
+
+function M.start_date(item, local_offset)
+  if M.is_all_day(item) then
+    return item.start.date
+  end
+
+  local date = M.local_datetime(item.start.dateTime, local_offset)
+  return date
+end
+
+function M.start_time(item, local_offset)
+  if M.is_all_day(item) then
+    return nil
+  end
+
+  local _, time = M.local_datetime(item.start.dateTime, local_offset)
+  return time
+end
+
+function M.sanitize(text)
+  local sanitized = (text or ''):gsub('[\r\n]+', ' ')
+  return sanitized
+end
+
+function M.truncate(text, width)
+  if width <= 0 then
+    return ''
+  end
+  if vim.fn.strdisplaywidth(text) <= width then
+    return text
+  end
+
+  -- … の表示幅 1 を確保してから文字を足す
+  local limit = width - 1
+  local result = ''
+  for index = 0, vim.fn.strchars(text) - 1 do
+    local char = vim.fn.strcharpart(text, index, 1)
+    if vim.fn.strdisplaywidth(result .. char) > limit then
+      break
+    end
+    result = result .. char
+  end
+
+  return result .. '…'
+end
+
+function M.chip_parts(item, width, local_offset)
+  local prefix
+  if M.is_all_day(item) then
+    prefix = '終日 '
+  else
+    prefix = M.start_time(item, local_offset) .. ' '
+  end
+
+  local available = width - vim.fn.strdisplaywidth(prefix)
+  if available < 0 then
+    available = 0
+  end
+
+  return prefix, M.truncate(M.sanitize(item.summary), available)
+end
+
+function M.chip(item, width, local_offset)
+  local prefix, title = M.chip_parts(item, width, local_offset)
+  return prefix .. title
+end
+
+local function sort_day_events(list, local_offset)
+  local indexed = {}
+  for index, item in ipairs(list) do
+    indexed[index] = { item = item, index = index }
+  end
+
+  table.sort(indexed, function(left, right)
+    local left_all_day = M.is_all_day(left.item)
+    local right_all_day = M.is_all_day(right.item)
+    if left_all_day ~= right_all_day then
+      return left_all_day
+    end
+
+    if not left_all_day then
+      local left_time = M.start_time(left.item, local_offset)
+      local right_time = M.start_time(right.item, local_offset)
+      if left_time ~= right_time then
+        return left_time < right_time
+      end
+    end
+
+    return left.index < right.index
+  end)
+
+  local sorted = {}
+  for index, entry in ipairs(indexed) do
+    sorted[index] = entry.item
+  end
+  return sorted
+end
+
+function M.events_by_date(events, first_date, last_date, local_offset)
+  local by_date = {}
+
+  for _, item in ipairs(events) do
+    if M.is_all_day(item) then
+      local start_date = item.start.date
+      local end_date = (item['end'] and item['end'].date) or calendar.add_days(start_date, 1)
+      if end_date <= start_date then
+        end_date = calendar.add_days(start_date, 1)
+      end
+
+      local date = start_date
+      while date < end_date do
+        if date >= first_date and date <= last_date then
+          by_date[date] = by_date[date] or {}
+          table.insert(by_date[date], item)
+        end
+        date = calendar.add_days(date, 1)
+      end
+    else
+      local date = M.start_date(item, local_offset)
+      if date ~= nil and date >= first_date and date <= last_date then
+        by_date[date] = by_date[date] or {}
+        table.insert(by_date[date], item)
+      end
+    end
+  end
+
+  for date, list in pairs(by_date) do
+    by_date[date] = sort_day_events(list, local_offset)
+  end
+
+  return by_date
 end
 
 return M

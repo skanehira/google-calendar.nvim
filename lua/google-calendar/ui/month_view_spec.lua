@@ -1,0 +1,539 @@
+---@diagnostic disable: undefined-field
+local plugin = require('google-calendar')
+local calendar = require('google-calendar.calendar')
+local event = require('google-calendar.event')
+local state = require('google-calendar.state')
+local window = require('google-calendar.ui.window')
+
+local notifications = {}
+local gws_calls = {}
+local gws_handler
+local pending_callbacks = {}
+local openers = {}
+
+local function notify(message, level)
+  table.insert(notifications, { message = message, level = level })
+end
+
+local fake_gws = {
+  list_events = function(opts, cb)
+    table.insert(gws_calls, opts)
+    gws_handler(opts, cb)
+  end,
+}
+
+local fake_agenda = {
+  open = function()
+    openers.agenda = true
+  end,
+}
+
+local fake_form = {
+  open_create = function()
+    openers.create = true
+  end,
+}
+
+local fake_help = {
+  open = function(screen)
+    openers.help = screen
+  end,
+}
+
+local previous_modules = {}
+local function stub_module(name, value)
+  if previous_modules[name] == nil then
+    previous_modules[name] = { loaded = package.loaded[name] }
+  end
+  package.loaded[name] = value
+end
+
+local function restore_modules()
+  for name, saved in pairs(previous_modules) do
+    package.loaded[name] = saved.loaded
+  end
+  previous_modules = {}
+end
+
+local function override_field(module, field, value)
+  local original = rawget(module, field)
+  rawset(module, field, value)
+  return original
+end
+
+local original_columns
+local original_lines
+local original_today
+local original_local_datetime
+
+local function offset_suffix()
+  local offset = tostring(os.date('%z'))
+  return offset:sub(1, 3) .. ':' .. offset:sub(4, 5)
+end
+
+local function timed_event(id, summary, start)
+  return {
+    id = id,
+    summary = summary,
+    start = { dateTime = start },
+    ['end'] = { dateTime = start },
+  }
+end
+
+local function run_command(args)
+  if args == nil or args == '' then
+    vim.cmd('GoogleCalendar')
+  else
+    vim.cmd('GoogleCalendar ' .. args)
+  end
+end
+
+local function wait_loading()
+  assert.is_true(vim.wait(2000, function()
+    return not state.loading
+  end, 10))
+end
+
+local function feed(key)
+  vim.api.nvim_feedkeys(vim.api.nvim_replace_termcodes(key, true, false, true), 'x', false)
+end
+
+local function month_buf()
+  return vim.api.nvim_win_get_buf(state.windows.month)
+end
+
+local function buffer_lines()
+  return vim.api.nvim_buf_get_lines(month_buf(), 0, -1, false)
+end
+
+local function window_title()
+  local title = vim.api.nvim_win_get_config(state.windows.month).title
+  if type(title) == 'string' then
+    return title
+  end
+
+  local parts = {}
+  for _, chunk in ipairs(title) do
+    table.insert(parts, chunk[1])
+  end
+  return table.concat(parts)
+end
+
+local function month_marks()
+  local ns = vim.api.nvim_get_namespaces()['google-calendar-month']
+  return vim.api.nvim_buf_get_extmarks(month_buf(), ns, 0, -1, { details = true })
+end
+
+local function virt_lines(row)
+  for _, mark in ipairs(month_marks()) do
+    if mark[2] == row and mark[4].virt_lines ~= nil then
+      return mark[4].virt_lines
+    end
+  end
+  return nil
+end
+
+local function has_highlight(group, row, col)
+  for _, mark in ipairs(month_marks()) do
+    local details = mark[4]
+    if details.hl_group == group and mark[2] == row and mark[3] == col then
+      return true
+    end
+  end
+  return false
+end
+
+local function chunks_text(chunks)
+  local parts = {}
+  for _, chunk in ipairs(chunks) do
+    table.insert(parts, chunk[1])
+  end
+  return table.concat(parts)
+end
+
+local function has_chunk(line, text, group)
+  for _, chunk in ipairs(line) do
+    if chunk[1] == text and chunk[2] == group then
+      return true
+    end
+  end
+  return false
+end
+
+local function row(...)
+  local cells = { ... }
+  local padded = {}
+  for _, cell in ipairs(cells) do
+    table.insert(padded, cell .. string.rep(' ', 12 - vim.fn.strdisplaywidth(cell)))
+  end
+  return table.concat(padded, '│')
+end
+
+local OCTOBER_FIRST_WEEK =
+  '          27│          28│          29│          30│           1│           2│           3'
+local NOVEMBER_FIRST_WEEK =
+  '           1│           2│           3│           4│           5│           6│           7'
+
+describe('ui.month_view', function()
+  before_each(function()
+    notifications = {}
+    gws_calls = {}
+    pending_callbacks = {}
+    openers = {}
+    gws_handler = function(_, cb)
+      cb({}, nil)
+    end
+
+    state.reset()
+    stub_module('google-calendar.gws', fake_gws)
+    stub_module('google-calendar.ui.agenda', fake_agenda)
+    stub_module('google-calendar.ui.form', fake_form)
+    stub_module('google-calendar.ui.help', fake_help)
+
+    original_columns = vim.o.columns
+    original_lines = vim.o.lines
+    vim.o.columns = 100
+    vim.o.lines = 40
+
+    original_today = override_field(calendar, 'today', function()
+      return '2026-10-28'
+    end)
+
+    original_local_datetime = override_field(event, 'local_datetime', function(value)
+      return value:sub(1, 10), value:sub(12, 16)
+    end)
+
+    plugin.setup({ notify = notify, width = 0.9, height = 0.85 })
+    vim.cmd('runtime! plugin/google-calendar.lua')
+  end)
+
+  after_each(function()
+    while #state.stack > 0 do
+      window.close(state.stack[#state.stack].name)
+    end
+    state.reset()
+    restore_modules()
+    rawset(calendar, 'today', original_today)
+    rawset(event, 'local_datetime', original_local_datetime)
+    vim.o.columns = original_columns
+    vim.o.lines = original_lines
+  end)
+
+  it(
+    ':GoogleCalendar が当月の月表示 float を開き、タイトル・曜日ヘッダー・6 週分のセルを描画する',
+    function()
+      run_command()
+      wait_loading()
+
+      local win = state.windows.month
+      assert.is_true(vim.api.nvim_win_is_valid(win))
+      assert.are.equal(win, vim.api.nvim_get_current_win())
+      assert.are.equal(' Google Calendar — 2026年10月 ', window_title())
+      assert.are.same({
+        '     日     │     月     │     火     │     水     │     木     │     金     │     土     ',
+        '          27│          28│          29│          30│           1│           2│           3',
+        '           4│           5│           6│           7│           8│           9│          10',
+        '          11│          12│          13│          14│          15│          16│          17',
+        '          18│          19│          20│          21│          22│          23│          24',
+        '          25│          26│          27│          28│          29│          30│          31',
+        '           1│           2│           3│           4│           5│           6│           7',
+      }, buffer_lines())
+      assert.are.equal(2026, state.year)
+      assert.are.equal(10, state.month)
+      assert.are.equal('2026-10-28', state.selected_date)
+      assert.are.equal(1, #state.stack)
+      assert.are.same({
+        calendar_id = 'primary',
+        time_min = '2026-09-27T00:00:00' .. offset_suffix(),
+        time_max = '2026-11-08T00:00:00' .. offset_suffix(),
+      }, gws_calls[1])
+    end
+  )
+
+  it('q で float を閉じ、元のウィンドウへフォーカスが戻る', function()
+    local parent = vim.api.nvim_get_current_win()
+    run_command()
+    wait_loading()
+    local win = state.windows.month
+
+    feed('q')
+
+    assert.is_false(vim.api.nvim_win_is_valid(win))
+    assert.are.equal(parent, vim.api.nvim_get_current_win())
+    assert.is_nil(state.windows.month)
+    assert.are.equal(0, #state.stack)
+  end)
+
+  it('H で前月、L で次月へ移動し、タイトルと日付セルがその月になる', function()
+    run_command()
+    wait_loading()
+
+    feed('L')
+    wait_loading()
+
+    assert.are.equal(2026, state.year)
+    assert.are.equal(11, state.month)
+    assert.are.equal('2026-11-28', state.selected_date)
+    assert.are.equal(' Google Calendar — 2026年11月 ', window_title())
+    assert.are.equal(NOVEMBER_FIRST_WEEK, buffer_lines()[2])
+    assert.are.equal('2026-11-01T00:00:00' .. offset_suffix(), gws_calls[2].time_min)
+    assert.are.equal('2026-12-13T00:00:00' .. offset_suffix(), gws_calls[2].time_max)
+
+    feed('H')
+    wait_loading()
+
+    assert.are.equal(2026, state.year)
+    assert.are.equal(10, state.month)
+    assert.are.equal('2026-10-28', state.selected_date)
+    assert.are.equal(' Google Calendar — 2026年10月 ', window_title())
+    assert.are.equal(OCTOBER_FIRST_WEEK, buffer_lines()[2])
+  end)
+
+  it('t で今日を含む月に戻り、今日のセルが強調される', function()
+    run_command('2026-11')
+    wait_loading()
+    assert.are.equal(11, state.month)
+
+    feed('t')
+    wait_loading()
+
+    assert.are.equal(2026, state.year)
+    assert.are.equal(10, state.month)
+    assert.are.equal('2026-10-28', state.selected_date)
+    assert.are.equal(' Google Calendar — 2026年10月 ', window_title())
+    assert.is_true(has_highlight('GoogleCalendarToday', 5, 55))
+    assert.is_true(has_highlight('GoogleCalendarSelected', 5, 55))
+  end)
+
+  it(':GoogleCalendar YYYY-MM が指定月の月表示を開く', function()
+    run_command('2026-11')
+    wait_loading()
+
+    assert.are.equal(2026, state.year)
+    assert.are.equal(11, state.month)
+    assert.are.equal('2026-11-28', state.selected_date)
+    assert.are.equal(' Google Calendar — 2026年11月 ', window_title())
+    assert.are.equal(NOVEMBER_FIRST_WEEK, buffer_lines()[2])
+    assert.are.equal('2026-11-01T00:00:00' .. offset_suffix(), gws_calls[1].time_min)
+  end)
+
+  it(
+    '予定がある日は開始時刻とタイトルを最大 3 件表示し、4 件以上は +N を表示する',
+    function()
+      gws_handler = function(_, cb)
+        cb({
+          timed_event('e1', '定例', '2026-10-27T12:00:00+09:00'),
+          timed_event('e2', '会議1', '2026-10-28T12:00:00+09:00'),
+          timed_event('e3', '会議2', '2026-10-28T13:00:00+09:00'),
+          timed_event('e4', '会議3', '2026-10-28T14:00:00+09:00'),
+          timed_event('e5', '会議4', '2026-10-28T15:00:00+09:00'),
+          timed_event('e6', '会議5', '2026-10-28T16:00:00+09:00'),
+        }, nil)
+      end
+
+      run_command()
+      wait_loading()
+
+      local rows = assert(virt_lines(5))
+      assert.are.equal(4, #rows)
+      assert.are.equal(row('', '', ' 12:00 定例', ' 12:00 会議1', '', '', ''), chunks_text(rows[1]))
+      assert.are.equal(row('', '', '', ' 13:00 会議2', '', '', ''), chunks_text(rows[2]))
+      assert.are.equal(row('', '', '', ' 14:00 会議3', '', '', ''), chunks_text(rows[3]))
+      assert.are.equal(row('', '', '', ' +2', '', '', ''), chunks_text(rows[4]))
+      assert.is_nil(virt_lines(1))
+      assert.is_true(has_chunk(rows[1], ' 12:00 ', 'GoogleCalendarEventTime'))
+      assert.is_true(has_chunk(rows[1], '定例', 'GoogleCalendarEvent'))
+      assert.is_true(has_chunk(rows[4], ' +2', 'GoogleCalendarEvent'))
+    end
+  )
+
+  it('予定がない日にはセルに予定の行を表示しない', function()
+    gws_handler = function(_, cb)
+      cb({ timed_event('e1', '定例', '2026-10-27T12:00:00+09:00') }, nil)
+    end
+
+    run_command()
+    wait_loading()
+
+    local rows = assert(virt_lines(5))
+    assert.are.equal(1, #rows)
+    assert.are.equal(row('', '', ' 12:00 定例', '', '', '', ''), chunks_text(rows[1]))
+    assert.is_nil(virt_lines(1))
+    assert.is_nil(virt_lines(2))
+  end)
+
+  it('予定が 0 件の月はエラーにせず、全ての日に予定行を表示しない', function()
+    run_command()
+    wait_loading()
+
+    assert.are.equal(0, #notifications)
+    assert.are.same({}, state.events_by_date)
+    assert.is_false(state.loading)
+    assert.are.equal(7, #buffer_lines())
+    for _, mark in ipairs(month_marks()) do
+      assert.is_nil(mark[4].virt_lines)
+    end
+  end)
+
+  it('API エラー時はエラー内容を通知し、取得済みの表示を維持する', function()
+    local call = 0
+    gws_handler = function(_, cb)
+      call = call + 1
+      if call == 1 then
+        cb({ timed_event('e1', '定例', '2026-10-27T12:00:00+09:00') }, nil)
+      else
+        cb(nil, { kind = 'api', code = 404, message = 'Not Found', reason = 'notFound' })
+      end
+    end
+
+    run_command()
+    wait_loading()
+    assert.are.equal(1, #assert(virt_lines(5)))
+
+    feed('r')
+    wait_loading()
+
+    assert.are.equal(1, #notifications)
+    assert.are.equal('Google Calendar の予定を取得できませんでした: Not Found', notifications[1].message)
+    assert.are.equal(vim.log.levels.ERROR, notifications[1].level)
+    assert.is_true(vim.api.nvim_win_is_valid(state.windows.month))
+    assert.are.equal('2026-10-28', state.selected_date)
+    assert.are.equal(1, #assert(virt_lines(5)))
+    assert.are.equal(gws_calls[1].time_min, gws_calls[2].time_min)
+  end)
+
+  it('不正な YYYY-MM は通知して月表示を開かない', function()
+    run_command('2026-13')
+
+    assert.are.equal(1, #notifications)
+    assert.are.equal('月の指定は YYYY-MM 形式で入力してください', notifications[1].message)
+    assert.are.equal(vim.log.levels.ERROR, notifications[1].level)
+    assert.is_nil(state.windows.month)
+    assert.are.equal(0, #gws_calls)
+
+    run_command('2026-1')
+
+    assert.are.equal(2, #notifications)
+    assert.are.equal('月の指定は YYYY-MM 形式で入力してください', notifications[2].message)
+    assert.is_nil(state.windows.month)
+  end)
+
+  it('偽 gws の認証エラー fixture では通知だけを出し、月表示を開かない', function()
+    local body = vim.json.decode(table.concat(vim.fn.readfile('tests/fixtures/auth-error.json'), '\n'))
+    gws_handler = function(_, cb)
+      cb(nil, {
+        kind = 'auth',
+        code = body.error.code,
+        message = body.error.message,
+        reason = body.error.reason,
+      })
+    end
+
+    run_command()
+    wait_loading()
+
+    assert.are.equal(1, #notifications)
+    assert.are.equal(
+      'Google Calendar の予定を取得できませんでした: Request had invalid authentication credentials.',
+      notifications[1].message
+    )
+    assert.are.equal(vim.log.levels.ERROR, notifications[1].level)
+    assert.is_nil(state.windows.month)
+    assert.are.equal(0, #state.stack)
+    assert.is_false(state.loading)
+  end)
+
+  it('<CR> / a / ? がアジェンダ・登録フォーム・ヘルプの opener を呼ぶ', function()
+    run_command()
+    wait_loading()
+
+    feed('<CR>')
+    assert.is_true(openers.agenda)
+
+    feed('a')
+    assert.is_true(openers.create)
+
+    feed('?')
+    assert.are.equal('month', openers.help)
+  end)
+
+  it('h/l/j/k で選択日を移動し、月をまたぐと表示月も切り替える', function()
+    run_command()
+    wait_loading()
+
+    feed('l')
+    assert.are.equal('2026-10-29', state.selected_date)
+    assert.are.equal(1, #gws_calls)
+
+    feed('h')
+    assert.are.equal('2026-10-28', state.selected_date)
+
+    feed('j')
+    wait_loading()
+    assert.are.equal(2026, state.year)
+    assert.are.equal(11, state.month)
+    assert.are.equal('2026-11-04', state.selected_date)
+    assert.are.equal(' Google Calendar — 2026年11月 ', window_title())
+    assert.are.equal(2, #gws_calls)
+
+    feed('k')
+    wait_loading()
+    assert.are.equal(2026, state.year)
+    assert.are.equal(10, state.month)
+    assert.are.equal('2026-10-28', state.selected_date)
+    assert.are.equal(3, #gws_calls)
+  end)
+
+  it('取得中はキー操作を無視し、ヘッダーに読み込み中を表示する', function()
+    gws_handler = function(_, cb)
+      table.insert(pending_callbacks, cb)
+    end
+
+    run_command()
+
+    assert.is_true(state.loading)
+    assert.are.equal(' Google Calendar — 2026年10月 — 読み込み中... ', window_title())
+
+    feed('l')
+    assert.are.equal('2026-10-28', state.selected_date)
+
+    feed('q')
+    assert.is_true(vim.api.nvim_win_is_valid(state.windows.month))
+
+    pending_callbacks[1]({}, nil)
+    wait_loading()
+    assert.are.equal(' Google Calendar — 2026年10月 ', window_title())
+
+    feed('l')
+    assert.are.equal('2026-10-29', state.selected_date)
+  end)
+
+  it('セル幅が 7 未満になる場合は通知して開かない', function()
+    vim.o.columns = 20
+
+    run_command()
+
+    assert.are.equal(1, #notifications)
+    assert.are.equal('ウィンドウが狭すぎます', notifications[1].message)
+    assert.are.equal(vim.log.levels.ERROR, notifications[1].level)
+    assert.is_nil(state.windows.month)
+    assert.are.equal(0, #gws_calls)
+  end)
+
+  it(':GoogleCalendar を再度実行すると既存の月表示を再取得してフォーカスする', function()
+    local parent = vim.api.nvim_get_current_win()
+    run_command()
+    wait_loading()
+    local win = state.windows.month
+
+    vim.api.nvim_set_current_win(parent)
+    run_command()
+    wait_loading()
+
+    assert.are.equal(2, #gws_calls)
+    assert.are.equal(1, #state.stack)
+    assert.are.equal(win, state.windows.month)
+    assert.are.equal(win, vim.api.nvim_get_current_win())
+    assert.are.equal('2026-10-28', state.selected_date)
+  end)
+end)

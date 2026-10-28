@@ -30,9 +30,11 @@ M.openers = {
 }
 
 local current_item = nil
+local guests_expanded = true
 local current_opts = {}
 
 local DESCRIPTION_MAX_LINES = 10
+local GUESTS_COLLAPSE_THRESHOLD = 5
 local WEEKDAYS = { '日', '月', '火', '水', '木', '金', '土' }
 local ICON_CALENDAR = '▣'
 local ICON_LOCATION = '⌖'
@@ -171,7 +173,8 @@ local function build_lines(item, width)
   local attendees = item.attendees
   if type(attendees) == 'table' and #attendees > 0 then
     add('')
-    add_icon_line(ICON_GUESTS, string.format('%d人のゲスト', #attendees))
+    local fold_marker = guests_expanded and '▾' or '▸'
+    add_icon_line(ICON_GUESTS, string.format('%d人のゲスト %s', #attendees, fold_marker))
 
     local accepted, pending, tentative, declined = 0, 0, 0, 0
     for _, attendee in ipairs(attendees) do
@@ -199,18 +202,25 @@ local function build_lines(item, width)
       add_muted(string.format('  辞退: %d人', declined))
     end
 
-    for _, attendee in ipairs(attendees) do
-      local status_icon, status_group = attendee_status(attendee)
-      local email = attendee.email or ''
-      local line = '  ' .. status_icon .. ' ' .. event.truncate(email, math.max(0, width - 4))
-      add(line, { { 2, 2 + #status_icon, status_group } })
+    local toggle_key = config.resolve('detail', 'toggle_guests')
+    if toggle_key ~= nil then
+      add_muted(string.format('  %s でゲストを%s', toggle_key, guests_expanded and '折り畳む' or '表示'))
+    end
 
-      local display_name = event.sanitize(attendee.displayName or '')
-      if display_name ~= '' and display_name ~= attendee.email then
-        add_muted('    ' .. event.truncate(display_name, math.max(0, width - 4)))
-      end
-      if is_organizer(attendee, item.organizer) then
-        add_muted('    主催者')
+    if guests_expanded then
+      for _, attendee in ipairs(attendees) do
+        local status_icon, status_group = attendee_status(attendee)
+        local email = attendee.email or ''
+        local line = '  ' .. status_icon .. ' ' .. event.truncate(email, math.max(0, width - 4))
+        add(line, { { 2, 2 + #status_icon, status_group } })
+
+        local display_name = event.sanitize(attendee.displayName or '')
+        if display_name ~= '' and display_name ~= attendee.email then
+          add_muted('    ' .. event.truncate(display_name, math.max(0, width - 4)))
+        end
+        if is_organizer(attendee, item.organizer) then
+          add_muted('    主催者')
+        end
       end
     end
   end
@@ -272,6 +282,22 @@ local function render(win, item)
   vim.api.nvim_win_set_cursor(win, { 1, 0 })
 end
 
+local function toggle_guests()
+  if current_item == nil then
+    return
+  end
+  local attendees = current_item.attendees
+  if type(attendees) ~= 'table' or #attendees == 0 then
+    return
+  end
+
+  guests_expanded = not guests_expanded
+  local win = state.windows.detail
+  if win ~= nil and vim.api.nvim_win_is_valid(win) then
+    render(win, current_item)
+  end
+end
+
 local function notify(message, level)
   config.get().notify(event.truncate(message, vim.o.columns), level)
 end
@@ -330,6 +356,7 @@ local key_actions = {
   edit = open_edit,
   delete = open_delete,
   copy_meet = copy_meet,
+  toggle_guests = toggle_guests,
   help = open_help,
   close = close,
   esc_close = close,
@@ -360,6 +387,8 @@ function M.open(item, opts)
 
   current_item = item
   current_opts = opts or {}
+  local attendees = item.attendees
+  guests_expanded = type(attendees) ~= 'table' or #attendees <= GUESTS_COLLAPSE_THRESHOLD
   render(win, item)
   set_keymaps(vim.api.nvim_win_get_buf(win))
   vim.api.nvim_set_current_win(win)

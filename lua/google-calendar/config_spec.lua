@@ -18,7 +18,15 @@ local default_keymaps = {
     esc_close = '<Esc>',
   },
   agenda = { next = 'j', prev = 'k', open = '<CR>', help = '?', close = 'q', esc_close = '<Esc>' },
-  detail = { edit = 'e', delete = 'd', copy_meet = 'y', help = '?', close = 'q', esc_close = '<Esc>' },
+  detail = {
+    edit = 'e',
+    delete = 'd',
+    copy_meet = 'y',
+    toggle_guests = 'g',
+    help = '?',
+    close = 'q',
+    esc_close = '<Esc>',
+  },
   form = {
     next_field = '<Tab>',
     prev_field = '<S-Tab>',

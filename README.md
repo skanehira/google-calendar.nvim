@@ -65,6 +65,7 @@ require('google-calendar').setup()
 | 詳細 | `e` | 更新フォームを開く |
 | 詳細 | `d` | 削除確認を開く |
 | 詳細 | `y` | Meet URL をコピーする |
+| 詳細 | `g` | ゲスト一覧を折り畳み・展開する |
 | 詳細 | `q` / `<Esc>` | アジェンダに戻る |
 | 確認 | `y` | 予定を削除する |
 | 確認 | `n` / `q` / `<Esc>` | 確認を閉じる（削除しない） |
@@ -122,7 +123,15 @@ require('google-calendar').setup({
       esc_close = '<Esc>',
     },
     agenda = { next = 'j', prev = 'k', open = '<CR>', help = '?', close = 'q', esc_close = '<Esc>' },
-    detail = { edit = 'e', delete = 'd', copy_meet = 'y', help = '?', close = 'q', esc_close = '<Esc>' },
+    detail = {
+      edit = 'e',
+      delete = 'd',
+      copy_meet = 'y',
+      toggle_guests = 'g',
+      help = '?',
+      close = 'q',
+      esc_close = '<Esc>',
+    },
     form = {
       next_field = '<Tab>',
       prev_field = '<S-Tab>',

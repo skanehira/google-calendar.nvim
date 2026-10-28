@@ -1,5 +1,6 @@
 local calendar = require('google-calendar.calendar')
 local config = require('google-calendar.config')
+local notify = require('google-calendar.notify')
 local state = require('google-calendar.state')
 local month_view = require('google-calendar.ui.month_view')
 
@@ -23,6 +24,12 @@ function M.open(args)
       config.get().notify('月の指定は YYYY-MM 形式で入力してください', vim.log.levels.ERROR)
       return false
     end
+  end
+
+  local cfg = config.get()
+  if vim.fn.executable(cfg.gws_cmd) == 0 then
+    notify.error({ kind = 'not_found', command = cfg.gws_cmd })
+    return false
   end
 
   if state.year ~= target_year or state.month ~= target_month or state.selected_date == nil then

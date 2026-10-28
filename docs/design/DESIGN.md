@@ -483,6 +483,9 @@ require('google-calendar').setup({
 - `lua-language-server --check` は診断があっても exit 0 を返す。`scripts/typecheck.sh` が JSON 出力を検査して非 0 で終了する
 - サンドボックス環境では `XDG_STATE_HOME` をワークスペース内の書き込み可能なディレクトリ（既定 `.tmp-state/`）に向ける。`nvim.log` の書き込みエラーを避ける
 - `nvim_set_hl` の `default = true` は既存の定義を上書きしない。一度上書きしたハイライトグループを既定へ戻すには `default = false` で再定義する（`setup()` の複数回呼び出し）
+- `vim.system` の `env` は Neovim 0.10 では `KEY=VALUE` のリスト、0.11 以降はマップで渡す。`clear_env = true` と併用するテストは `vim.fn.has('nvim-0.11')` で切り替える（0.10 でマップを渡すと環境変数が無視され、子プロセスの `PATH` が失われる）
+- Linux の `execvp` は ENOEXEC のテキストファイルを `/bin/sh` で実行する。実行ファイルの起動失敗を再現するテストは、存在しないインタプリタを指す shebang を使う
+- GNU make 4.x は `MAKEFLAGS` に `w` が入ると `make -n` の出力に `Entering directory` を混ぜる。レシピ順を検証するテストは `--no-print-directory` を付ける
 
 ## 未解決の論点
 

@@ -53,6 +53,20 @@ local function plenary_path()
   return os.getenv('PLENARY_PATH') or (os.getenv('HOME') .. '/.local/share/nvim/lazy/plenary.nvim')
 end
 
+-- Neovim 0.10 の vim.system は env を KEY=VALUE のリストで受け取り、
+-- 0.11 以降はマップで受け取る。clear_env と併用する箇所を両対応にする。
+local function system_env(env)
+  if vim.fn.has('nvim-0.11') == 1 then
+    return env
+  end
+
+  local list = {}
+  for key, value in pairs(env) do
+    table.insert(list, key .. '=' .. value)
+  end
+  return list
+end
+
 local function run_fake(args, opts)
   opts = opts or {}
   local env = vim.fn.environ()
@@ -81,7 +95,7 @@ local function run_make(args, env)
   vim.list_extend(command, args)
   -- env をそのまま渡すと vim.system が現在の env とマージして
   -- PLENARY_TEST_TIMEOUT が復活するため、clear_env で完全に置き換える。
-  return vim.system(command, { cwd = repo_root, env = merged, clear_env = true, text = true }):wait()
+  return vim.system(command, { cwd = repo_root, env = system_env(merged), clear_env = true, text = true }):wait()
 end
 
 local function run_nvim(args, env)
@@ -434,7 +448,9 @@ end)
   end)
 
   it('make check が lint / format-check / typecheck / test を順に実行する', function()
-    local result = vim.system({ 'make', '-n', 'check' }, { cwd = repo_root, text = true }):wait()
+    local result = vim
+      .system({ 'make', '-n', '--no-print-directory', 'check' }, { cwd = repo_root, text = true })
+      :wait()
 
     assert.are.equal(0, result.code)
     assert.are.same({
@@ -477,7 +493,7 @@ end)
       local result = vim
         .system({ 'make', 'test', 'TEST_DIR=' .. spec_dir }, {
           cwd = repo_root,
-          env = env,
+          env = system_env(env),
           clear_env = true,
           text = true,
         })

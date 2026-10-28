@@ -38,6 +38,22 @@ require('google-calendar').setup()
 
 `setup()` を呼ばなくても既定値で動作します。設定は最後に呼んだ `setup()` が有効になります。
 
+## ヘルプ
+
+`:help google-calendar` で Vim ヘルプを参照できます。プラグインマネージャーが
+`doc/tags` を生成します。手動で `runtimepath` に追加した場合は、必要に応じて
+`:helptags doc` を実行してください。
+
+主なヘルプタグ:
+
+- `:help google-calendar`
+- `:help google-calendar-commands`
+- `:help google-calendar-keymaps`
+- `:help google-calendar-config`
+- `:help google-calendar-highlights`
+- `:help google-calendar-behavior`
+- `:help google-calendar-troubleshooting`
+
 ## コマンド
 
 | コマンド | 動作 |

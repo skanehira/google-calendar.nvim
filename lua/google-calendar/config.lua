@@ -7,7 +7,8 @@ local default_highlights = {
   GoogleCalendarSunday = { fg = '#f7768e' },
   GoogleCalendarSaturday = { fg = '#7dcfff' },
   GoogleCalendarOtherMonth = { fg = '#565f89' },
-  GoogleCalendarEvent = { bg = '#2ac3de' },
+  -- 予定チップは背景を付けず、通常の文字色で表示する
+  GoogleCalendarEvent = {},
   GoogleCalendarEventTime = { fg = '#bb9af7' },
   GoogleCalendarBorder = { fg = '#7aa2f7' },
   GoogleCalendarError = { fg = '#f7768e', bold = true },

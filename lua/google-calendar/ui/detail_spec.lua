@@ -79,6 +79,13 @@ describe('ui.detail', function()
     clipboard_url = nil
     clipboard_calls = 0
     original_has = vim.fn.has
+    -- ホストの clipboard 対応に依存せず成功系を検証するため、has('clipboard') を 1 に固定する
+    rawset(vim.fn, 'has', function(feature)
+      if feature == 'clipboard' then
+        return 1
+      end
+      return original_has(feature)
+    end)
 
     original_columns = vim.o.columns
     original_lines = vim.o.lines

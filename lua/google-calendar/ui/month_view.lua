@@ -62,14 +62,15 @@ local function blank_chunks(cell_w)
   return { { string.rep(' ', cell_w) } }
 end
 
-local function build_event_rows(week, events_by_date, max_events, cell_w, selected_date)
+local function build_event_rows(week, events_by_date, max_events, cell_w, selected_date, rows)
   local lists = {}
   for index, cell in ipairs(week) do
     lists[index] = events_by_date[cell.date] or {}
   end
 
-  -- 取得中と取得完了でウィンドウの高さが変わらないよう、常に最大表示 (max_events + N) の行数を作る
-  local rows = max_events + 1
+  -- 最低限 max_events + N 行を確保し、画面に合わせて余った高さを空行で埋める
+  local base_rows = max_events + 1
+  rows = rows or base_rows
   local result = {}
   for row_index = 1, rows do
     local chunks = {}
@@ -82,7 +83,7 @@ local function build_event_rows(week, events_by_date, max_events, cell_w, select
       local cell_chunks
       if row_index <= math.min(#list, max_events) then
         cell_chunks = chip_chunks(list[row_index], cell_w)
-      elseif row_index == rows and #list > max_events then
+      elseif row_index == base_rows and #list > max_events then
         cell_chunks = overflow_chunks(#list - max_events, cell_w)
       else
         cell_chunks = blank_chunks(cell_w)
@@ -106,24 +107,45 @@ local function build_event_rows(week, events_by_date, max_events, cell_w, select
 end
 
 function M.compute_layout(columns, lines, cfg)
-  local max_width = math.min(120, math.floor(columns * cfg.width))
-  local cell_w = math.floor((max_width - 6) / 7)
-  -- 7 セル + 6 本の区切り線に合わせて幅を丸め、右側に余白を残さない
+  -- ボーダー 2 列/行を除いた利用可能領域に対する比率 (既定 1.0 = 画面いっぱい)
+  local usable_width = math.max(1, columns - 2)
+  local usable_height = math.max(1, lines - 2)
+  local target_width = math.max(1, math.min(usable_width, math.floor(usable_width * cfg.width)))
+  local cell_w = math.floor((target_width - 6) / 7)
+  -- 7 セル + 6 本の区切り線に合わせて幅を丸める
   local win_width = 7 * cell_w + 6
-  -- ヘッダー + 6 週分の日付行 + 各週の横線 + 各週の最大予定行 (max_events + N)
+
   local weeks = 6
-  local win_height = math.max(1, math.min(1 + weeks + weeks + weeks * (cfg.max_events_per_cell + 1), lines - 2))
+  local base_rows = cfg.max_events_per_cell + 1
+  local base_content = 1 + weeks + weeks + weeks * base_rows
+  local target_height = math.max(1, math.min(usable_height, math.floor(usable_height * cfg.height)))
+
+  -- 余った高さは各週の予定行 (空行) に均等に配分し、セルを画面いっぱいに広げる
+  local rows_per_week = {}
+  for index = 1, weeks do
+    rows_per_week[index] = base_rows
+  end
+  if target_height > base_content then
+    local extra = target_height - base_content
+    local index = 1
+    while extra > 0 do
+      rows_per_week[index] = rows_per_week[index] + 1
+      extra = extra - 1
+      index = index % weeks + 1
+    end
+  end
 
   return {
     win_width = win_width,
-    win_height = win_height,
+    win_height = target_height,
     cell_w = cell_w,
-    row = math.floor((lines - win_height) / 2),
-    col = math.floor((columns - win_width) / 2),
+    rows_per_week = rows_per_week,
+    row = math.max(0, math.floor((lines - (target_height + 2)) / 2)),
+    col = math.max(0, math.floor((columns - (win_width + 2)) / 2)),
   }
 end
 
-function M.build_view(grid, events_by_date, cfg, today, selected_date, cell_w)
+function M.build_view(grid, events_by_date, cfg, today, selected_date, cell_w, rows_per_week)
   local header_cells = {}
   for index, label in ipairs(calendar.weekday_labels(cfg.week_start)) do
     header_cells[index] = center(label, cell_w)
@@ -151,7 +173,14 @@ function M.build_view(grid, events_by_date, cfg, today, selected_date, cell_w)
     weeks[week_index] = {
       date_line = table.concat(date_cells, '│'),
       cells = cells,
-      event_rows = build_event_rows(week, events_by_date, cfg.max_events_per_cell, cell_w, selected_date),
+      event_rows = build_event_rows(
+        week,
+        events_by_date,
+        cfg.max_events_per_cell,
+        cell_w,
+        selected_date,
+        rows_per_week and rows_per_week[week_index] or nil
+      ),
     }
   end
 
@@ -223,12 +252,9 @@ function M.render(win, view)
 
   vim.bo[buf].modifiable = false
 
-  -- 横線・日付行・予定行の実数に合わせて高さを固定する
-  local content_height = #lines
-  for _, week in ipairs(view.weeks) do
-    content_height = content_height + #week.event_rows + 1
-  end
-  window.resize(win, vim.fn.strdisplaywidth(view.header), content_height)
+  -- 設定した画面サイズ (ウィンドウ高さ) に合わせる。内容が収まらない場合はスクロールする
+  local layout = M.compute_layout(vim.o.columns, vim.o.lines, config.get())
+  window.resize(win, vim.fn.strdisplaywidth(view.header), layout.win_height)
 end
 
 local function render()
@@ -240,6 +266,7 @@ local function render()
   vim.api.nvim_win_set_config(win, { title = month_title(state.loading) })
 
   local cfg = config.get()
+  local layout = M.compute_layout(vim.o.columns, vim.o.lines, cfg)
   local cell_w = math.floor((vim.api.nvim_win_get_width(win) - 6) / 7)
   if cell_w < 7 then
     cfg.notify('ウィンドウが狭すぎます', vim.log.levels.ERROR)
@@ -248,7 +275,8 @@ local function render()
   end
 
   local grid = calendar.month_grid(state.year, state.month, cfg.week_start)
-  local view = M.build_view(grid, state.events_by_date, cfg, calendar.today(), state.selected_date, cell_w)
+  local view =
+    M.build_view(grid, state.events_by_date, cfg, calendar.today(), state.selected_date, cell_w, layout.rows_per_week)
   M.render(win, view)
 end
 

@@ -357,8 +357,8 @@ describe('ui.form', function()
 
     original_columns = vim.o.columns
     original_lines = vim.o.lines
-    vim.o.columns = 100
-    vim.o.lines = 40
+    vim.o.columns = 94
+    vim.o.lines = 39
 
     original_today = rawget(calendar, 'today')
     rawset(calendar, 'today', function()

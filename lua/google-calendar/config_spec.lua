@@ -28,7 +28,7 @@ local default_keymaps = {
     help = '?',
   },
   confirm = { yes = 'y', no = 'n' },
-  help = { close = 'q' },
+  help = { close = 'q', esc_close = '<Esc>' },
 }
 
 local default_highlight_groups = {

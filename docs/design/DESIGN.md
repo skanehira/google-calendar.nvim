@@ -236,6 +236,8 @@ make check         # lint + format-check + typecheck + test
 
 `lua-language-server --check` は診断があっても exit 0 を返すため、`scripts/typecheck.sh` は `--check_format=json` の出力を検査し、問題があれば exit 1 にする。`.luarc.json` は `--check` に渡したパスをワークスペースルートとして探すため、リポジトリルートで `--check . --configpath=.luarc.json` を実行する（`--check lua/` では `.luarc.json` が読まれない）。
 
+CI では `leafo/gh-actions-luarocks` がリポジトリ直下に `.luarocks/` を作るため、`.luarc.json` の `workspace.ignoreDir` で `.luarocks` / `.git` / `.tmp-state` / `.claude` / `.local` / `.poc` を除外する（除外しないと `--check .` が依存パッケージを検査して CI が落ちる）。
+
 **E2E**:
 
 ```bash

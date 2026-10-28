@@ -170,14 +170,15 @@ state = {
 
 ## 開発・検証コマンド
 
-**現状**: リポジトリは空のため、以下のコマンドはまだ実行できない。セットアップ issue で `Makefile` / `tests/minimal_init.lua` / `scripts/` を作成し、**この節を実測値で確定させる**（セットアップ issue の DoD に含める）。以下は確定させるコマンドの案。
+**計測日**: 2026-10-27。開発環境は macOS、Neovim 0.13.0-nightly+ac9ddec、stylua 2.6.0、luacheck 1.2.0、lua-language-server 3.19.2、Python 3.14.6。
 
 **前提**:
 
-- Neovim 0.10 以上（開発環境は 0.13 nightly で確認）
+- Neovim 0.10 以上（計測環境は 0.13 nightly）
 - `gws` 0.22.5 以上（実 API の手動確認時のみ。自動テストは偽 gws を使う）
 - `plenary.nvim`（テスト実行時のみ。`PLENARY_PATH` で場所を指定できる。既定は `~/.local/share/nvim/lazy/plenary.nvim`）
-- `stylua` / `luacheck` / `lua-language-server`（lint・format・型チェック）
+- `stylua` 2.x / `luacheck` 1.x / `lua-language-server` 3.x（lint・format・型チェック）
+- Python 3（偽 gws の実行）
 
 **セットアップ**:
 
@@ -193,30 +194,46 @@ git clone --depth 1 https://github.com/nvim-lua/plenary.nvim \
 
 ```bash
 make test          # lua/ 配下の *_spec.lua を plenary の busted harness で実行
-make test-file FILE=lua/google-calendar/calendar_spec.lua
+make test-file FILE=lua/google-calendar/config_spec.lua
 make test-e2e      # 偽 gws を使った headless E2E
 ```
 
-`make test` の実体（案）:
+`make test` は `scripts/test.sh` が次を実行し、出力の `Success` / `Failed` / `Errors` を集計する:
 
 ```bash
 nvim --headless -u tests/minimal_init.lua \
   -c "PlenaryBustedDirectory lua/ {minimal_init = 'tests/minimal_init.lua', sequential = true}"
 ```
 
-spec は実装ファイルの隣 (`lua/**/*_spec.lua`) に置く。テストハーネスの spec も `lua/google-calendar/test_harness_spec.lua` に置き、`make test` の走査対象に含める。E2E の spec は `tests/e2e/` に置き、`make test-e2e` で実行する。
+実測値:
 
-`tests/minimal_init.lua` は plenary とリポジトリ自身を `runtimepath` に追加し、`PlenaryBustedDirectory` が未定義なら `cquit 1` で終了する。`make test` は `PlenaryBustedDirectory` の出力を検査し、テストが 0 件なら失敗する（0 件のまま成功するのを防ぐ）。サンドボックス環境では `XDG_STATE_HOME` をワークスペース内の書き込み可能なディレクトリに向ける（`nvim.log` の書き込みエラーを避ける）。
+- `make test`: 34 tests passed / 0 failed / 0 errors、exit 0（config 13、plugin 3、ui.window 4、test_harness 14）
+- `make test-file FILE=lua/google-calendar/config_spec.lua`: 13 tests passed、exit 0
+- `XDG_STATE_HOME="$PWD/.tmp-state" make test`: 34 tests passed、exit 0
+- `make test TEST_DIR=<空ディレクトリ>`: exit 2、`spec が 0 件です` を出力（0 件のまま成功しない）
+
+`TEST_DIR` は既定 `lua/`。spec は実装ファイルの隣 (`lua/**/*_spec.lua`) に置く。テストハーネスの spec も `lua/google-calendar/test_harness_spec.lua` に置き、`make test` の走査対象に含める。E2E の spec は `tests/e2e/` に置き、`make test-e2e` で実行する。
+
+`tests/minimal_init.lua` は plenary とリポジトリ自身を `runtimepath` に追加し、`plugin/plenary.vim` を明示的に読み込む。`PlenaryBustedDirectory` が未定義なら `cquit 1` で終了する。`PlenaryBustedDirectory` は spec が 0 件のディレクトリで終了コード 0 を返すため、minimal_init 側で 0 件なら `cquit 1` にして 0 件のまま成功するのを防ぐ。サンドボックス環境では `XDG_STATE_HOME` をワークスペース内の書き込み可能なディレクトリに向ける（`nvim.log` の書き込みエラーを避ける。Makefile の既定は `.tmp-state/`）。
 
 **静的チェック**:
 
 ```bash
 make lint          # luacheck lua/ plugin/ tests/
 make format        # stylua lua/ plugin/ tests/
-make format-check  # stylua --check
-make typecheck     # lua-language-server --check lua/
+make format-check  # stylua --check lua/ plugin/ tests/
+make typecheck     # scripts/typecheck.sh (lua-language-server --check . --configpath=.luarc.json)
 make check         # lint + format-check + typecheck + test
 ```
+
+実測値:
+
+- `make lint`: 0 warnings / 0 errors in 11 files、exit 0
+- `make format-check`: exit 0
+- `make typecheck`: exit 0。陽性対照として未定義グローバルを 1 つ置くと `1 problems found` で exit 1（make 経由では exit 2）
+- `make check`: exit 0
+
+`lua-language-server --check` は診断があっても exit 0 を返すため、`scripts/typecheck.sh` は `--check_format=json` の出力を検査し、問題があれば exit 1 にする。`.luarc.json` は `--check` に渡したパスをワークスペースルートとして探すため、リポジトリルートで `--check . --configpath=.luarc.json` を実行する（`--check lua/` では `.luarc.json` が読まれない）。
 
 **E2E**:
 
@@ -224,7 +241,9 @@ make check         # lint + format-check + typecheck + test
 make test-e2e
 ```
 
-`scripts/e2e.sh` は `tests/fixtures/fake-gws.py` を `PATH` の先頭に置き（または `gws_cmd` に指定し）、一時ディレクトリの状態ファイルを使って予定の CRUD を再現する。実カレンダーは変更しない。
+`scripts/e2e.sh` は `tests/fixtures/fake-gws.py` への `gws` シンボリックリンクを一時 `PATH` の先頭に置き、`FAKE_GWS_STATE` / `XDG_STATE_HOME` / `FAKE_GWS_CWD_LOG` / `FAKE_GWS_CALL_LOG` を一時ディレクトリに設定して `tests/e2e` を plenary で実行する。実カレンダーは変更しない。
+
+実測値: `make test-e2e` は 5 tests passed / 0 failed / 0 errors、exit 0。スモークテストは偽 gws が PATH の先頭にあること、空の `events list`、`+insert` 後の `list` への反映、`:GoogleCalendar` の登録、`setup()` の既定値を確認する。月表示の CRUD 通し検証は #19 が担う。
 
 **実 API の手動確認**（任意）:
 
@@ -237,7 +256,9 @@ GOOGLE_WORKSPACE_CLI_CONFIG_DIR="$PWD/.local/gws-config" gws calendar calendarLi
 
 `.local/` は `.gitignore` に入れる。本番利用では既定の `~/.config/gws` のままでよい。
 
-**worktree セットアップ**: 依存は plenary のみで、`PLENARY_PATH` を環境変数で指定できるため、worktree ごとに追加のセットアップは不要。E2E は一時ディレクトリを使い、固定ポートを共有しない。`.gitignore` に `.claude/worktrees/`、`.local/`、`.poc/`、`download.html`、`*.log`、`__pycache__/` を入れる（worktree 並列実行と clean チェックの前提）。
+**worktree セットアップ**: 依存は plenary のみで、`PLENARY_PATH` を環境変数で指定できるため、worktree ごとに追加のセットアップは不要。`PLENARY_PATH` の既定は `~/.local/share/nvim/lazy/plenary.nvim`、`XDG_STATE_HOME` の既定は `<repo>/.tmp-state`（Makefile が作成する）。E2E は一時ディレクトリを使い、固定ポートを共有しない。`.gitignore` に `.claude/worktrees/`、`.local/`、`.poc/`、`download.html`、`*.log`、`__pycache__/`、`.tmp-state/` を入れる（worktree 並列実行と clean チェックの前提）。
+
+**CI**: `.github/workflows/ci.yml` が `make check` を実行する。plenary.nvim を clone して `PLENARY_PATH` の既定パスに置き、luacheck / stylua / lua-language-server を導入する。CI の実行結果は未計測（この issue ではローカルで `make check` の green を確認）。
 
 ## CLI インターフェース
 
@@ -450,6 +471,13 @@ require('google-calendar').setup({
 - `os.date('%z')` のローカルオフセットを使う変換式は、夏時間の境界では厳密でない。MVP は Asia/Tokyo を想定し、イベントのオフセットを優先する
 - サンドボックス環境では `gws` が `~/.config/gws` に書き込めない。開発時は `GOOGLE_WORKSPACE_CLI_CONFIG_DIR` をワークスペース内に向ける（PoC `gws-sandbox-config`）
 - 月表示の予定は `singleEvents=true` で取得する。繰り返し予定のルール編集はできない
+- `PlenaryBustedDirectory` は spec が 0 件のディレクトリで終了コード 0 を返す。`tests/minimal_init.lua` で 0 件なら `cquit 1` にして、テストが 0 件のまま成功しないようにする
+- `PlenaryBustedDirectory` の子 Neovim は `--noplugin` で起動するため、`plugin/google-calendar.lua` のコマンドは spec 内で `runtime! plugin/google-calendar.lua` して明示的に読み込む。`nvim_create_user_command` に `force = true` を付けて再読み込みを安全にする
+- `PLENARY_TEST_TIMEOUT` は Plenary が環境変数に文字列として設定するが、`plenary.test_harness._find_files_to_run` の `Job:sync` は数値を期待する。nested Neovim の実行前に `tests/minimal_init.lua` で一時的に unset する
+- `lua-language-server` の `.luarc.json` は `--check` に渡したパスをワークスペースルートとして探す。`--check lua/` ではリポジトリルートの `.luarc.json` が読まれないため、`--check . --configpath=.luarc.json` を実行する
+- `lua-language-server --check` は診断があっても exit 0 を返す。`scripts/typecheck.sh` が JSON 出力を検査して非 0 で終了する
+- サンドボックス環境では `XDG_STATE_HOME` をワークスペース内の書き込み可能なディレクトリ（既定 `.tmp-state/`）に向ける。`nvim.log` の書き込みエラーを避ける
+- `nvim_set_hl` の `default = true` は既存の定義を上書きしない。一度上書きしたハイライトグループを既定へ戻すには `default = false` で再定義する（`setup()` の複数回呼び出し）
 
 ## 未解決の論点
 

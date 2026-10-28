@@ -133,7 +133,12 @@ function M.build_view(grid, events_by_date, cfg, today, selected_date, cell_w)
     local cells = {}
     for index, cell in ipairs(week) do
       local day_text = tostring(cell.day)
-      date_cells[index] = string.rep(' ', cell_w - #day_text) .. day_text
+      if cell.date == selected_date then
+        -- 背景色だけに頼らず、選択中のセルの左端にマーカーを置いて視認できるようにする
+        date_cells[index] = '>' .. string.rep(' ', cell_w - 1 - #day_text) .. day_text
+      else
+        date_cells[index] = string.rep(' ', cell_w - #day_text) .. day_text
+      end
 
       local col = (index - 1) * (cell_w + 3) + (cell_w - #day_text)
       local cell_start = (index - 1) * (cell_w + 3)
@@ -161,6 +166,9 @@ end
 
 local function month_title(loading)
   local title = ' Google Calendar — ' .. calendar.format_month_title(state.year, state.month)
+  if state.selected_date ~= nil then
+    title = title .. ' — 選択: ' .. tostring(state.selected_date):sub(6)
+  end
   if loading then
     title = title .. ' — 読み込み中...'
   end

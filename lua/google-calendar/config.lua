@@ -143,7 +143,7 @@ end
 
 M.current = vim.deepcopy(defaults)
 M.highlight_overrides = {}
-local applied_highlight_overrides = {}
+local applied_default_highlights = {}
 
 function M.setup(opts)
   opts = opts or {}
@@ -210,21 +210,22 @@ function M.apply_highlights()
     if M.current.highlights[group] == false then
       -- false は無効化として扱い、既定の定義を消す
       vim.api.nvim_set_hl(0, group, {})
+      applied_default_highlights[group] = true
     else
-      local options = vim.tbl_extend('force', { default = not applied_highlight_overrides[group] }, definition)
+      -- 一度このプラグインが適用したグループは、プラグイン更新後の setup() で
+      -- 既定色の変更が反映されるように default = false で上書きする
+      local options = vim.tbl_extend('force', { default = not applied_default_highlights[group] }, definition)
       vim.api.nvim_set_hl(0, group, options)
+      applied_default_highlights[group] = true
     end
   end
 
-  local next_overrides = {}
   for group in pairs(M.highlight_overrides) do
     local definition = M.current.highlights[group]
     if type(definition) == 'table' then
       vim.api.nvim_set_hl(0, group, vim.tbl_extend('force', { default = false }, definition))
-      next_overrides[group] = true
     end
   end
-  applied_highlight_overrides = next_overrides
 end
 
 return M

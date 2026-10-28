@@ -238,14 +238,14 @@ describe('ui.month_view', function()
       local win = state.windows.month
       assert.is_true(vim.api.nvim_win_is_valid(win))
       assert.are.equal(win, vim.api.nvim_get_current_win())
-      assert.are.equal(' Google Calendar — 2026年10月 ', window_title())
+      assert.are.equal(' Google Calendar — 2026年10月 — 選択: 10-28 ', window_title())
       assert.are.same({
         '     日     │     月     │     火     │     水     │     木     │     金     │     土     ',
         '          27│          28│          29│          30│           1│           2│           3',
         '           4│           5│           6│           7│           8│           9│          10',
         '          11│          12│          13│          14│          15│          16│          17',
         '          18│          19│          20│          21│          22│          23│          24',
-        '          25│          26│          27│          28│          29│          30│          31',
+        '          25│          26│          27│>         28│          29│          30│          31',
         '           1│           2│           3│           4│           5│           6│           7',
       }, buffer_lines())
       assert.are.equal(2026, state.year)
@@ -284,7 +284,7 @@ describe('ui.month_view', function()
     assert.are.equal(2026, state.year)
     assert.are.equal(11, state.month)
     assert.are.equal('2026-11-28', state.selected_date)
-    assert.are.equal(' Google Calendar — 2026年11月 ', window_title())
+    assert.are.equal(' Google Calendar — 2026年11月 — 選択: 11-28 ', window_title())
     assert.are.equal(NOVEMBER_FIRST_WEEK, buffer_lines()[2])
     assert.are.equal('2026-11-01T00:00:00' .. offset_suffix(), gws_calls[2].time_min)
     assert.are.equal('2026-12-13T00:00:00' .. offset_suffix(), gws_calls[2].time_max)
@@ -295,7 +295,7 @@ describe('ui.month_view', function()
     assert.are.equal(2026, state.year)
     assert.are.equal(10, state.month)
     assert.are.equal('2026-10-28', state.selected_date)
-    assert.are.equal(' Google Calendar — 2026年10月 ', window_title())
+    assert.are.equal(' Google Calendar — 2026年10月 — 選択: 10-28 ', window_title())
     assert.are.equal(OCTOBER_FIRST_WEEK, buffer_lines()[2])
   end)
 
@@ -310,7 +310,7 @@ describe('ui.month_view', function()
     assert.are.equal(2026, state.year)
     assert.are.equal(10, state.month)
     assert.are.equal('2026-10-28', state.selected_date)
-    assert.are.equal(' Google Calendar — 2026年10月 ', window_title())
+    assert.are.equal(' Google Calendar — 2026年10月 — 選択: 10-28 ', window_title())
     assert.is_true(has_highlight('GoogleCalendarToday', 5, 55))
     assert.is_true(has_highlight('GoogleCalendarSelected', 5, 45))
   end)
@@ -322,7 +322,7 @@ describe('ui.month_view', function()
     assert.are.equal(2026, state.year)
     assert.are.equal(11, state.month)
     assert.are.equal('2026-11-28', state.selected_date)
-    assert.are.equal(' Google Calendar — 2026年11月 ', window_title())
+    assert.are.equal(' Google Calendar — 2026年11月 — 選択: 11-28 ', window_title())
     assert.are.equal(NOVEMBER_FIRST_WEEK, buffer_lines()[2])
     assert.are.equal('2026-11-01T00:00:00' .. offset_suffix(), gws_calls[1].time_min)
   end)
@@ -483,7 +483,7 @@ describe('ui.month_view', function()
     assert.are.equal(2026, state.year)
     assert.are.equal(11, state.month)
     assert.are.equal('2026-11-04', state.selected_date)
-    assert.are.equal(' Google Calendar — 2026年11月 ', window_title())
+    assert.are.equal(' Google Calendar — 2026年11月 — 選択: 11-04 ', window_title())
     assert.are.equal(2, #gws_calls)
 
     feed('k')
@@ -502,7 +502,7 @@ describe('ui.month_view', function()
     run_command()
 
     assert.is_true(state.loading)
-    assert.are.equal(' Google Calendar — 2026年10月 — 読み込み中... ', window_title())
+    assert.are.equal(' Google Calendar — 2026年10月 — 選択: 10-28 — 読み込み中... ', window_title())
 
     feed('l')
     assert.are.equal('2026-10-28', state.selected_date)
@@ -512,7 +512,7 @@ describe('ui.month_view', function()
 
     pending_callbacks[1]({}, nil)
     wait_loading()
-    assert.are.equal(' Google Calendar — 2026年10月 ', window_title())
+    assert.are.equal(' Google Calendar — 2026年10月 — 選択: 10-28 ', window_title())
 
     feed('l')
     assert.are.equal('2026-10-29', state.selected_date)
@@ -789,5 +789,25 @@ describe('ui.month_view', function()
     local win_config = vim.api.nvim_win_get_config(state.windows.month)
     local cell_w = math.floor((win_config.width - 6) / 7)
     assert.are.equal(cell_w, selected[4].end_col - selected[3])
+  end)
+  it('選択中の日付に > マーカーを表示し、移動に追従する', function()
+    gws_handler = function(_, cb)
+      cb({ timed_event('e1', '定例', '2026-10-28T09:00:00+09:00') }, nil)
+    end
+
+    run_command()
+    wait_loading()
+
+    assert.are.equal(
+      '          25│          26│          27│>         28│          29│          30│          31',
+      buffer_lines()[6]
+    )
+
+    feed('l')
+
+    assert.are.equal(
+      '          25│          26│          27│          28│>         29│          30│          31',
+      buffer_lines()[6]
+    )
   end)
 end)

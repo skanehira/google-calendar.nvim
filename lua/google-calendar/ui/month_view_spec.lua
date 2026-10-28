@@ -855,6 +855,7 @@ describe('ui.month_view', function()
     assert.are.equal(0, win_config.col)
 
     assert.are.equal(5, #assert(virt_lines(1)))
+    assert.are.equal(6, vim.api.nvim_win_get_cursor(state.windows.month)[1])
 
     local small = month_view.compute_layout(120, 40, {
       width = 0.8,
@@ -863,6 +864,14 @@ describe('ui.month_view', function()
     })
     assert.are.equal(90, small.win_width)
     assert.are.equal(30, small.win_height)
+
+    local default = month_view.compute_layout(120, 40, {
+      width = 0.7,
+      height = 0.7,
+      max_events_per_cell = 3,
+    })
+    assert.are.equal(76, default.win_width)
+    assert.are.equal(26, default.win_height)
   end)
 
   it('取得中と取得完了でウィンドウの高さが変わらない', function()
@@ -952,5 +961,23 @@ describe('ui.month_view', function()
         assert.are_not.equal('GoogleCalendarSelected', chunk[2])
       end
     end
+  end)
+  it('height が小さいときも選択中の週が見えるようにスクロールする', function()
+    vim.o.columns = 120
+    vim.o.lines = 40
+    plugin.setup({
+      notify = notify,
+      width = 0.7,
+      height = 0.7,
+      gws_cmd = repo_root .. '/tests/fixtures/fake-gws.py',
+    })
+
+    run_command()
+    wait_loading()
+
+    local win = state.windows.month
+    assert.are.equal(26, vim.api.nvim_win_get_config(win).height)
+    assert.are.equal('2026-10-28', state.selected_date)
+    assert.are.equal(6, vim.api.nvim_win_get_cursor(win)[1])
   end)
 end)

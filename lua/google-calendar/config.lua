@@ -22,8 +22,10 @@ local defaults = {
   calendars = { 'primary' },
   week_start = 'sunday',
   max_events_per_cell = 3,
-  width = 1.0,
-  height = 1.0,
+  width = 0.7,
+  height = 0.7,
+  agenda = { width = 0.5, height = 0.5 },
+  detail = { width = 0.5, height = 0.5 },
   date_format = '%Y-%m-%d %H:%M',
   gws_cmd = 'gws',
   notify = vim.notify,
@@ -160,6 +162,12 @@ function M.setup(opts)
   end
   if opts.height ~= nil then
     current.height = opts.height
+  end
+  if type(opts.agenda) == 'table' then
+    current.agenda = vim.tbl_deep_extend('force', defaults.agenda, opts.agenda)
+  end
+  if type(opts.detail) == 'table' then
+    current.detail = vim.tbl_deep_extend('force', defaults.detail, opts.detail)
   end
   if opts.date_format ~= nil then
     current.date_format = opts.date_format

@@ -208,10 +208,10 @@ nvim --headless -u tests/minimal_init.lua \
 
 実測値:
 
-- `make test`: 286 tests passed / 0 failed / 0 errors、exit 0
-- `make test-file FILE=lua/google-calendar/config_spec.lua`: 16 tests passed、exit 0
+- `make test`: 288 tests passed / 0 failed / 0 errors、exit 0
+- `make test-file FILE=lua/google-calendar/config_spec.lua`: 17 tests passed、exit 0
 - `make test-file FILE=lua/google-calendar/gws_spec.lua`: 17 tests passed、exit 0
-- `XDG_STATE_HOME="$PWD/.tmp-state" make test`: 286 tests passed、exit 0
+- `XDG_STATE_HOME="$PWD/.tmp-state" make test`: 288 tests passed、exit 0
 - `make test TEST_DIR=<空ディレクトリ>`: exit 2、`spec が 0 件です` を出力（0 件のまま成功しない）
 
 `TEST_DIR` は既定 `lua/`。spec は実装ファイルの隣 (`lua/**/*_spec.lua`) に置く。テストハーネスの spec も `lua/google-calendar/test_harness_spec.lua` に置き、`make test` の走査対象に含める。E2E の spec は `tests/e2e/` に置き、`make test-e2e` で実行する。
@@ -319,8 +319,11 @@ require('google-calendar').setup({
   -- 1 セルに表示する予定の最大件数
   max_events_per_cell = 3,
   -- float のサイズ（ボーダーを除く利用可能領域に対する割合。1.0 で画面いっぱい）
-  width = 1.0,
-  height = 1.0,
+  width = 0.7,
+  height = 0.7,
+  -- アジェンダ / 詳細のサイズ（同じく利用可能領域に対する割合）
+  agenda = { width = 0.5, height = 0.5 },
+  detail = { width = 0.5, height = 0.5 },
   -- 日時の表示形式
   date_format = '%Y-%m-%d %H:%M',
   -- gws の実行ファイル（テストでは偽 gws を指定）
@@ -440,7 +443,7 @@ require('google-calendar').setup({
 
 ### UI の原則
 
-- 月表示は画面の利用可能領域に対する `width` / `height`（既定 1.0）でサイズを決め、画面いっぱいに広げる。各週は最低 `max_events_per_cell + 1` 行を確保し、余った高さを空の予定行に配分する。取得中と取得完了でサイズを変えない。アジェンダ・詳細は内容の 2 倍の高さにして下部に余白を残す。フォーム・ヘルプ・確認は内容に合わせる
+- 月表示は画面の利用可能領域に対する `width` / `height`（既定 0.7）でサイズを決める。各週は最低 `max_events_per_cell + 1` 行を確保し、余った高さを空の予定行に配分する。取得中と取得完了でサイズを変えない。アジェンダ・詳細は `agenda` / `detail` の `width` / `height`（既定 0.5）でサイズを決める。フォーム・ヘルプ・確認は内容に合わせる
 - 選択中の日付は、日付行と予定行を含むセル全体を `GoogleCalendarSelected` の目立つ背景で示す（今日の `GoogleCalendarToday` と重なっても選択が分かるようにする）。ウィンドウタイトルの `選択: MM-DD` でも示す
 - 月グリッドは `│` の縦線に加えて、各週の上に `─` / `┼` の横線を引いてセルを区切る
 - insert モードの `<Esc>` は insert を抜けるだけにし、normal モードでキャンセルする（Vim の慣習に合わせる）

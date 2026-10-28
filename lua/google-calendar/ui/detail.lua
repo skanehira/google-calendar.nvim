@@ -87,20 +87,19 @@ local function build_lines(item, width)
   return lines
 end
 
-local function render(win, item, width)
+local function render(win, item)
+  local cfg = config.get().detail
+  local width, height = window.target_size(cfg.width, cfg.height)
+  local max_width = math.max(1, width - 2)
+
   local buf = vim.api.nvim_win_get_buf(win)
-  local lines = build_lines(item, width)
+  local lines = build_lines(item, max_width)
 
   vim.bo[buf].modifiable = true
   vim.api.nvim_buf_set_lines(buf, 0, -1, false, lines)
   vim.bo[buf].modifiable = false
 
-  -- 幅は内容に合わせ、高さは内容の 2 倍にして見やすくする
-  window.resize(
-    win,
-    math.min(width, window.max_display_width(lines) + 2),
-    math.max(1, math.min(#lines * 2, vim.o.lines - 4))
-  )
+  window.resize(win, width, height)
 
   vim.api.nvim_win_set_cursor(win, { 1, 0 })
 end
@@ -178,13 +177,10 @@ local function set_keymaps(buf)
 end
 
 function M.open(item, opts)
-  local max_width = math.max(1, math.min(70, vim.o.columns - 8))
-  local lines = build_lines(item, max_width)
-  local width = math.max(1, math.min(max_width, window.max_display_width(lines) + 2))
-  -- Enter で開く詳細は、内容の 2 倍ほどの高さにして見やすくする
-  local height = math.max(1, math.min(#lines * 2, vim.o.lines - 4))
-  local row = math.max(0, math.floor((vim.o.lines - height) / 2))
-  local col = math.max(0, math.floor((vim.o.columns - width) / 2))
+  local cfg = config.get().detail
+  local width, height = window.target_size(cfg.width, cfg.height)
+  local row = math.max(0, math.floor((vim.o.lines - (height + 2)) / 2))
+  local col = math.max(0, math.floor((vim.o.columns - (width + 2)) / 2))
   local opts_win = { relative = 'editor', width = width, height = height, row = row, col = col }
 
   local win = state.windows.detail
@@ -196,7 +192,7 @@ function M.open(item, opts)
 
   current_item = item
   current_opts = opts or {}
-  render(win, item, width)
+  render(win, item)
   set_keymaps(vim.api.nvim_win_get_buf(win))
   vim.api.nvim_set_current_win(win)
 

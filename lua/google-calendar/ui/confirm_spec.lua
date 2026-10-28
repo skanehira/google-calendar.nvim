@@ -69,6 +69,8 @@ local function setup(opts)
   opts = opts or {}
   opts.gws_cmd = opts.gws_cmd or fake_gws
   opts.notify = opts.notify or notify
+  opts.width = opts.width or 1.0
+  opts.height = opts.height or 1.0
   config.setup(opts)
 end
 

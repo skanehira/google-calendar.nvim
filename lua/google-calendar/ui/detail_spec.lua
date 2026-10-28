@@ -130,13 +130,9 @@ describe('ui.detail', function()
     local win = detail.open(item)
 
     local win_config = vim.api.nvim_win_get_config(win)
-    local lines = buffer_lines()
-    local content_width = 0
-    for _, line in ipairs(lines) do
-      content_width = math.max(content_width, vim.fn.strdisplaywidth(line))
-    end
-    assert.are.equal(math.min(70, vim.o.columns - 8, content_width + 2), win_config.width)
-    assert.are.equal(math.min(#lines * 2, vim.o.lines - 4), win_config.height)
+    local width, height = window.target_size(0.5, 0.5)
+    assert.are.equal(width, win_config.width)
+    assert.are.equal(height, win_config.height)
     assert.are.equal(win, vim.api.nvim_get_current_win())
     assert.are.equal('detail', state.stack[#state.stack].name)
     assert.are.equal(parent, state.stack[#state.stack].parent)
@@ -202,7 +198,7 @@ describe('ui.detail', function()
     detail.open(item)
 
     assert.are.same({
-      'タイトル: 定例ミーテ…',
+      'タイトル: …',
       '開始: ' .. event.display_datetime(item.start),
       '終了: ' .. event.display_datetime(item['end']),
       '場所: 会議室A',

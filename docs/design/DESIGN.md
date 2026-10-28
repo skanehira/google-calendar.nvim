@@ -207,9 +207,9 @@ nvim --headless -u tests/minimal_init.lua \
 
 実測値:
 
-- `make test`: 33 tests passed / 0 failed / 0 errors、exit 0（config 12、plugin 3、ui.window 4、test_harness 14）
-- `make test-file FILE=lua/google-calendar/config_spec.lua`: 12 tests passed、exit 0
-- `XDG_STATE_HOME="$PWD/.tmp-state" make test`: 33 tests passed、exit 0
+- `make test`: 34 tests passed / 0 failed / 0 errors、exit 0（config 13、plugin 3、ui.window 4、test_harness 14）
+- `make test-file FILE=lua/google-calendar/config_spec.lua`: 13 tests passed、exit 0
+- `XDG_STATE_HOME="$PWD/.tmp-state" make test`: 34 tests passed、exit 0
 - `make test TEST_DIR=<空ディレクトリ>`: exit 2、`spec が 0 件です` を出力（0 件のまま成功しない）
 
 `TEST_DIR` は既定 `lua/`。spec は実装ファイルの隣 (`lua/**/*_spec.lua`) に置く。テストハーネスの spec も `lua/google-calendar/test_harness_spec.lua` に置き、`make test` の走査対象に含める。E2E の spec は `tests/e2e/` に置き、`make test-e2e` で実行する。
@@ -477,6 +477,7 @@ require('google-calendar').setup({
 - `lua-language-server` の `.luarc.json` は `--check` に渡したパスをワークスペースルートとして探す。`--check lua/` ではリポジトリルートの `.luarc.json` が読まれないため、`--check . --configpath=.luarc.json` を実行する
 - `lua-language-server --check` は診断があっても exit 0 を返す。`scripts/typecheck.sh` が JSON 出力を検査して非 0 で終了する
 - サンドボックス環境では `XDG_STATE_HOME` をワークスペース内の書き込み可能なディレクトリ（既定 `.tmp-state/`）に向ける。`nvim.log` の書き込みエラーを避ける
+- `nvim_set_hl` の `default = true` は既存の定義を上書きしない。一度上書きしたハイライトグループを既定へ戻すには `default = false` で再定義する（`setup()` の複数回呼び出し）
 
 ## 未解決の論点
 

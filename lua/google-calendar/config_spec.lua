@@ -157,6 +157,18 @@ describe('config', function()
     assert.is_true(header.bold)
   end)
 
+  it('setup() を呼び直すと前回の highlights の上書きが既定値に戻る', function()
+    config.setup({ highlights = { GoogleCalendarHeader = { fg = '#ff0000' } } })
+    config.apply_highlights()
+
+    config.setup({})
+    config.apply_highlights()
+
+    local header = vim.api.nvim_get_hl(0, { name = 'GoogleCalendarHeader', link = false })
+    assert.are.equal('#7aa2f7', string.format('#%06x', header.fg))
+    assert.is_true(header.bold)
+  end)
+
   it('不正な week_start は警告して既定値を使う', function()
     local messages = {}
     config.setup({

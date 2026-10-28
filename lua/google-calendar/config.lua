@@ -136,6 +136,7 @@ end
 
 M.current = vim.deepcopy(defaults)
 M.highlight_overrides = {}
+local applied_highlight_overrides = {}
 
 function M.setup(opts)
   opts = opts or {}
@@ -194,16 +195,21 @@ function M.resolve(screen, action)
 end
 
 function M.apply_highlights()
+  -- default = true は既存定義を上書きしないため、前回上書きしたグループは default = false で既定へ戻す
   for group, definition in pairs(defaults.highlights) do
-    vim.api.nvim_set_hl(0, group, vim.tbl_extend('force', { default = true }, definition))
+    local options = vim.tbl_extend('force', { default = not applied_highlight_overrides[group] }, definition)
+    vim.api.nvim_set_hl(0, group, options)
   end
 
+  local next_overrides = {}
   for group in pairs(M.highlight_overrides) do
     local definition = M.current.highlights[group]
     if type(definition) == 'table' then
-      vim.api.nvim_set_hl(0, group, definition)
+      vim.api.nvim_set_hl(0, group, vim.tbl_extend('force', { default = false }, definition))
+      next_overrides[group] = true
     end
   end
+  applied_highlight_overrides = next_overrides
 end
 
 return M

@@ -329,7 +329,9 @@ describe('gws adapter', function()
 
   it('実行ファイルの起動に失敗したときも未インストールとして分類する', function()
     local broken = tmp_root .. '/broken-gws'
-    write_text(broken, 'not an executable format\n')
+    -- Linux では execvp が ENOEXEC のテキストファイルを /bin/sh で実行してしまうため、
+    -- 存在しないインタプリタを指す shebang にして起動自体を失敗させる。
+    write_text(broken, '#!/nonexistent/interpreter\n')
     vim.fn.setfperm(broken, 'rwxr-xr-x')
     setup_config({ gws_cmd = broken })
 

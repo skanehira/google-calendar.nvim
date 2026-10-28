@@ -342,6 +342,57 @@ describe('ui.detail', function()
     end, lines)[1])
   end)
 
+  it('ゲストの開閉時にカーソル位置を保持する', function()
+    local attendees = {}
+    for index = 1, 6 do
+      table.insert(attendees, {
+        email = string.format('guest%d@example.com', index),
+        responseStatus = 'accepted',
+      })
+    end
+
+    local item = {
+      id = 'evt-many',
+      summary = '多人数',
+      start = { dateTime = '2026-10-28T09:00:00+09:00' },
+      ['end'] = { dateTime = '2026-10-28T10:00:00+09:00' },
+      attendees = attendees,
+      calendar_id = 'primary',
+    }
+
+    local win = detail.open(item)
+    local function cursor_line()
+      return vim.api.nvim_win_get_cursor(win)[1]
+    end
+
+    -- ゲストヘッダー上で開閉しても同じ行に留まる
+    vim.api.nvim_win_set_cursor(win, { 4, 0 })
+    feed('g')
+    assert.are.equal(4, cursor_line())
+    feed('g')
+    assert.are.equal(4, cursor_line())
+
+    -- ゲスト以外の行では同じ行番号を保つ
+    vim.api.nvim_win_set_cursor(win, { 2, 0 })
+    feed('g')
+    assert.are.equal(2, cursor_line())
+    feed('g')
+    assert.are.equal(2, cursor_line())
+
+    -- ゲスト行から折り畳むとゲストヘッダーへ移動する
+    feed('g')
+    local lines = buffer_lines()
+    local guest_line
+    for index, line in ipairs(lines) do
+      if line:find('guest1@example.com', 1, true) ~= nil then
+        guest_line = index
+      end
+    end
+    vim.api.nvim_win_set_cursor(win, { guest_line, 0 })
+    feed('g')
+    assert.are.equal(4, cursor_line())
+  end)
+
   it('e / d / y / ? の opener をスタブで差し替えてキーが呼ばれる', function()
     local item = full_event()
 

@@ -31,6 +31,8 @@ M.openers = {
 
 local current_item = nil
 local guests_expanded = true
+local guests_header_line = nil
+local guests_end_line = nil
 local current_opts = {}
 
 local GUESTS_COLLAPSE_THRESHOLD = 5
@@ -122,6 +124,8 @@ end
 local function build_lines(item, width)
   local lines = {}
   local highlights = {}
+  guests_header_line = nil
+  guests_end_line = nil
 
   local function add(text, spans)
     table.insert(lines, text)
@@ -174,6 +178,7 @@ local function build_lines(item, width)
     add('')
     local fold_marker = guests_expanded and '▾' or '▸'
     add_icon_line(ICON_GUESTS, string.format('%d人のゲスト %s', #attendees, fold_marker))
+    guests_header_line = #lines
 
     local accepted, pending, tentative, declined = 0, 0, 0, 0
     for _, attendee in ipairs(attendees) do
@@ -222,6 +227,7 @@ local function build_lines(item, width)
         end
       end
     end
+    guests_end_line = #lines
   end
 
   local description = item.description
@@ -251,7 +257,7 @@ local function build_lines(item, width)
   return lines, highlights
 end
 
-local function render(win, item)
+local function render(win, item, cursor_line)
   local cfg = config.get().detail
   local width, height = window.target_size(cfg.width, cfg.height)
   local max_width = math.max(1, width - 2)
@@ -274,7 +280,8 @@ local function render(win, item)
 
   window.resize(win, width, height)
 
-  vim.api.nvim_win_set_cursor(win, { 1, 0 })
+  local target = math.max(1, math.min(cursor_line or 1, #lines))
+  vim.api.nvim_win_set_cursor(win, { target, 0 })
 end
 
 local function toggle_guests()
@@ -286,10 +293,23 @@ local function toggle_guests()
     return
   end
 
-  guests_expanded = not guests_expanded
   local win = state.windows.detail
-  if win ~= nil and vim.api.nvim_win_is_valid(win) then
-    render(win, current_item)
+  if win == nil or not vim.api.nvim_win_is_valid(win) then
+    return
+  end
+
+  local cursor = vim.api.nvim_win_get_cursor(win)
+  local old_line = cursor[1]
+  local in_guests = guests_header_line ~= nil
+    and guests_end_line ~= nil
+    and old_line >= guests_header_line
+    and old_line <= guests_end_line
+
+  guests_expanded = not guests_expanded
+  render(win, current_item, in_guests and nil or old_line)
+
+  if in_guests and guests_header_line ~= nil then
+    vim.api.nvim_win_set_cursor(win, { guests_header_line, 0 })
   end
 end
 

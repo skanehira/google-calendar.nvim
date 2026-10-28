@@ -3,46 +3,57 @@
 ==============================================================================
 CONTENTS                                             *google-calendar-contents*
 
-  1. 概要 ........................................... |google-calendar-intro|
-  2. 必須要件 ....................................... |google-calendar-requirements|
-  3. セットアップ ................................... |google-calendar-setup|
-  4. コマンド ....................................... |google-calendar-commands|
-  5. キーマップ ..................................... |google-calendar-keymaps|
-  6. 設定 ........................................... |google-calendar-config|
-  7. ハイライト ..................................... |google-calendar-highlights|
-  8. 表示と操作 ..................................... |google-calendar-behavior|
-  9. トラブルシューティング ......................... |google-calendar-troubleshooting|
+  1. Introduction ................................... |google-calendar-intro|
+  2. Requirements ................................... |google-calendar-requirements|
+  3. Setup .......................................... |google-calendar-setup|
+  4. Commands ....................................... |google-calendar-commands|
+  5. Keymaps ........................................ |google-calendar-keymaps|
+  6. Configuration .................................. |google-calendar-config|
+  7. Highlights ..................................... |google-calendar-highlights|
+  8. Behavior ....................................... |google-calendar-behavior|
+  9. Troubleshooting ................................ |google-calendar-troubleshooting|
 
 ==============================================================================
-1. 概要                                             *google-calendar-intro*
+1. Introduction                                     *google-calendar-intro*
 
-Neovim を離れずに Google カレンダーの月表示を開き、予定の確認・登録・
-更新・削除・Google Meet URL の付与を行うプラグインです。予定の取得と更新は
-`gws` に任せ、プラグインは Google Calendar API を直接呼びません。
+google-calendar.nvim lets you browse and manage Google Calendar without
+leaving Neovim. It renders a month view, a day agenda, and an event detail
+card in floating windows, and supports creating, updating, deleting, and
+managing Google Meet links.
 
-主な機能:
-  - 月表示（前月・翌月・今日への移動、選択日のハイライト）
-  - 日別アジェンダ（色付きドット、開始時刻、タイトル）
-  - 予定詳細（Google カレンダー風のカード、ゲストの折り畳み）
-  - 予定の登録・更新・削除
-  - 登録時の Google Meet URL 付与、詳細からの URL コピー
-  - 月データのメモリキャッシュ
+Calendar operations are delegated to `gws`; the plugin does not call the
+Google Calendar API directly.
 
-==============================================================================
-2. 必須要件                                       *google-calendar-requirements*
-
-  - Neovim 0.10 以上
-  - `gws` 0.22.5 以上がインストールされ、認証済みであること
-  - Google Calendar API が有効な Google アカウントで `gws auth login` を
-    実行済みであること
-
-`gws` が見つからない場合や未認証の場合は、プラグインはエラーを通知します。
-`gws` のインストールと認証は公式の手順に従ってください。
+Features:
+  - Month view with previous/next month navigation, today jump, and a
+    highlighted selected day
+  - Day agenda with colored dots, start times, and event titles
+  - Google Calendar-style event detail card with attendees, organizer,
+    description, and Meet URL
+  - Create, update, and delete events
+  - Add a Google Meet URL when creating an event, and copy it from the
+    detail view
+  - In-memory month cache for fast month navigation
+  - Configurable window sizes, keymaps, and highlight groups
 
 ==============================================================================
-3. セットアップ                                       *google-calendar-setup*
+2. Requirements                                   *google-calendar-requirements*
 
-lazy.nvim を使う場合:
+  - Neovim 0.10 or later
+  - `gws` 0.22.5 or later, installed and authenticated
+  - A Google account with the Google Calendar API enabled
+
+Run:
+>bash
+  gws auth login
+<
+If `gws` is missing or authentication fails, the plugin reports an error and
+does not open the calendar.
+
+==============================================================================
+3. Setup                                             *google-calendar-setup*
+
+With lazy.nvim:
 >lua
   {
     'skanehira/google-calendar.nvim',
@@ -51,120 +62,119 @@ lazy.nvim を使う場合:
     end,
   }
 <
-手動で runtimepath に追加する場合:
+With a manual runtimepath entry:
 >lua
   vim.opt.runtimepath:append('/path/to/google-calendar.nvim')
   require('google-calendar').setup()
 <
-`setup()` を呼ばなくても既定値で動作します。設定は最後に呼んだ `setup()` が
-有効になります。
+`setup()` is optional. The plugin works with its defaults if you do not call
+it.
 
-ヘルプファイルを追加した後、`doc/tags` が生成されていない場合は次を実行して
-ください:
+If you add the plugin to `runtimepath` manually, generate the help tags once:
 >vim
   :helptags doc
 <
 
 ==============================================================================
-4. コマンド                                         *google-calendar-commands*
+4. Commands                                         *google-calendar-commands*
 
 :GoogleCalendar                                    *:GoogleCalendar*
-  当月の月表示を開きます。既に開いている場合はキャッシュを使ってフォーカス
-  します。再取得は月表示の `r` / `R` で行います。
+  Open the current month. If the month view is already open, focus it and
+  reuse the cache. Press `r` or `R` in the month view to refetch.
 
 :GoogleCalendar {YYYY-MM}                          *:GoogleCalendar-month*
-  指定した年月の月表示を開きます。例: `:GoogleCalendar 2026-11`
-  不正な年月（例: `2026-13`）は通知して月表示を開きません。
+  Open the specified month. Example: `:GoogleCalendar 2026-11`
+  An invalid month such as `2026-13` reports an error and does not open the
+  month view.
 
 ==============================================================================
-5. キーマップ                                       *google-calendar-keymaps*
+5. Keymaps                                          *google-calendar-keymaps*
 
-すべてのキーは `setup()` の `keymaps` で上書きできます。`false` を指定すると
-そのキーを無効にします。
+Every key can be changed through `setup()`. Set a key to `false` to disable it.
 
-月表示 ~
-  h / l              前日 / 翌日を選択
-  k / j              前週 / 翌週を選択
-  H / L              前月 / 次月へ移動
-  t                  今日へ移動
-  <CR>               選択日の日別アジェンダを開く
-  a                  選択日の予定を登録する
-  r / R              表示中の月を再取得する
-  ?                  月表示のヘルプを開く
-  q / <Esc>          月表示を閉じる
+Month view ~
+  h / l              Select the previous / next day
+  k / j              Select the previous / next week
+  H / L              Go to the previous / next month
+  t                  Jump to today
+  <CR>               Open the day agenda for the selected day
+  a                  Create an event on the selected day
+  r / R              Refetch the displayed month
+  ?                  Open month view help
+  q / <Esc>          Close the month view
 
-日別アジェンダ ~
-  j / k              予定を選択
-  <CR>               予定詳細を開く
-  ?                  アジェンダのヘルプを開く
-  q / <Esc>          月表示に戻る
+Day agenda ~
+  j / k              Select an event
+  <CR>               Open the selected event
+  ?                  Open agenda help
+  q / <Esc>          Return to the month view
 
-予定詳細 ~
-  e                  更新フォームを開く
-  d                  削除確認を開く
-  y                  Meet URL をコピーする
-  g                  ゲスト一覧を折り畳み・展開する
-  ?                  詳細のヘルプを開く
-  q / <Esc>          アジェンダに戻る
+Event detail ~
+  e                  Open the update form
+  d                  Open the delete confirmation
+  y                  Copy the Meet URL
+  g                  Expand or collapse the guest list
+  ?                  Open detail help
+  q / <Esc>          Return to the agenda
 
-削除確認 ~
-  y                  予定を削除する
-  n / q / <Esc>      確認を閉じる（削除しない）
+Delete confirmation ~
+  y                  Delete the event
+  n / q / <Esc>      Close the confirmation without deleting
 
-登録・更新フォーム ~
-  <Tab> / <S-Tab>    次のフィールド / 前のフィールド
-  <CR>               テキストフィールドの編集を開始する
-  <Space>            終日・Meet のトグルを切り替える
-  <F2>               保存する
-  <Esc> / q          キャンセルする
-                     <Esc> は insert モードでは insert を抜けるだけ、
-                     normal モードでキャンセルします。`q` は normal のみです。
-  ?                  フォームのヘルプを開く
+Create / update form ~
+  <Tab> / <S-Tab>    Move to the next / previous field
+  <CR>               Start editing a text field
+  <Space>            Toggle all-day or Meet
+  <F2>               Save
+  <Esc> / q          Cancel. <Esc> leaves insert mode first; q works in
+                     normal mode only.
+  ?                  Open form help
 
-ヘルプ ~
-  q / <Esc>          ヘルプを閉じる
+Help ~
+  q / <Esc>          Close help
 
-フォームの保存の既定キーは `<F2>` です。`<C-s>` は herdr の prefix と衝突する
-ため使いません。
+The default save key is <F2>. <C-s> is not used because it conflicts with the
+herdr prefix.
 
 ==============================================================================
-6. 設定                                             *google-calendar-config*
+6. Configuration                                     *google-calendar-config*
 
-`setup()` に渡す主な設定と既定値:
+Options and defaults:
 >lua
   require('google-calendar').setup({
-    -- 表示するカレンダー。MVP は primary のみを想定
+    -- Calendar to display. The MVP targets the primary calendar only.
     calendars = { 'primary' },
 
-    -- 週の開始曜日。'sunday' または 'monday'
+    -- First day of the week: 'sunday' or 'monday'.
     week_start = 'sunday',
 
-    -- 1 セルに表示する予定の最大件数 (1〜10)
+    -- Maximum number of events shown in a month cell (1-10).
     max_events_per_cell = 3,
 
-    -- 月表示のサイズ (ボーダーを除く利用可能領域に対する割合)
+    -- Month view size as a ratio of the usable area (excluding the border).
+    -- 1.0 fills the available space.
     width = 0.7,
     height = 0.7,
 
-    -- 日別アジェンダ / 予定詳細のサイズ (同じく利用可能領域に対する割合)
+    -- Agenda and detail sizes as ratios of the usable area.
     agenda = { width = 0.5, height = 0.7 },
     detail = { width = 0.5, height = 0.5 },
 
-    -- 日時の表示形式
+    -- Date format.
     date_format = '%Y-%m-%d %H:%M',
 
-    -- gws の実行ファイル
+    -- Path or name of the gws executable.
     gws_cmd = 'gws',
 
-    -- 通知関数 (テストで差し替え可能)
+    -- Notification function (replaceable for tests).
     notify = vim.notify,
 
-    -- クリップボードへの書き込み関数 (テストで差し替え可能)
+    -- Clipboard writer (replaceable for tests).
     clipboard = function(url)
       vim.fn.setreg('+', url)
     end,
 
-    -- キーマップの上書き (画面ごとに指定。false で無効化)
+    -- Per-screen keymap overrides. Use false to disable a key.
     keymaps = {
       month = {
         prev_day = 'h',
@@ -205,14 +215,14 @@ lazy.nvim を使う場合:
       help = { close = 'q', esc_close = '<Esc>' },
     },
 
-    -- ハイライトの上書き
+    -- Highlight overrides.
     highlights = {},
   })
 <
-キーマップは既定値と深くマージされます。`false` を指定したキーは無効になり、
-未知の画面名・アクション名は警告のうえ無視されます。
+Keymaps are deep-merged with the defaults. Setting a key to `false` disables
+it; unknown screens or actions produce a warning and are ignored.
 
-例: フォームの保存キーを `<A-s>` に変え、月表示の `q` を無効にする:
+Example: change the save key and disable `q` in the month view:
 >lua
   require('google-calendar').setup({
     keymaps = {
@@ -221,84 +231,91 @@ lazy.nvim を使う場合:
     },
   })
 <
-`width` / `height` はボーダーを除く利用可能領域に対する割合です。月表示は
-余った高さを各週の予定行へ配分し、取得中と取得完了でサイズを変えません。
-アジェンダは既定で縦長（0.5 x 0.7）、詳細は 0.5 x 0.5 です。
+`width` and `height` are ratios of the usable area, excluding the float border.
+The month view distributes leftover height across the event rows of each week
+and keeps the same size while loading and after data arrives. The agenda
+defaults to a tall 0.5 x 0.7 window; the detail window defaults to 0.5 x 0.5.
 
 ==============================================================================
-7. ハイライト                                     *google-calendar-highlights*
+7. Highlights                                     *google-calendar-highlights*
 
-既定のハイライトグループ:
-  `GoogleCalendarHeader`          月タイトル・曜日ヘッダー
-  `GoogleCalendarToday`           今日の日付
-  `GoogleCalendarSelected`        選択中の日付・セル
-  `GoogleCalendarSunday`          日曜の日付
-  `GoogleCalendarSaturday`        土曜の日付
-  `GoogleCalendarOtherMonth`      前月・翌月の日付
-  `GoogleCalendarEvent`           予定チップの文字（背景なし）
-  `GoogleCalendarEventTime`       予定の時刻
-  `GoogleCalendarEventColor1`〜`GoogleCalendarEventColor11`
-                                  アジェンダの色付きドット（colorId 対応）
-  `GoogleCalendarDetailTitle`     詳細のタイトル
-  `GoogleCalendarDetailIcon`      詳細のセクションアイコン
-  `GoogleCalendarDetailMuted`     詳細の補助情報
-  `GoogleCalendarDetailMeet`      詳細の Meet URL
-  `GoogleCalendarDetailAccepted`  参加済みゲスト
-  `GoogleCalendarDetailPending`   返答待ち・仮のゲスト
-  `GoogleCalendarDetailDeclined`  辞退したゲスト
-  `GoogleCalendarBorder`          float のボーダー
-  `GoogleCalendarError`           フォーム内のエラー
+Default highlight groups:
+  `GoogleCalendarHeader`          Month title and weekday header
+  `GoogleCalendarToday`           Today's date
+  `GoogleCalendarSelected`        Selected day and cell
+  `GoogleCalendarSunday`          Sunday dates
+  `GoogleCalendarSaturday`        Saturday dates
+  `GoogleCalendarOtherMonth`      Dates from adjacent months
+  `GoogleCalendarEvent`           Event title text (no background)
+  `GoogleCalendarEventTime`       Event time
+  `GoogleCalendarEventColor1` through `GoogleCalendarEventColor11`
+                                  Agenda dot colors mapped from colorId
+  `GoogleCalendarDetailTitle`     Detail title
+  `GoogleCalendarDetailIcon`      Detail section icons
+  `GoogleCalendarDetailMuted`     Detail secondary text
+  `GoogleCalendarDetailMeet`      Meet URL in the detail view
+  `GoogleCalendarDetailAccepted`  Accepted guests
+  `GoogleCalendarDetailPending`   Pending or tentative guests
+  `GoogleCalendarDetailDeclined`  Declined guests
+  `GoogleCalendarBorder`          Float border
+  `GoogleCalendarError`           Form errors
 
-`setup({ highlights = { ... } })` で上書きできます。`false` を指定すると
-そのグループを無効化します。
-
-==============================================================================
-8. 表示と操作                                     *google-calendar-behavior*
-
-月表示 ~
-  - 選択中の日付はセル全体の `GoogleCalendarSelected` 背景と、ウィンドウ
-    タイトルの `選択: MM-DD` で示します。
-  - 月データはメモリにキャッシュされます。ウィンドウを閉じる、`r` / `R`、
-    予定の登録・更新・削除の後に再取得されます。
-  - 高さが足りない場合でも、選択中の週が見えるようにスクロールします。
-
-日別アジェンダ ~
-  - `● HH:MM タイトル` の 1 行リストです。終日は `● 終日 タイトル`。
-  - `colorId` に応じてドットの色が変わります。未指定時は青です。
-  - `status` が tentative、または `transparency` が transparent の予定は
-    `○` になります。
-  - 場所は表示しません。
-
-予定詳細 ~
-  - Google カレンダーの予定カード風に、タイトル・日時・場所・ゲスト・説明・
-    Meet URL・カレンダーを表示します。
-  - ゲストが 5 人を超える場合は折り畳んだ状態で開きます。`g` で開閉でき、
-    開閉時はカーソル位置を保持します。ゲスト行から折り畳む場合はゲスト
-    ヘッダーへ移動します。
-  - 説明は幅に合わせて折り返し、行数で切り詰めずに全行を表示します。
-    長い場合は詳細ウィンドウ内をスクロールして閲覧できます。
-  - `y` で Meet URL を `+` レジスタへコピーします。URL がない場合は通知します。
+Override any group with `setup({ highlights = { ... } })`. Set a group to
+`false` to disable it.
 
 ==============================================================================
-9. トラブルシューティング                 *google-calendar-troubleshooting*
+8. Behavior                                         *google-calendar-behavior*
 
-`gws` が見つからない ~
-  `gws` をインストールし、PATH が通っていることを確認してください。必要なら
-  `setup({ gws_cmd = '/path/to/gws' })` で実行ファイルを指定できます。
+Month view ~
+  - The selected day is shown with the `GoogleCalendarSelected` background
+    across the whole cell and in the month window title.
+  - Month data is cached in memory. The cache is cleared when the month window
+    closes, when you press `r` or `R`, and after creating, updating, or
+    deleting an event.
+  - If the window height is too small, the view scrolls so the selected week
+    stays visible.
 
-認証エラーになる ~
-  `gws auth login` を実行し、Google Calendar API が有効なアカウントで認証して
-  ください。
+Day agenda ~
+  - Each event uses a colored `●` or `○` dot, the start time, and the title.
+    All-day events use an all-day label.
+  - The dot color follows the event's `colorId`. Without a `colorId`, the dot
+    is blue.
+  - Events with `status == 'tentative'` or `transparency == 'transparent'` use
+    the hollow `○` dot.
+  - Locations are not shown in the agenda.
 
-月表示が狭すぎる ~
-  画面に対して `width` が小さすぎる、またはターミナル幅が狭すぎる場合は
-  「ウィンドウが狭すぎます」と通知して閉じます。`width` を大きくするか、
-  ターミナル幅を広げてください。
+Event detail ~
+  - The detail view uses a Google Calendar-style card with the title, date and
+    time, location, guests, description, Meet URL, and calendar.
+  - Guests are collapsed by default when there are more than five attendees.
+    Press `g` to expand or collapse them. The cursor stays in place when
+    toggling; collapsing from a guest row moves the cursor to the guest header.
+  - Descriptions wrap to the window width and are never truncated. Scroll the
+    detail window to read long descriptions.
+  - `y` copies the Meet URL to the `+` register. If the event has no Meet URL,
+    the plugin reports that instead.
 
-キーが効かない ~
-  `setup({ keymaps = { ... } })` の上書きを確認してください。`false` を指定
-  したキーは無効になります。詳細のゲスト開閉は `detail.toggle_guests`
-  （既定 `g`）です。
+==============================================================================
+9. Troubleshooting                           *google-calendar-troubleshooting*
+
+`gws` is not found ~
+  Install `gws` and make sure it is on PATH. You can also point the plugin at
+  an explicit executable:
+>lua
+  require('google-calendar').setup({ gws_cmd = '/path/to/gws' })
+<
+Authentication errors ~
+  Run `gws auth login` and authenticate with an account that has the Google
+  Calendar API enabled.
+
+The month view is too narrow ~
+  If the terminal is too narrow for the configured `width`, the plugin reports
+  that the window is too small and closes it. Increase `width` or widen the
+  terminal.
+
+Keys do not work ~
+  Check your `setup({ keymaps = { ... } })` overrides. Setting a key to `false`
+  disables it. The guest toggle is `detail.toggle_guests` (default `g`).
 
 ==============================================================================
 vim:tw=78:ts=8:ft=help:norl:

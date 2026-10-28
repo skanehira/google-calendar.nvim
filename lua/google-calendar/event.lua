@@ -35,10 +35,6 @@ local function parse_offset(value)
   return offset
 end
 
-local function local_offset()
-  return parse_offset(os.date('%z')) or 0
-end
-
 local function parse_rfc3339(value)
   local year, month, day, hour, minute, second, rest =
     value:match('^(%d%d%d%d)-(%d%d)-(%d%d)T(%d%d):(%d%d):(%d%d)(.*)$')
@@ -91,7 +87,7 @@ local function to_local_datetime(value, display_offset)
     hour = parsed.hour,
     min = parsed.minute,
     sec = parsed.second,
-  }) + local_offset() - parsed.offset
+  }) + (parse_offset(os.date('%z')) or 0) - parsed.offset
 
   -- os.date('!') は UTC として整形する。ローカル時刻のエポックを渡すことでタイムゾーン設定に依存しない
   local local_time = os.date('!*t', epoch + display_offset)
@@ -159,7 +155,7 @@ end
 
 function M.normalize(raw, opts)
   opts = opts or {}
-  local display_offset = local_offset()
+  local display_offset = parse_offset(os.date('%z')) or 0
   local model = {
     id = present(raw.id),
     summary = present(raw.summary),
@@ -225,7 +221,7 @@ function M.local_datetime(value, local_offset)
     hour = parsed.hour,
     min = parsed.minute,
     sec = parsed.second,
-  }) + local_offset() - parsed.offset
+  }) + (parse_offset(os.date('%z')) or 0) - parsed.offset
 
   local local_time = os.date('!*t', epoch + display_offset)
   return string.format('%04d-%02d-%02d', local_time.year, local_time.month, local_time.day),

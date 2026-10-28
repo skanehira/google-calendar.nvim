@@ -149,4 +149,53 @@ describe('event', function()
       assert.are.equal('終日 1行目 2行目', event.chip(item, 30, '+0900'))
     end)
   end)
+
+  describe('time_range', function()
+    it('時刻付き予定を開始時刻と終了時刻の範囲にする', function()
+      local item = build_event(
+        'evt-1',
+        '定例',
+        { dateTime = '2026-10-27T09:00:00+09:00' },
+        { dateTime = '2026-10-27T10:30:00+09:00' }
+      )
+
+      assert.are.equal('09:00-10:30', event.time_range(item, '+0900'))
+    end)
+
+    it('終日予定を終日にする', function()
+      local item = build_event('evt-2', '休み', { date = '2026-10-28' }, { date = '2026-10-29' })
+
+      assert.are.equal('終日', event.time_range(item, '+0900'))
+    end)
+  end)
+
+  describe('display_datetime', function()
+    it('時刻付きの日時を YYYY-MM-DD HH:MM の形式にする', function()
+      assert.are.equal('2026-10-27 09:00', event.display_datetime({ dateTime = '2026-10-27T09:00:00+09:00' }, '+0900'))
+    end)
+
+    it('終日予定の日付をそのまま返す', function()
+      assert.are.equal('2026-10-28', event.display_datetime({ date = '2026-10-28' }, '+0900'))
+    end)
+
+    it('時刻を持たない値には nil を返す', function()
+      assert.is_nil(event.display_datetime(nil, '+0900'))
+      assert.is_nil(event.display_datetime({}, '+0900'))
+    end)
+  end)
+
+  describe('description_lines', function()
+    it('説明の改行をそのまま行の配列にする', function()
+      assert.are.same({ '1行目', '2行目' }, event.description_lines('1行目\n2行目', 5))
+    end)
+
+    it('最大行数を超える説明は末尾に … を付けて切り詰める', function()
+      assert.are.same({ '1', '2', '3', '4', '5…' }, event.description_lines('1\n2\n3\n4\n5\n6\n7', 5))
+    end)
+
+    it('説明が空または無い場合は nil を返す', function()
+      assert.is_nil(event.description_lines('', 5))
+      assert.is_nil(event.description_lines(nil, 5))
+    end)
+  end)
 end)

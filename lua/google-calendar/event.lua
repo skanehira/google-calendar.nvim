@@ -250,6 +250,70 @@ function M.start_time(item, local_offset)
   return time
 end
 
+function M.end_time(item, local_offset)
+  local finish = item['end']
+  if type(finish) ~= 'table' or present(finish.dateTime) == nil then
+    return nil
+  end
+
+  local _, time = M.local_datetime(finish.dateTime, local_offset)
+  return time
+end
+
+function M.time_range(item, local_offset)
+  if M.is_all_day(item) then
+    return '終日'
+  end
+
+  local start = M.start_time(item, local_offset)
+  local finish = M.end_time(item, local_offset)
+  if start == nil then
+    return nil
+  end
+  if finish == nil then
+    return start
+  end
+
+  return start .. '-' .. finish
+end
+
+function M.display_datetime(time, local_offset)
+  if type(time) ~= 'table' then
+    return nil
+  end
+
+  local date = present(time.date)
+  if date ~= nil then
+    return date
+  end
+
+  local date_time = present(time.dateTime)
+  if date_time == nil then
+    return nil
+  end
+
+  local local_date, local_time = M.local_datetime(date_time, local_offset)
+  if local_date == nil then
+    return nil
+  end
+
+  return local_date .. ' ' .. local_time
+end
+
+function M.description_lines(description, max_lines)
+  if description == nil or description == '' then
+    return nil
+  end
+
+  local lines = vim.split(description, '\n', { plain = true })
+  if #lines > max_lines then
+    lines = vim.list_slice(lines, 1, max_lines)
+    lines[max_lines] = lines[max_lines] .. '…'
+  end
+
+  return lines
+end
+
 function M.sanitize(text)
   local sanitized = (text or ''):gsub('[\r\n]+', ' ')
   return sanitized

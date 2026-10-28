@@ -301,7 +301,7 @@ GOOGLE_WORKSPACE_CLI_CONFIG_DIR="$PWD/.local/gws-config" gws calendar calendarLi
 | フォーム | `?` | フォームのヘルプを開く |
 | ヘルプ | `q` / `<Esc>` | ヘルプを閉じる |
 
-キーマップは `setup({ keymaps = { ... } })` で画面ごとに上書きできる。`false` を指定するとそのキーを無効にする。すべての画面のキーは `config.keymaps.<screen>.<action>` から解決し、実装に直書きしない。ヘルプを閉じる `q` / `<Esc>` は `help.close` / `help.esc_close` で別々に変更・無効化できる。保存の既定キーは `<F2>`（`<C-s>` は herdr の prefix と衝突するため使わない）。
+キーマップは `setup({ keymaps = { ... } })` で画面ごとに上書きできる。`false` を指定するとそのキーを無効にする。すべての画面のキーは `config.keymaps.<screen>.<action>` から解決し、実装に直書きしない。ヘルプを閉じる `q` / `<Esc>` は `help.close` / `help.esc_close` で別々に変更・無効化できる。アジェンダ・詳細を閉じる `q` / `<Esc>` も `agenda.esc_close` / `detail.esc_close` で別々に変更・無効化できる。保存の既定キーは `<F2>`（`<C-s>` は herdr の prefix と衝突するため使わない）。
 
 **設定（`setup()`）**:
 
@@ -329,8 +329,8 @@ require('google-calendar').setup({
       prev_month = 'H', next_month = 'L', today = 't',
       agenda = '<CR>', create = 'a', refresh = 'r', help = '?', close = 'q',
     },
-    agenda = { next = 'j', prev = 'k', open = '<CR>', help = '?', close = 'q' },
-    detail = { edit = 'e', delete = 'd', copy_meet = 'y', help = '?', close = 'q' },
+    agenda = { next = 'j', prev = 'k', open = '<CR>', help = '?', close = 'q', esc_close = '<Esc>' },
+    detail = { edit = 'e', delete = 'd', copy_meet = 'y', help = '?', close = 'q', esc_close = '<Esc>' },
     form = {
       next_field = '<Tab>', prev_field = '<S-Tab>', edit = '<CR>',
       toggle = '<Space>', save = '<F2>', cancel = '<Esc>', help = '?',

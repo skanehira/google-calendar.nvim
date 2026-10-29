@@ -311,6 +311,7 @@ Create / update composer ~
     and description.
   - The guests row opens a guest editor. Enter one email address per line;
     duplicates are removed and invalid addresses are reported.
+  - The description editor opens at the same size as the main composer.
   - <Space> on the date/time row toggles between a timed event and an all-day
     event. <CR> or <Space> on the Meet row toggles Meet.
   - Save from the main composer with <F2>. Editor windows apply with <F2> and

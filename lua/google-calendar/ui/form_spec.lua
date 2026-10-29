@@ -269,6 +269,17 @@ describe('ui.form', function()
     assert.are.equal('☰ 議題1', form_lines()[8])
   end)
 
+  it('説明エディタはメインのコンポーザーと同じサイズで開く', function()
+    form.open_create()
+    local main_config = vim.api.nvim_win_get_config(state.windows.form)
+
+    open_editor(8)
+    local editor_config = vim.api.nvim_win_get_config(state.windows.form_editor)
+
+    assert.are.equal(main_config.width, editor_config.width)
+    assert.are.equal(main_config.height, editor_config.height)
+  end)
+
   it('Meet 行を <Space> で切り替える', function()
     form.open_create()
     select_line(6)

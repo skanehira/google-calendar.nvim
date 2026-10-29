@@ -423,12 +423,12 @@ local function set_editor_keymaps(buf)
   map('n', 'close', close_editor)
 end
 
-local function open_editor(kind, title, lines, height)
+local function open_editor(kind, title, lines, height, width)
   close_editor()
 
-  local width = editor_width()
+  width = width or editor_width()
   local row = math.max(0, math.floor((vim.o.lines - height - 2) / 2))
-  local col = math.max(0, math.floor((vim.o.columns - width - 2) / 2))
+  local col = math.max(0, math.floor((vim.o.columns - width) / 2))
   local win = window.open('form_editor', {
     width = width,
     height = height,
@@ -466,8 +466,7 @@ local function open_description_editor()
   if #lines == 0 then
     lines = { '' }
   end
-  local height = math.max(1, math.min(10, #lines))
-  open_editor('description', ' 説明 ', lines, height)
+  open_editor('description', ' 説明 ', lines, FORM_HEIGHT, form.width)
 end
 
 local function open_datetime_editor()

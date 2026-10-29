@@ -54,11 +54,12 @@ Google カレンダーの月表示を Neovim の float window に描画する。
 - float のサイズは、ボーダー 2 列/行を除いた利用可能領域に対する `config.width` / `config.height` の比率で決める（既定 0.7）。幅は `7 * cell_w + 6` に丸める。再描画時は現在のウィンドウ幅ではなく設定値から `cell_w` を計算し、予定の削除などで幅が変わらないようにする。高さは `1 + 6 週分の日付行 + 6 本の横線 + 6 * (max_events_per_cell + 1)` を最低限とし、余った高さを各週の空の予定行に配分する。取得中と取得完了でサイズは変わらない。画面に収まらない場合はスクロールする
 - セル幅は `cell_w = floor((target_width - 6) / 7)`。7 セルを `│` で区切り、各週の上に `─` / `┼` の横線を引いてセルのグリッドを作る
 - 各週は「日付行 1 行 + 予定行 `max_events_per_cell + 1` 行」のブロック。予定行は常に `max_events_per_cell + 1` 行描画し（予定がない週も空行で埋める）、7 セル分のチャンクを横に並べる。これにより取得中と取得完了でウィンドウの高さが変わらない
-- 日付行は ` 1`〜`31` の右寄せ。今日は `GoogleCalendarToday`、選択日は `GoogleCalendarSelected`（セル全体・目立つ背景・bold）、日曜は `GoogleCalendarSunday`、土曜は `GoogleCalendarSaturday`、前月・翌月は `GoogleCalendarOtherMonth` でハイライトする
+- 日付行は ` 1`〜`31` の右寄せ。今日は `GoogleCalendarToday`、選択日は `GoogleCalendarSelected`（目立つ背景・bold）、日曜は `GoogleCalendarSunday`、土曜は `GoogleCalendarSaturday`、前月・翌月は `GoogleCalendarOtherMonth` でハイライトする
 - ウィンドウの高さは「ヘッダー 1 行 + 6 週分の日付行 + 6 本の横線 + 6 * (max_events_per_cell + 1) 行」の固定値。幅は 7 セル + 6 本の区切り線に合わせる。右側に空白を残さない
-- 月タイトルは `FloatTitle`、float のボーダーは `FloatBorder` を `winhl` で `GoogleCalendarHeader` / `GoogleCalendarBorder` に割り当てる。予定チップは `GoogleCalendarEvent`（既定は属性なし）で文字を表示し、背景は付けない
-- 選択中のセルは、日付行と予定行を含むセル全体を `GoogleCalendarSelected` の背景でハイライトする。ウィンドウタイトルにも `選択: MM-DD` を表示する
-- 予定チップは `HH:MM タイトル`。終日予定は `終日 タイトル`。タイトルはセル幅に合わせて `…` で切り詰める
+- 月タイトルは `FloatTitle`、float のボーダーは `FloatBorder` を `winhl` で `GoogleCalendarHeader` / `GoogleCalendarBorder` に割り当てる
+- 選択中のセルは `GoogleCalendarSelected` の背景でハイライトする。予定バー・ドットはカレンダー色を保つ。ウィンドウタイトルにも `選択: MM-DD` を表示する
+- 予定チップは Google カレンダー風に表示する。終日・複数日予定はカレンダー色のバー（白文字、時刻付き複数日は `HH:MM タイトル`）、単日の時刻付き予定はカレンダー色の `●` / `○` ドット＋`HH:MM`＋タイトル。タイトルはセル幅に合わせて `…` で切り詰める
+- カレンダー色は `config.calendars` の順に 11 色を自動割り当てする（12 件目以降は先頭に戻る）。`GoogleCalendarCalendarColorN` がドット、`GoogleCalendarCalendarBgN` がバー背景
 - 予定が `max_events_per_cell` を超える日は、`max_events_per_cell` 件までを表示し、最後の行に `+N` を表示する
 - 予定がない日もセルの高さを固定するため、空の予定行を `max_events_per_cell + 1` 行描画する
 - ヘッダーに `読み込み中...` を表示し、取得中はキー操作を無視する

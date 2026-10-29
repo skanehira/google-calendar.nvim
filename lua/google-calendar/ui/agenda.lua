@@ -2,6 +2,7 @@ local config = require('google-calendar.config')
 local event = require('google-calendar.event')
 local state = require('google-calendar.state')
 local window = require('google-calendar.ui.window')
+local calendar_color = require('google-calendar.ui.calendar_color')
 
 local M = {}
 
@@ -32,20 +33,6 @@ local function current_events()
   return state.events_by_date[state.selected_date] or {}
 end
 
-local EVENT_COLOR_GROUPS = {
-  [1] = 'GoogleCalendarEventColor1',
-  [2] = 'GoogleCalendarEventColor2',
-  [3] = 'GoogleCalendarEventColor3',
-  [4] = 'GoogleCalendarEventColor4',
-  [5] = 'GoogleCalendarEventColor5',
-  [6] = 'GoogleCalendarEventColor6',
-  [7] = 'GoogleCalendarEventColor7',
-  [8] = 'GoogleCalendarEventColor8',
-  [9] = 'GoogleCalendarEventColor9',
-  [10] = 'GoogleCalendarEventColor10',
-  [11] = 'GoogleCalendarEventColor11',
-}
-
 local function event_dot(item)
   if item.status == 'tentative' or item.transparency == 'transparent' then
     return '○'
@@ -54,8 +41,7 @@ local function event_dot(item)
 end
 
 local function event_color(item)
-  local color_id = tonumber(item.colorId)
-  return EVENT_COLOR_GROUPS[color_id] or 'GoogleCalendarEventColor7'
+  return calendar_color.dot_group(item.calendar_id)
 end
 
 local function build_lines(events, width)

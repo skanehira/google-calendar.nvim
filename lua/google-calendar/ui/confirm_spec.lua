@@ -145,8 +145,8 @@ local function row(...)
   return table.concat(padded, '│')
 end
 
-local WEEK_5_WITH_EVENT = row('', '', ' 09:00 定例', ' 終日 終日', ' 13:00 Meet…', '', '')
-local WEEK_5_AFTER_DELETE = row('', '', '', ' 終日 終日', ' 13:00 Meet…', '', '')
+local WEEK_5_WITH_EVENT = row('', '', ' ● 09:00 定…', ' 終日', ' ● 13:00 Me…', '', '')
+local WEEK_5_AFTER_DELETE = row('', '', '', ' 終日', ' ● 13:00 Me…', '', '')
 
 local function full_event()
   return {

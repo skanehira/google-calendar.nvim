@@ -25,10 +25,11 @@ Calendar operations are delegated to `gws`; the plugin does not call the
 Google Calendar API directly.
 
 Features:
-  - Month view with previous/next month navigation, today jump, and a
-    highlighted selected day
+  - Month view with previous/next month navigation, today jump, a highlighted
+    selected day, and Google Calendar-style event bars and dots
   - Day agenda with colored dots, start times, and event titles
   - Events from multiple configured calendars, merged into one month view
+    with automatically assigned calendar colors
   - Google Calendar-style event detail card with attendees, organizer,
     description, and Meet URL
   - Create, update, and delete events
@@ -277,8 +278,10 @@ Default highlight groups:
   `GoogleCalendarOtherMonth`      Dates from adjacent months
   `GoogleCalendarEvent`           Event title text (no background)
   `GoogleCalendarEventTime`       Event time
-  `GoogleCalendarEventColor1` through `GoogleCalendarEventColor11`
-                                  Agenda dot colors mapped from colorId
+  `GoogleCalendarCalendarColor1` through `GoogleCalendarCalendarColor11`
+                                  Calendar dot colors, assigned by calendars order
+  `GoogleCalendarCalendarBg1` through `GoogleCalendarCalendarBg11`
+                                  Calendar event bar backgrounds
   `GoogleCalendarDetailTitle`     Detail title
   `GoogleCalendarDetailIcon`      Detail section icons
   `GoogleCalendarDetailMuted`     Detail secondary text
@@ -305,7 +308,12 @@ Month view ~
     month view. The first calendar is used for new events; updates and deletes
     use the event's own calendar ID.
   - The selected day is shown with the `GoogleCalendarSelected` background
-    across the whole cell and in the month window title.
+    across the cell and in the month window title. Event bars and dots keep
+    their calendar colors.
+  - Month cells use Google Calendar-style event chips: all-day and multi-day
+    events are colored bars with white text, and single-day timed events are a
+    colored dot followed by the start time and title. Calendar colors are
+    assigned automatically from the order of `calendars` (11 colors, wrapping).
   - Month grid separators use the same `GoogleCalendarBorder` highlight for
     both horizontal and vertical lines.
   - Month data is cached in memory. The cache is cleared when the month window
@@ -317,8 +325,8 @@ Month view ~
 Day agenda ~
   - Each event uses a colored `●` or `○` dot, the start time, and the title.
     All-day events use an all-day label.
-  - The dot color follows the event's `colorId`. Without a `colorId`, the dot
-    is blue.
+  - The dot color follows the event's calendar color, assigned automatically
+    from the order of `calendars`.
   - Events with `status == 'tentative'` or `transparency == 'transparent'` use
     the hollow `○` dot.
   - Locations are not shown in the agenda.

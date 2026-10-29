@@ -398,6 +398,82 @@ describe('ui.month_view', function()
     assert.are.same({ 'primary', 'work@example.com' }, event_calendar_ids)
   end)
 
+  it(
+    '終日・複数日予定はカレンダー色のバー、単日予定は色付きドットで表示する',
+    function()
+      plugin.setup({
+        notify = notify,
+        width = 1.0,
+        height = 1.0,
+        calendars = { 'primary', 'work@example.com' },
+        gws_cmd = repo_root .. '/tests/fixtures/fake-gws.py',
+      })
+      gws_handler = function(opts, cb)
+        if opts.calendar_id == 'primary' then
+          cb(
+            event.normalize_list({
+              {
+                id = 'evt-all-day',
+                summary = '休み',
+                start = { date = '2026-10-28' },
+                ['end'] = { date = '2026-10-29' },
+              },
+              {
+                id = 'evt-timed',
+                summary = '定例',
+                start = { dateTime = '2026-10-28T09:00:00+09:00' },
+                ['end'] = { dateTime = '2026-10-28T10:00:00+09:00' },
+              },
+            }, { calendar_id = 'primary' }),
+            nil
+          )
+        else
+          cb(
+            event.normalize_list({
+              {
+                id = 'evt-multiday',
+                summary = '旅行',
+                start = { dateTime = '2026-10-28T12:00:00+09:00' },
+                ['end'] = { dateTime = '2026-10-29T13:00:00+09:00' },
+              },
+            }, { calendar_id = 'work@example.com' }),
+            nil
+          )
+        end
+      end
+
+      run_command('2026-10')
+      wait_loading()
+
+      local rows = assert(virt_lines(5))
+      local function all_chunks()
+        local chunks = {}
+        for _, event_row in ipairs(rows) do
+          for _, chunk in ipairs(event_row) do
+            table.insert(chunks, chunk)
+          end
+        end
+        return chunks
+      end
+
+      local chunks = all_chunks()
+      local calendar_color = require('google-calendar.ui.calendar_color')
+      local function has_chunk_containing(text, group)
+        for _, chunk in ipairs(chunks) do
+          if chunk[1]:find(text, 1, true) ~= nil and chunk[2] == group then
+            return true
+          end
+        end
+        return false
+      end
+
+      assert.is_true(has_chunk_containing('休み', calendar_color.bar_group('primary')))
+      assert.is_true(has_chunk_containing('旅行', calendar_color.bar_group('work@example.com')))
+      assert.is_true(has_chunk(chunks, '●', calendar_color.dot_group('primary')))
+      assert.is_true(has_chunk(chunks, '定…', 'GoogleCalendarEvent'))
+    end
+  )
+
   it(':GoogleCalendar YYYY-MM が指定月の月表示を開く', function()
     run_command('2026-11')
     wait_loading()
@@ -429,13 +505,14 @@ describe('ui.month_view', function()
 
       local rows = assert(virt_lines(5))
       assert.are.equal(4, #rows)
-      assert.are.equal(row('', '', ' 12:00 定例', ' 12:00 会議1', '', '', ''), chunks_text(rows[1]))
-      assert.are.equal(row('', '', '', ' 13:00 会議2', '', '', ''), chunks_text(rows[2]))
-      assert.are.equal(row('', '', '', ' 14:00 会議3', '', '', ''), chunks_text(rows[3]))
+      assert.are.equal(row('', '', ' ● 12:00 定…', ' ● 12:00 会…', '', '', ''), chunks_text(rows[1]))
+      assert.are.equal(row('', '', '', ' ● 13:00 会…', '', '', ''), chunks_text(rows[2]))
+      assert.are.equal(row('', '', '', ' ● 14:00 会…', '', '', ''), chunks_text(rows[3]))
       assert.are.equal(row('', '', '', ' +2', '', '', ''), chunks_text(rows[4]))
       assert.are.equal(4, #assert(virt_lines(1)))
-      assert.is_true(has_chunk(rows[1], ' 12:00 ', 'GoogleCalendarEventTime'))
-      assert.is_true(has_chunk(rows[1], '定例', 'GoogleCalendarEvent'))
+      assert.is_true(has_chunk(rows[1], '●', 'GoogleCalendarCalendarColor1'))
+      assert.is_true(has_chunk(rows[1], ' 12:00 ', 'GoogleCalendarEvent'))
+      assert.is_true(has_chunk(rows[1], '定…', 'GoogleCalendarEvent'))
       assert.is_true(has_chunk(rows[4], ' +2', 'GoogleCalendarSelected'))
     end
   )
@@ -450,7 +527,7 @@ describe('ui.month_view', function()
 
     local rows = assert(virt_lines(5))
     assert.are.equal(4, #rows)
-    assert.are.equal(row('', '', ' 12:00 定例', '', '', '', ''), chunks_text(rows[1]))
+    assert.are.equal(row('', '', ' ● 12:00 定…', '', '', '', ''), chunks_text(rows[1]))
     for index = 2, 4 do
       assert.are.equal(row('', '', '', '', '', '', ''), chunks_text(rows[index]))
     end
@@ -684,9 +761,9 @@ describe('ui.month_view', function()
     assert.is_true(has_highlight('GoogleCalendarSelected', 5, 45))
 
     local rows = assert(virt_lines(5))
-    assert.is_true(has_chunk(rows[1], '定例', 'GoogleCalendarEvent'))
+    assert.is_true(has_chunk(rows[1], '定…', 'GoogleCalendarEvent'))
     for index, chunk in ipairs(rows[1]) do
-      if chunk[1] == '定例' and chunk[2] == 'GoogleCalendarEvent' then
+      if chunk[1] == '定…' and chunk[2] == 'GoogleCalendarEvent' then
         assert.are.equal('GoogleCalendarEvent', rows[1][index + 1][2])
       end
     end
@@ -1050,9 +1127,13 @@ describe('ui.month_view', function()
     for _, event_row in ipairs(rows) do
       local cells = cell_chunks(event_row)
       -- 2026-10-28 は水曜 (日曜始まりで 4 番目)
+      local selected_chunks = 0
       for _, chunk in ipairs(cells[4]) do
-        assert.are.equal('GoogleCalendarSelected', chunk[2])
+        if chunk[2] == 'GoogleCalendarSelected' then
+          selected_chunks = selected_chunks + 1
+        end
       end
+      assert.is_true(selected_chunks > 0)
       for _, chunk in ipairs(cells[5]) do
         assert.are_not.equal('GoogleCalendarSelected', chunk[2])
       end

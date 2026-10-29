@@ -208,10 +208,10 @@ nvim --headless -u tests/minimal_init.lua \
 
 実測値:
 
-- `make test`: 265 tests passed / 0 failed / 0 errors、exit 0
+- `make test`: 269 tests passed / 0 failed / 0 errors、exit 0
 - `make test-file FILE=lua/google-calendar/config_spec.lua`: 17 tests passed、exit 0
 - `make test-file FILE=lua/google-calendar/gws_spec.lua`: 17 tests passed、exit 0
-- `XDG_STATE_HOME="$PWD/.tmp-state" make test`: 265 tests passed、exit 0
+- `XDG_STATE_HOME="$PWD/.tmp-state" make test`: 269 tests passed、exit 0
 - `make test TEST_DIR=<空ディレクトリ>`: exit 2、`spec が 0 件です` を出力（0 件のまま成功しない）
 
 `TEST_DIR` は既定 `lua/`。spec は実装ファイルの隣 (`lua/**/*_spec.lua`) に置く。テストハーネスの spec も `lua/google-calendar/test_harness_spec.lua` に置き、`make test` の走査対象に含める。E2E の spec は `tests/e2e/` に置き、`make test-e2e` で実行する。
@@ -464,9 +464,10 @@ stdpath('data')/google-calendar.nvim/config.json
 | `GoogleCalendarSunday` | 日曜の日付 |
 | `GoogleCalendarSaturday` | 土曜の日付 |
 | `GoogleCalendarOtherMonth` | 前月・翌月の日付 |
-| `GoogleCalendarEvent` | 予定チップの文字（既定は属性なし。背景は付けない） |
+| `GoogleCalendarEvent` | 単日の時刻付き予定の文字（既定は属性なし） |
 | `GoogleCalendarEventTime` | 予定の時刻 |
-| `GoogleCalendarEventColor1`〜`GoogleCalendarEventColor11` | アジェンダの色付きドット（`colorId` に対応） |
+| `GoogleCalendarCalendarColor1`〜`GoogleCalendarCalendarColor11` | カレンダーごとの色付きドット（`calendars` の順に自動割り当て） |
+| `GoogleCalendarCalendarBg1`〜`GoogleCalendarCalendarBg11` | カレンダーごとの予定バー背景（`calendars` の順に自動割り当て） |
 | `GoogleCalendarDetailTitle` | 詳細のタイトル |
 | `GoogleCalendarDetailIcon` | 詳細のセクションアイコン |
 | `GoogleCalendarDetailMuted` | 詳細の補助情報 |
@@ -497,8 +498,9 @@ stdpath('data')/google-calendar.nvim/config.json
 - 月表示は画面の利用可能領域に対する `width` / `height`（既定 0.7）でサイズを決める。各週は最低 `max_events_per_cell + 1` 行を確保し、余った高さを空の予定行に配分する。取得中と取得完了でサイズを変えない。アジェンダは `agenda` の `width` / `height`（既定 0.5 / 0.7）で縦長にし、詳細は `detail` の `width` / `height`（既定 0.5）でサイズを決める。フォーム・ヘルプ・確認は内容に合わせる
 - 予定詳細は Google カレンダーの予定カード風に、アイコン付きのセクション（タイトル・日時・場所・ゲスト・説明・カレンダー）で表示する。ゲストの参加状況は `✓` / `○` / `?` / `✕` で示し、主催者には `主催者` を付ける。ゲストが 5 人を超える場合は折り畳んだ状態で開き、`g` で展開・折り畳みを切り替える
 - 予定の登録・更新は Google カレンダーの作成ダイアログ風のメインウィンドウと、タイトル・日時・場所・説明・ゲスト用の個別エディタウィンドウを組み合わせて表示する。説明エディタはメインウィンドウと同じサイズで開く。アイコンは表示幅2文字に揃え、説明文を同じ列から開始する
-- 日別アジェンダは予定ごとに色付きの `●` / `○` ドット、開始時刻、タイトルを 1 行で表示する。場所は表示しない。仮・終日以外の空き予定は `○` にする
-- 選択中の日付は、日付行と予定行を含むセル全体を `GoogleCalendarSelected` の目立つ背景で示す（今日の `GoogleCalendarToday` と重なっても選択が分かるようにする）。ウィンドウタイトルの `選択: MM-DD` でも示す
+- 日別アジェンダは予定ごとにカレンダー色の `●` / `○` ドット、開始時刻、タイトルを 1 行で表示する。場所は表示しない。仮・終日以外の空き予定は `○` にする
+- 選択中の日付は `GoogleCalendarSelected` の目立つ背景で示し、予定バー・ドットはカレンダー色を保つ（今日の `GoogleCalendarToday` と重なっても選択が分かるようにする）。ウィンドウタイトルの `選択: MM-DD` でも示す
+- 月表示の予定は Google カレンダー風に、終日・複数日予定はカレンダー色のバー（白文字）、単日の時刻付き予定はカレンダー色の `●` / `○` ドット＋開始時刻＋タイトルで表示する。色は `calendars` の順に 11 色を自動割り当てし、12 件目以降は先頭に戻る
 - 月グリッドは `│` の縦線に加えて、各週の上に `─` / `┼` の横線を引いてセルを区切る
 - insert モードの `<Esc>` は insert を抜けるだけにし、normal モードでキャンセルする（Vim の慣習に合わせる）
 - 画面を開いたら、実際のターミナルで代表データ（予定が多い日・長いタイトル・日本語）を使ってキー操作とスクリーンショットを確認する

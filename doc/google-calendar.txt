@@ -157,8 +157,8 @@ Options and defaults:
     -- First day of the week: 'sunday' or 'monday'.
     week_start = 'sunday',
 
-    -- Maximum number of events shown in a month cell (1-10).
-    max_events_per_cell = 3,
+    -- Maximum number of events shown in a month cell (1-10, default 7).
+    max_events_per_cell = 7,
 
     -- Month view size as a ratio of the usable area (excluding the border).
     -- 1.0 fills the available space.
@@ -317,6 +317,8 @@ Month view ~
     events are colored bars with white text, and single-day timed events are a
     colored dot followed by the start time and title. Multi-day bars continue
     across adjacent day cells and week rows instead of restarting in each cell.
+    Their titles are truncated to the width of the whole bar, not to a single
+    cell.
     Calendar colors are assigned automatically from the order of `calendars`
     (11 colors, wrapping).
   - Month grid separators use the same `GoogleCalendarBorder` highlight for

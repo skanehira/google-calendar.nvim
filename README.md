@@ -111,8 +111,8 @@ require('google-calendar').setup({
   -- First day of the week: 'sunday' or 'monday'.
   week_start = 'sunday',
 
-  -- Maximum number of events shown in a month cell (1-10).
-  max_events_per_cell = 3,
+  -- Maximum number of events shown in a month cell (1-10, default 7).
+  max_events_per_cell = 7,
 
   -- Month view size as a ratio of the usable area (excluding the border).
   -- 1.0 fills the available space.
@@ -263,7 +263,7 @@ Override any group with `setup({ highlights = { ... } })`. Set a group to `false
 
 - Events from every calendar in `calendars` are fetched and merged into the month view. The first calendar is used for new events; updates and deletes use the event's own calendar ID.
 - The selected day is shown with an orange, bold double-line frame around the cell (`GoogleCalendarSelectedBorder`) and an orange date number (`GoogleCalendarSelected`). The cell background is not filled; event bars and dots keep their calendar colors. The month window title also shows `選択: MM-DD`.
-- Month cells use Google Calendar-style event chips: all-day and multi-day events are colored bars with white text, and single-day timed events are a colored `●` / `○` dot followed by the start time and title. Multi-day bars continue across adjacent day cells and week rows instead of restarting in each cell. Calendar colors are assigned automatically from the order of `calendars` (11 colors, wrapping).
+- Month cells use Google Calendar-style event chips: all-day and multi-day events are colored bars with white text, and single-day timed events are a colored `●` / `○` dot followed by the start time and title. Multi-day bars continue across adjacent day cells and week rows instead of restarting in each cell. Their titles are truncated to the width of the whole bar, not to a single cell. Calendar colors are assigned automatically from the order of `calendars` (11 colors, wrapping).
 - Month grid separators use the same `GoogleCalendarBorder` highlight for both horizontal and vertical lines.
 - Month data is cached in memory. The cache is cleared when the month window closes, when you press `r` or `R`, and after creating, updating, or deleting an event.
 - While loading, the month header shows `読み込み中...` but navigation, refresh, opening the agenda/form/help, and closing remain available. Only the latest fetch result is rendered.

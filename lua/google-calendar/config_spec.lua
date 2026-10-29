@@ -119,7 +119,7 @@ describe('config', function()
     local cfg = config.get()
     assert.are.same({ 'primary' }, cfg.calendars)
     assert.are.equal('sunday', cfg.week_start)
-    assert.are.equal(3, cfg.max_events_per_cell)
+    assert.are.equal(7, cfg.max_events_per_cell)
     assert.are.equal(0.7, cfg.width)
     assert.are.equal(0.7, cfg.height)
     assert.are.same({ width = 0.5, height = 0.7 }, cfg.agenda)
@@ -321,10 +321,10 @@ describe('config', function()
       end,
     })
 
-    assert.are.equal(3, config.get().max_events_per_cell)
+    assert.are.equal(7, config.get().max_events_per_cell)
     assert.are.same({
       {
-        msg = 'google-calendar.nvim: max_events_per_cell must be between 1 and 10. Using the default 3.',
+        msg = 'google-calendar.nvim: max_events_per_cell must be between 1 and 10. Using the default 7.',
         level = vim.log.levels.WARN,
       },
     }, messages)

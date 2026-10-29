@@ -611,17 +611,40 @@ function M.render(win, view)
   local layout = M.compute_layout(vim.o.columns, vim.o.lines, config.get())
   window.resize(win, layout.win_width, layout.win_height)
 
-  -- 高さが足りない場合でも選択中の週が見えるようにスクロール位置を合わせる
+  -- 選択中の週の予定行がすべて見えるようにスクロール位置を合わせる
   local selected_line = 1
+  local selected_week_index = 1
   for week_index, week in ipairs(view.weeks) do
     for _, cell in ipairs(week.cells) do
       if cell.date == state.selected_date then
         selected_line = week_index + 1
+        selected_week_index = week_index
         break
       end
     end
     if selected_line > 1 then
       break
+    end
+  end
+  vim.api.nvim_win_set_cursor(win, { selected_line, 0 })
+
+  local win_height = vim.api.nvim_win_get_height(win)
+  local event_rows = #view.weeks[selected_week_index].event_rows
+  local desired_winline = math.max(1, win_height - event_rows)
+  local current_winline = vim.api.nvim_win_call(win, function()
+    return vim.fn.winline()
+  end)
+  if current_winline > desired_winline then
+    for _ = 1, current_winline - desired_winline do
+      vim.api.nvim_win_call(win, function()
+        vim.cmd('normal! ' .. string.char(5))
+      end)
+    end
+  elseif current_winline < desired_winline then
+    for _ = 1, desired_winline - current_winline do
+      vim.api.nvim_win_call(win, function()
+        vim.cmd('normal! ' .. string.char(25))
+      end)
     end
   end
   vim.api.nvim_win_set_cursor(win, { selected_line, 0 })

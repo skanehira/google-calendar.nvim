@@ -108,8 +108,15 @@ local function month_buf()
   return vim.api.nvim_win_get_buf(state.windows.month)
 end
 
+local function header_text()
+  local winbar = vim.wo[state.windows.month].winbar or ''
+  return (winbar:gsub('%%#[^#]*#', ''))
+end
+
 local function buffer_lines()
-  return vim.api.nvim_buf_get_lines(month_buf(), 0, -1, false)
+  local lines = vim.api.nvim_buf_get_lines(month_buf(), 0, -1, false)
+  table.insert(lines, 1, header_text())
+  return lines
 end
 
 local function window_title()
@@ -132,7 +139,7 @@ end
 
 local function virt_lines(row)
   for _, mark in ipairs(month_marks()) do
-    if mark[2] == row and mark[4].virt_lines ~= nil then
+    if mark[2] == row - 1 and mark[4].virt_lines ~= nil then
       return mark[4].virt_lines
     end
   end
@@ -279,6 +286,19 @@ describe('ui.month_view', function()
     end
   )
 
+  it('曜日ヘッダーは winbar に固定され、日を移動しても表示され続ける', function()
+    run_command()
+    wait_loading()
+
+    local win = state.windows.month
+    local winbar = vim.wo[win].winbar
+    assert.is_true(winbar:find('GoogleCalendarHeader', 1, true) ~= nil)
+    assert.is_true(winbar:find('日', 1, true) ~= nil)
+
+    feed('j')
+    assert.are.equal(winbar, vim.wo[win].winbar)
+  end)
+
   it('q で float を閉じ、元のウィンドウへフォーカスが戻る', function()
     local parent = vim.api.nvim_get_current_win()
     run_command()
@@ -330,15 +350,15 @@ describe('ui.month_view', function()
     assert.are.equal(10, state.month)
     assert.are.equal('2026-10-28', state.selected_date)
     assert.are.equal(' Google Calendar — 2026年10月 — 選択: 10-28 ', window_title())
-    assert.is_true(has_highlight('GoogleCalendarToday', 5, 55))
-    assert.is_true(has_highlight('GoogleCalendarSelected', 5, 55))
+    assert.is_true(has_highlight('GoogleCalendarToday', 4, 55))
+    assert.is_true(has_highlight('GoogleCalendarSelected', 4, 55))
   end)
 
   it('縦線を横線と同じ GoogleCalendarBorder でハイライトする', function()
     run_command('2026-10')
     wait_loading()
 
-    local lines = buffer_lines()
+    local lines = vim.api.nvim_buf_get_lines(month_buf(), 0, -1, false)
     for line_number = 1, 3 do
       local line = lines[line_number]
       local init = 1
@@ -671,7 +691,7 @@ describe('ui.month_view', function()
     for _, mark in ipairs(month_marks()) do
       if mark[4].virt_lines ~= nil and mark[4].virt_lines_above ~= true then
         assert.are.equal(4, #mark[4].virt_lines)
-        local expected = mark[2] == 5 and row_with_frame({ '', '', '', '', '', '', '' }, 4)
+        local expected = mark[2] == 4 and row_with_frame({ '', '', '', '', '', '', '' }, 4)
           or row('', '', '', '', '', '', '')
         for _, event_row in ipairs(mark[4].virt_lines) do
           assert.are.equal(expected, chunks_text(event_row))
@@ -879,11 +899,11 @@ describe('ui.month_view', function()
 
     local win = state.windows.month
     assert.are.equal('FloatBorder:GoogleCalendarBorder,FloatTitle:GoogleCalendarHeader', vim.wo[win].winhl)
-    assert.is_true(has_highlight('GoogleCalendarHeader', 0, 0))
-    assert.is_true(has_highlight('GoogleCalendarSunday', 2, 11))
-    assert.is_true(has_highlight('GoogleCalendarSaturday', 1, 101))
-    assert.is_true(has_highlight('GoogleCalendarOtherMonth', 1, 10))
-    assert.is_true(has_highlight('GoogleCalendarSelected', 5, 55))
+    assert.is_true(vim.wo[state.windows.month].winbar:find('GoogleCalendarHeader', 1, true) ~= nil)
+    assert.is_true(has_highlight('GoogleCalendarSunday', 1, 11))
+    assert.is_true(has_highlight('GoogleCalendarSaturday', 0, 101))
+    assert.is_true(has_highlight('GoogleCalendarOtherMonth', 0, 10))
+    assert.is_true(has_highlight('GoogleCalendarSelected', 4, 55))
 
     local rows = assert(virt_lines(5))
     assert.is_true(has_chunk(rows[1], '定…', 'GoogleCalendarEvent'))
@@ -1152,7 +1172,7 @@ describe('ui.month_view', function()
     assert.are.equal(0, win_config.col)
 
     assert.are.equal(5, #assert(virt_lines(1)))
-    assert.are.equal(6, vim.api.nvim_win_get_cursor(state.windows.month)[1])
+    assert.are.equal(5, vim.api.nvim_win_get_cursor(state.windows.month)[1])
 
     local small = month_view.compute_layout(120, 40, {
       width = 0.8,
@@ -1259,6 +1279,6 @@ describe('ui.month_view', function()
     local win = state.windows.month
     assert.are.equal(26, vim.api.nvim_win_get_config(win).height)
     assert.are.equal('2026-10-28', state.selected_date)
-    assert.are.equal(6, vim.api.nvim_win_get_cursor(win)[1])
+    assert.are.equal(5, vim.api.nvim_win_get_cursor(win)[1])
   end)
 end)

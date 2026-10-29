@@ -55,7 +55,7 @@ Google カレンダーの月表示を Neovim の float window に描画する。
 - セル幅は `cell_w = floor((target_width - 6) / 7)`。7 セルを `│` で区切り、各週の上に `─` / `┼` の横線を引いてセルのグリッドを作る
 - 各週は「日付行 1 行 + 予定行 `max_events_per_cell + 1` 行」のブロック。予定行は常に `max_events_per_cell + 1` 行描画し（予定がない週も空行で埋める）、7 セル分のチャンクを横に並べる。これにより取得中と取得完了でウィンドウの高さが変わらない
 - 日付行は ` 1`〜`31` の右寄せ。今日は `GoogleCalendarToday`、選択日は `GoogleCalendarSelected`（オレンジ・bold）、日曜は `GoogleCalendarSunday`、土曜は `GoogleCalendarSaturday`、前月・翌月は `GoogleCalendarOtherMonth` でハイライトする
-- ウィンドウの高さは「ヘッダー 1 行 + 6 週分の日付行 + 6 本の横線 + 6 * (max_events_per_cell + 1) 行」の固定値。幅は 7 セル + 6 本の区切り線に合わせる。右側に空白を残さない
+- 曜日ヘッダーは winbar として固定し、月グリッドをスクロールしても表示し続ける。ウィンドウの高さは「winbar 1 行 + 6 週分の日付行 + 6 本の横線 + 6 * (max_events_per_cell + 1) 行」の固定値。幅は 7 セル + 6 本の区切り線に合わせる。右側に空白を残さない
 - 月タイトルは `FloatTitle`、float のボーダーは `FloatBorder` を `winhl` で `GoogleCalendarHeader` / `GoogleCalendarBorder` に割り当てる
 - 選択中のセルは背景を塗らず、オレンジ・bold の二重線フレーム（`GoogleCalendarSelectedBorder`）で囲む。日付は `GoogleCalendarSelected` でオレンジにする。予定バー・ドットはカレンダー色を保つ。ウィンドウタイトルにも `選択: MM-DD` を表示する
 - 予定チップは Google カレンダー風に表示する。終日・複数日予定はカレンダー色のバー（白文字、時刻付き複数日は `HH:MM タイトル`）、単日の時刻付き予定はカレンダー色の `●` / `○` ドット＋`HH:MM`＋タイトル。タイトルはセル幅に合わせて `…` で切り詰める

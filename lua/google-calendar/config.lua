@@ -67,7 +67,7 @@ end
 local defaults = {
   calendars = { 'primary' },
   week_start = 'sunday',
-  max_events_per_cell = 7,
+  max_events_per_cell = 6,
   width = 1.0,
   height = 1.0,
   agenda = { width = 0.5, height = 0.7 },
@@ -133,7 +133,7 @@ end
 
 local function validate_max_events_per_cell(notify, value)
   if type(value) ~= 'number' or value < 1 then
-    warn(notify, 'max_events_per_cell must be between 1 and 10. Using the default 7.')
+    warn(notify, 'max_events_per_cell must be between 1 and 10. Using the default 6.')
     return defaults.max_events_per_cell
   end
 

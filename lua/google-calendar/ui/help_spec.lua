@@ -59,6 +59,7 @@ describe('ui.help', function()
       '<Space>:切替',
       '<F2>:保存',
       '<Esc>/q:取消',
+      '?:ヘルプ',
     }, help.lines('form'))
   end)
 
@@ -76,6 +77,7 @@ describe('ui.help', function()
       '<Space>:切替',
       '<A-s>:保存',
       '<Esc>/q:取消',
+      '?:ヘルプ',
     }, help.lines('form'))
   end)
 
@@ -96,6 +98,7 @@ describe('ui.help', function()
       '<CR>:編集',
       '<Space>:切替',
       '<Esc>/q:取消',
+      '?:ヘルプ',
     }, help.lines('form'))
   end)
 

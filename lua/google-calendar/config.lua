@@ -28,6 +28,12 @@ local default_highlights = {
   GoogleCalendarDetailAccepted = { fg = '#9ece6a' },
   GoogleCalendarDetailPending = { fg = '#e0af68' },
   GoogleCalendarDetailDeclined = { fg = '#f7768e' },
+  GoogleCalendarFormTitle = { fg = '#e0e6ea', bold = true },
+  GoogleCalendarFormMuted = { fg = '#565f89' },
+  GoogleCalendarFormIcon = { fg = '#ff9e64', bold = true },
+  GoogleCalendarFormTabActive = { fg = '#7aa2f7', bold = true },
+  GoogleCalendarFormButton = { fg = '#7aa2f7', bold = true },
+  GoogleCalendarFormSeparator = { fg = '#565f89' },
   GoogleCalendarBorder = { fg = '#7aa2f7' },
   GoogleCalendarError = { fg = '#f7768e', bold = true },
 }

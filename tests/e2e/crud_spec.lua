@@ -208,10 +208,32 @@ local function assert_month_matches_state()
   end
 end
 
-local function edit_field(line, value)
+local function set_form_editor(lines)
+  local win = state.windows.form_editor
+  assert.is_true(win ~= nil and vim.api.nvim_win_is_valid(win))
+  vim.api.nvim_buf_set_lines(vim.api.nvim_win_get_buf(win), 0, -1, false, lines)
+end
+
+local function edit_summary(value)
   vim.api.nvim_set_current_win(state.windows.form)
-  vim.api.nvim_win_set_cursor(state.windows.form, { line, 0 })
-  feed('<CR><C-u>' .. value .. '<CR>')
+  vim.api.nvim_win_set_cursor(state.windows.form, { 1, 0 })
+  feed('<CR>')
+  assert.is_true(vim.api.nvim_win_is_valid(state.windows.form_editor))
+  set_form_editor({ value })
+  feed('<F2>')
+end
+
+local function edit_datetime(start_value, end_value)
+  vim.api.nvim_set_current_win(state.windows.form)
+  vim.api.nvim_win_set_cursor(state.windows.form, { 5, 0 })
+  feed('<CR>')
+  assert.is_true(vim.api.nvim_win_is_valid(state.windows.form_editor))
+  set_form_editor({
+    '開始: ' .. start_value,
+    '終了: ' .. end_value,
+    '終日: off',
+  })
+  feed('<F2>')
 end
 
 local function wait_month_loaded()
@@ -285,10 +307,9 @@ describe('e2e crud', function()
 
     feed('a')
     assert.is_true(vim.api.nvim_win_is_valid(state.windows.form))
-    assert.are.equal('タイトル: ', form_lines()[1])
-    edit_field(1, '登録1')
-    edit_field(2, date .. ' 11:00')
-    edit_field(3, date .. ' 12:00')
+    assert.are.equal('タイトルと日時を追加', form_lines()[1])
+    edit_summary('登録1')
+    edit_datetime(date .. ' 11:00', date .. ' 12:00')
     feed('<F2>')
     assert.is_true(vim.wait(10000, function()
       return state.windows.form == nil and not state.loading
@@ -318,8 +339,8 @@ describe('e2e crud', function()
 
     feed('e')
     assert.is_true(vim.api.nvim_win_is_valid(state.windows.form))
-    assert.are.equal('タイトル: 登録1', form_lines()[1])
-    edit_field(1, '更新2')
+    assert.are.equal('登録1', form_lines()[1])
+    edit_summary('更新2')
     feed('<F2>')
     assert.is_true(vim.wait(10000, function()
       return state.windows.form == nil and state.windows.detail == nil and not state.loading
@@ -422,7 +443,7 @@ describe('e2e crud', function()
     open_month('2026-10')
     feed('a')
     assert.is_true(vim.api.nvim_win_is_valid(state.windows.form))
-    edit_field(1, '失敗する予定')
+    edit_summary('失敗する予定')
     vim.env.FAKE_GWS_ERROR_FIXTURE = api_fixture
 
     feed('<F2>')
@@ -431,13 +452,13 @@ describe('e2e crud', function()
       if win == nil or not vim.api.nvim_win_is_valid(win) then
         return false
       end
-      local footer = vim.api.nvim_buf_get_lines(vim.api.nvim_win_get_buf(win), 8, 9, false)[1]
+      local footer = vim.api.nvim_buf_get_lines(vim.api.nvim_win_get_buf(win), 11, 12, false)[1]
       return footer ~= nil and footer:match('^エラー:') ~= nil
     end, 10))
 
     assert.is_true(vim.api.nvim_win_is_valid(state.windows.form))
-    assert.are.equal('タイトル: 失敗する予定', form_lines()[1])
-    assert.are.equal('エラー: 予定を作成できませんでした: Not Found', form_lines()[9])
+    assert.are.equal('失敗する予定', form_lines()[1])
+    assert.are.equal('エラー: 予定を作成できませんでした: Not Found', form_lines()[12])
     assert.are.equal(0, #state_items())
     assert.are.same({
       { message = '予定を作成できませんでした: Not Found', level = vim.log.levels.ERROR },
@@ -447,7 +468,7 @@ describe('e2e crud', function()
   it('<F2> の連打で偽 gws の呼び出しは 1 回だけである', function()
     open_month('2026-10')
     feed('a')
-    edit_field(1, '連打')
+    edit_summary('連打')
     os.remove(call_log)
 
     feed('<F2><F2>')
@@ -498,7 +519,7 @@ describe('e2e crud', function()
 
       feed('e')
       assert.are.equal('form', state.stack[#state.stack].name)
-      feed('<CR><C-u>変更<Esc>')
+      edit_summary('変更')
       assert.is_true(vim.api.nvim_win_is_valid(state.windows.form))
       feed('<Esc>')
       assert.is_nil(state.windows.form)

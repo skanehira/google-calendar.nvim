@@ -8,19 +8,28 @@ local window = require('google-calendar.ui.window')
 local M = {}
 
 local namespace_name = 'google-calendar-form'
-local LABEL_WIDTH = 10
 local TITLE_LIMIT = 1024
 local LOCATION_LIMIT = 1024
 local DESCRIPTION_LIMIT = 8192
+local FORM_WIDTH_MAX = 80
+local FORM_HEIGHT = 12
 
-local FIELDS = {
-  { key = 'summary', label = 'タイトル:', type = 'text' },
-  { key = 'start', label = '開始:', type = 'text' },
-  { key = 'end', label = '終了:', type = 'text' },
-  { key = 'all_day', label = '終日:', type = 'toggle' },
-  { key = 'location', label = '場所:', type = 'text' },
-  { key = 'description', label = '説明:', type = 'text' },
-  { key = 'meet', label = 'Meet:', type = 'toggle' },
+local WEEKDAYS = { '日', '月', '火', '水', '木', '金', '土' }
+local ICON_CALENDAR = '▣'
+local ICON_CLOCK = '◷'
+local ICON_GUESTS = '◉'
+local ICON_MEET = '▶'
+local ICON_LOCATION = '⌖'
+local ICON_NOTES = '☰'
+
+local ROWS = {
+  { key = 'summary', line = 1, kind = 'summary' },
+  { key = 'datetime', line = 5, kind = 'datetime' },
+  { key = 'guests', line = 6, kind = 'guests' },
+  { key = 'meet', line = 7, kind = 'toggle' },
+  { key = 'location', line = 8, kind = 'text' },
+  { key = 'description', line = 9, kind = 'text' },
+  { key = 'calendar', line = 10, kind = 'calendar' },
 }
 
 ---@class GoogleCalendarForm
@@ -31,6 +40,7 @@ local FIELDS = {
 ---@field on_changed function|nil
 ---@field win integer
 ---@field buf integer
+---@field width integer
 ---@field selected integer
 ---@field saving boolean
 ---@field error string|nil
@@ -47,6 +57,7 @@ local form = {
   on_changed = nil,
   win = 0,
   buf = 0,
+  width = 60,
   selected = 1,
   saving = false,
   error = nil,
@@ -55,75 +66,56 @@ local form = {
   values = {},
 }
 
+local editor = {
+  win = 0,
+  buf = 0,
+  kind = nil,
+  selected = 1,
+}
+
 local function notify(message, level)
   config.get().notify(message, level)
 end
 
-local function pad_label(label)
-  return label .. string.rep(' ', LABEL_WIDTH - vim.fn.strdisplaywidth(label))
+local function date_label(date)
+  local year, month, day = calendar.date_parts(date)
+  if year == nil then
+    return date
+  end
+  year, month, day = assert(year), assert(month), assert(day)
+  local weekday = tonumber(os.date('%w', os.time({ year = year, month = month, day = day, hour = 12 })))
+  return string.format('%d月%d日 (%s曜日)', month, day, WEEKDAYS[weekday + 1])
 end
 
-local function is_readonly(field)
-  return form.mode == 'edit' and field.key == 'meet'
+local function format_when(values)
+  local start_date = values.start:sub(1, 10)
+  if values.all_day then
+    local end_date = values['end']
+    if calendar.parse_date(end_date) ~= nil then
+      end_date = calendar.add_days(end_date, -1)
+    end
+    return date_label(start_date) .. ' – ' .. date_label(end_date)
+  end
+
+  local start_time = values.start:sub(12, 16)
+  local end_time = values['end']:sub(12, 16)
+  return date_label(start_date) .. '・' .. start_time .. '〜' .. end_time
 end
 
-local function format_value(field, value)
-  if is_readonly(field) then
-    return value or ''
-  end
-  if field.type == 'toggle' then
-    return value and 'on' or 'off'
-  end
-  return value
-end
-
-local function key_footer()
-  local parts = {}
-
-  local field_keys = {}
-  local next_key = config.resolve('form', 'next_field')
-  local prev_key = config.resolve('form', 'prev_field')
-  if next_key ~= nil then
-    table.insert(field_keys, next_key)
-  end
-  if prev_key ~= nil then
-    table.insert(field_keys, prev_key)
-  end
-  if #field_keys > 0 then
-    table.insert(parts, table.concat(field_keys, '/') .. ':移動')
-  end
-
-  local edit_key = config.resolve('form', 'edit')
-  if edit_key ~= nil then
-    table.insert(parts, edit_key .. ':編集')
-  end
-
-  local toggle_key = config.resolve('form', 'toggle')
-  if toggle_key ~= nil then
-    table.insert(parts, toggle_key .. ':切替')
-  end
-
-  local save_key = config.resolve('form', 'save')
-  if save_key ~= nil then
-    table.insert(parts, save_key .. ':保存')
-  end
-
-  local cancel_keys = {}
-  for _, action in ipairs({ 'cancel', 'close' }) do
-    local key = config.resolve('form', action)
-    if key ~= nil then
-      table.insert(cancel_keys, key)
+local function row_line(key)
+  for _, row in ipairs(ROWS) do
+    if row.key == key then
+      return row.line
     end
   end
-  if #cancel_keys > 0 then
-    table.insert(parts, table.concat(cancel_keys, '/') .. ':取消')
-  end
+  return nil
+end
 
-  if #parts == 0 then
-    return '有効なキーがありません'
+local function error_line()
+  if form.error_field == nil then
+    return nil
   end
-
-  return table.concat(parts, '  ')
+  return row_line(form.error_field)
 end
 
 local function footer_text()
@@ -133,25 +125,131 @@ local function footer_text()
   if form.error ~= nil then
     return 'エラー: ' .. form.error
   end
-  return key_footer()
+
+  local save_key = config.resolve('form', 'save')
+  local next_key = config.resolve('form', 'next_field')
+  local prev_key = config.resolve('form', 'prev_field')
+  local parts = { 'その他のオプション', '[保存]' }
+  if save_key ~= nil then
+    table.insert(parts, save_key .. ':保存')
+  end
+  if next_key ~= nil or prev_key ~= nil then
+    local keys = {}
+    if next_key ~= nil then
+      table.insert(keys, next_key)
+    end
+    if prev_key ~= nil then
+      table.insert(keys, prev_key)
+    end
+    table.insert(parts, table.concat(keys, '/') .. ':移動')
+  end
+  table.insert(parts, '?:ヘルプ')
+  return table.concat(parts, '  ')
 end
 
-local function field_index(key)
-  for index, field in ipairs(FIELDS) do
-    if field.key == key then
-      return index
-    end
+local function add_icon_line(add, icon, text, text_group)
+  local line = icon .. ' ' .. text
+  local spans = { { 0, #icon, 'GoogleCalendarFormIcon' } }
+  if text ~= '' and text_group ~= nil then
+    table.insert(spans, { #icon + 1, #line, text_group })
   end
-  return nil
+  add(line, spans)
 end
 
 local function render()
+  local width = math.max(1, form.width)
   local lines = {}
-  for index, field in ipairs(FIELDS) do
-    lines[index] = pad_label(field.label) .. format_value(field, form.values[field.key])
+  local highlights = {}
+
+  local function add(text, spans)
+    table.insert(lines, text)
+    local line = #lines - 1
+    for _, span in ipairs(spans or {}) do
+      table.insert(highlights, { line = line, start_col = span[1], end_col = span[2], group = span[3] })
+    end
   end
-  lines[#FIELDS + 1] = ''
-  lines[#FIELDS + 2] = footer_text()
+
+  local title = vim.trim(form.values.summary or '')
+  if title == '' then
+    add('タイトルと日時を追加', { { 0, #'タイトルと日時を追加', 'GoogleCalendarFormMuted' } })
+  else
+    add(event.truncate(title, width), { { 0, #event.truncate(title, width), 'GoogleCalendarFormTitle' } })
+  end
+
+  add(string.rep('─', width), { { 0, width, 'GoogleCalendarFormSeparator' } })
+
+  local tabs = '予定    タスク    不在'
+  add(tabs, {
+    { 0, #'予定', 'GoogleCalendarFormTabActive' },
+    { #'予定' + 4, #'予定' + 4 + #'タスク', 'GoogleCalendarFormMuted' },
+    { #'予定' + 4 + #'タスク' + 4, #tabs, 'GoogleCalendarFormMuted' },
+  })
+
+  add('')
+
+  local when = format_when(form.values)
+  local button = form.values.all_day and '[時間を追加]' or '[終日]'
+  local date_text = ICON_CLOCK .. ' ' .. event.truncate(when, math.max(1, width - #button - 3))
+  add(date_text .. '  ' .. button, {
+    { 0, #ICON_CLOCK, 'GoogleCalendarFormIcon' },
+    { #date_text + 2, #date_text + 2 + #button, 'GoogleCalendarFormButton' },
+  })
+
+  local attendees = form.values.attendees
+  local guest_text
+  if type(attendees) == 'table' and #attendees > 0 then
+    guest_text = string.format('%d人のゲスト（MVP では未対応）', #attendees)
+  else
+    guest_text = 'ゲストを追加（MVP では未対応）'
+  end
+  add_icon_line(add, ICON_GUESTS, event.truncate(guest_text, math.max(1, width - 2)), 'GoogleCalendarFormMuted')
+
+  local meet_text = 'Google Meet のビデオ会議を追加'
+  local meet_state = form.values.meet and 'on' or 'off'
+  if form.mode == 'edit' then
+    meet_state = '固定'
+  end
+  add_icon_line(add, ICON_MEET, event.truncate(meet_text, math.max(1, width - 12)) .. '  [' .. meet_state .. ']')
+
+  local location = vim.trim(form.values.location or '')
+  if location == '' then
+    add_icon_line(add, ICON_LOCATION, '場所を追加', 'GoogleCalendarFormMuted')
+  else
+    add_icon_line(add, ICON_LOCATION, event.truncate(location, math.max(1, width - 2)))
+  end
+
+  local description = vim.trim(form.values.description or '')
+  if description == '' then
+    add_icon_line(
+      add,
+      ICON_NOTES,
+      '説明または Google ドライブの添付ファイルを追加',
+      'GoogleCalendarFormMuted'
+    )
+  else
+    local first_line = vim.split(description, '\n', { plain = true })[1] or ''
+    add_icon_line(add, ICON_NOTES, event.truncate(first_line, math.max(1, width - 2)))
+  end
+
+  local calendar_id = config.get().calendars[1] or 'primary'
+  add_icon_line(add, ICON_CALENDAR, calendar_id, 'GoogleCalendarFormMuted')
+
+  add('')
+  local footer = event.truncate(footer_text(), width)
+  local footer_spans = { { 0, #footer, 'GoogleCalendarFormMuted' } }
+  local save_start = footer:find('[保存]', 1, true)
+  if save_start ~= nil then
+    table.insert(footer_spans, { save_start - 1, save_start - 1 + #'[保存]', 'GoogleCalendarFormButton' })
+  end
+  add(footer, footer_spans)
+
+  local error_row = error_line()
+  if error_row ~= nil then
+    table.insert(
+      highlights,
+      { line = error_row - 1, start_col = 0, end_col = #(lines[error_row] or ''), group = 'GoogleCalendarError' }
+    )
+  end
 
   vim.bo[form.buf].modifiable = true
   vim.api.nvim_buf_set_lines(form.buf, 0, -1, false, lines)
@@ -159,104 +257,272 @@ local function render()
 
   local ns = vim.api.nvim_create_namespace(namespace_name)
   vim.api.nvim_buf_clear_namespace(form.buf, ns, 0, -1)
-  local error_index = form.error_field and field_index(form.error_field)
-  if error_index ~= nil then
-    vim.api.nvim_buf_set_extmark(form.buf, ns, error_index - 1, 0, {
-      end_col = #lines[error_index],
-      hl_group = 'GoogleCalendarError',
+  for _, highlight in ipairs(highlights) do
+    vim.api.nvim_buf_set_extmark(form.buf, ns, highlight.line, highlight.start_col, {
+      end_col = highlight.end_col,
+      hl_group = highlight.group,
     })
   end
 
   if vim.api.nvim_win_is_valid(form.win) then
-    vim.api.nvim_win_set_cursor(form.win, { form.selected, 0 })
+    vim.api.nvim_win_set_cursor(form.win, { ROWS[form.selected].line, 0 })
   end
+end
+
+local function selected_row()
+  return ROWS[form.selected]
 end
 
 local function sync_selection()
+  if not vim.api.nvim_win_is_valid(form.win) then
+    return
+  end
   local line = vim.api.nvim_win_get_cursor(form.win)[1]
-  if line >= 1 and line <= #FIELDS then
-    form.selected = line
-  end
-end
-
-local function read_values()
-  local lines = vim.api.nvim_buf_get_lines(form.buf, 0, #FIELDS, false)
-  for index, field in ipairs(FIELDS) do
-    if not is_readonly(field) then
-      local line = lines[index] or ''
-      if field.type == 'toggle' then
-        form.values[field.key] = line:match('^' .. field.label .. '%s*(%a+)$') == 'on'
-      else
-        local value = line:match('^' .. field.label .. '%s*(.*)$')
-        form.values[field.key] = vim.trim(value or line)
-      end
+  for index, row in ipairs(ROWS) do
+    if row.line == line then
+      form.selected = index
+      return
     end
   end
-end
-
-local function on_insert_leave()
-  if not form.active or not vim.api.nvim_win_is_valid(form.win) then
-    return
-  end
-
-  read_values()
-  vim.bo[form.buf].modifiable = false
-  render()
-end
-
-local function edit_selected()
-  if not form.active or form.saving then
-    return
-  end
-
-  sync_selection()
-  local field = FIELDS[form.selected]
-  if field.type ~= 'text' or is_readonly(field) then
-    return
-  end
-
-  vim.bo[form.buf].modifiable = true
-  vim.cmd('startinsert!')
-end
-
-local function toggle_selected()
-  if not form.active or form.saving then
-    return
-  end
-
-  sync_selection()
-  local field = FIELDS[form.selected]
-  if field.type ~= 'toggle' or is_readonly(field) then
-    return
-  end
-
-  local enabled = not form.values[field.key]
-  form.values[field.key] = enabled
-
-  if field.key == 'all_day' then
-    local start_date = form.values.start:sub(1, 10)
-    form.values.start = start_date
-    if enabled then
-      if calendar.parse_date(start_date) ~= nil then
-        form.values['end'] = calendar.add_days(start_date, 1)
-      end
-    else
-      form.values.start = start_date .. ' 09:00'
-      form.values['end'] = start_date .. ' 10:00'
-    end
-  end
-
-  render()
 end
 
 local function move_field(delta)
   if not form.active or form.saving then
     return
   end
+  form.selected = ((form.selected - 1 + delta) % #ROWS) + 1
+  vim.api.nvim_win_set_cursor(form.win, { ROWS[form.selected].line, 0 })
+end
 
+local function close_editor()
+  if editor.kind ~= nil then
+    window.close('form_editor')
+    editor.win = 0
+    editor.buf = 0
+    editor.kind = nil
+    editor.selected = 1
+  end
+  if form.win ~= 0 and vim.api.nvim_win_is_valid(form.win) then
+    vim.api.nvim_set_current_win(form.win)
+  end
+end
+
+local function editor_width()
+  return math.max(1, math.min(60, vim.o.columns - 8))
+end
+
+local function set_editor_lines(lines)
+  vim.bo[editor.buf].modifiable = true
+  vim.api.nvim_buf_set_lines(editor.buf, 0, -1, false, lines)
+  vim.bo[editor.buf].modifiable = true
+end
+
+local function save_editor()
+  if editor.kind == nil or not vim.api.nvim_win_is_valid(editor.win) then
+    return
+  end
+
+  local lines = vim.api.nvim_buf_get_lines(editor.buf, 0, -1, false)
+  if editor.kind == 'summary' then
+    form.values.summary = vim.trim(lines[1] or '')
+  elseif editor.kind == 'location' then
+    form.values.location = vim.trim(lines[1] or '')
+  elseif editor.kind == 'description' then
+    form.values.description = vim.trim(table.concat(lines, '\n'))
+  elseif editor.kind == 'datetime' then
+    local start_value = lines[1] and lines[1]:match('^開始:%s*(.*)$') or ''
+    local end_value = lines[2] and lines[2]:match('^終了:%s*(.*)$') or ''
+    local all_day = lines[3] and lines[3]:match('^終日:%s*(%a+)$') == 'on'
+    form.values.start = vim.trim(start_value)
+    form.values['end'] = vim.trim(end_value)
+    form.values.all_day = all_day
+  end
+
+  close_editor()
+  render()
+end
+
+local function editor_toggle_all_day()
+  local lines = vim.api.nvim_buf_get_lines(editor.buf, 0, -1, false)
+  local all_day = lines[3] and lines[3]:match('^終日:%s*(%a+)$') == 'on'
+  local start_value = lines[1] and lines[1]:match('^開始:%s*(.*)$') or ''
+  local end_value = lines[2] and lines[2]:match('^終了:%s*(.*)$') or ''
+  local start_date = start_value:sub(1, 10)
+  if not all_day then
+    lines[3] = '終日: on'
+    lines[1] = '開始: ' .. start_date
+    if calendar.parse_date(start_date) ~= nil then
+      lines[2] = '終了: ' .. calendar.add_days(start_date, 1)
+    else
+      lines[2] = '終了: ' .. end_value:sub(1, 10)
+    end
+  else
+    lines[3] = '終日: off'
+    lines[1] = '開始: ' .. start_date .. ' 09:00'
+    lines[2] = '終了: ' .. start_date .. ' 10:00'
+  end
+  set_editor_lines(lines)
+  vim.api.nvim_win_set_cursor(editor.win, { 3, 0 })
+end
+
+local function editor_edit_selected()
+  local line = vim.api.nvim_win_get_cursor(editor.win)[1]
+  editor.selected = line
+  if editor.kind == 'datetime' and line == 3 then
+    editor_toggle_all_day()
+    return
+  end
+  vim.cmd('startinsert!')
+end
+
+local function set_editor_keymaps(buf)
+  local function map(mode, action, handler)
+    local key = config.resolve('form', action)
+    if key ~= nil then
+      vim.keymap.set(mode, key, handler, { buffer = buf, nowait = true, silent = true })
+    end
+  end
+
+  if editor.kind == 'datetime' then
+    map({ 'n', 'i' }, 'next_field', function()
+      vim.cmd('stopinsert')
+      editor.selected = (editor.selected % 3) + 1
+      vim.api.nvim_win_set_cursor(editor.win, { editor.selected, 0 })
+    end)
+    map({ 'n', 'i' }, 'prev_field', function()
+      vim.cmd('stopinsert')
+      editor.selected = ((editor.selected - 2) % 3) + 1
+      vim.api.nvim_win_set_cursor(editor.win, { editor.selected, 0 })
+    end)
+    map('n', 'edit', editor_edit_selected)
+    map('n', 'toggle', editor_toggle_all_day)
+  end
+
+  map('n', 'save', save_editor)
+  map('i', 'save', function()
+    vim.cmd('stopinsert')
+    save_editor()
+  end)
+  map('n', 'cancel', close_editor)
+  map('i', 'cancel', function()
+    vim.cmd('stopinsert')
+  end)
+  map('n', 'close', close_editor)
+end
+
+local function open_editor(kind, title, lines, height)
+  close_editor()
+
+  local width = editor_width()
+  local row = math.max(0, math.floor((vim.o.lines - height - 2) / 2))
+  local col = math.max(0, math.floor((vim.o.columns - width - 2) / 2))
+  local win = window.open('form_editor', {
+    width = width,
+    height = height,
+    row = row,
+    col = col,
+    title = title,
+    border = 'rounded',
+  })
+  local buf = vim.api.nvim_win_get_buf(win)
+
+  editor.win = win
+  editor.buf = buf
+  editor.kind = kind
+  editor.selected = 1
+
+  set_editor_lines(lines)
+  set_editor_keymaps(buf)
+  vim.wo[win].wrap = false
+  vim.wo[win].cursorline = true
+  vim.api.nvim_set_current_win(win)
+
+  return win
+end
+
+local function open_summary_editor()
+  open_editor('summary', ' タイトル ', { form.values.summary or '' }, 1)
+end
+
+local function open_location_editor()
+  open_editor('location', ' 場所 ', { form.values.location or '' }, 1)
+end
+
+local function open_description_editor()
+  local lines = vim.split(form.values.description or '', '\n', { plain = true })
+  if #lines == 0 then
+    lines = { '' }
+  end
+  local height = math.max(1, math.min(10, #lines))
+  open_editor('description', ' 説明 ', lines, height)
+end
+
+local function open_datetime_editor()
+  open_editor('datetime', ' 日時 ', {
+    '開始: ' .. form.values.start,
+    '終了: ' .. form.values['end'],
+    '終日: ' .. (form.values.all_day and 'on' or 'off'),
+  }, 3)
+end
+
+local function toggle_all_day()
+  local start_date = form.values.start:sub(1, 10)
+  if not form.values.all_day then
+    form.values.all_day = true
+    form.values.start = start_date
+    if calendar.parse_date(start_date) ~= nil then
+      form.values['end'] = calendar.add_days(start_date, 1)
+    end
+  else
+    form.values.all_day = false
+    form.values.start = start_date .. ' 09:00'
+    form.values['end'] = start_date .. ' 10:00'
+  end
+  render()
+end
+
+local function toggle_meet()
+  if form.mode == 'edit' then
+    return
+  end
+  form.values.meet = not form.values.meet
+  render()
+end
+
+local function open_selected()
+  if not form.active or form.saving then
+    return
+  end
   sync_selection()
-  form.selected = ((form.selected - 1 + delta) % #FIELDS) + 1
-  vim.api.nvim_win_set_cursor(form.win, { form.selected, 0 })
+  local row = selected_row()
+  if row.kind == 'summary' then
+    open_summary_editor()
+  elseif row.kind == 'datetime' then
+    open_datetime_editor()
+  elseif row.kind == 'guests' then
+    notify('ゲスト招待は MVP では未対応です', vim.log.levels.WARN)
+  elseif row.kind == 'toggle' then
+    toggle_meet()
+  elseif row.key == 'location' then
+    open_location_editor()
+  elseif row.key == 'description' then
+    open_description_editor()
+  else
+    notify('この項目は変更できません', vim.log.levels.WARN)
+  end
+end
+
+local function toggle_selected()
+  if not form.active or form.saving then
+    return
+  end
+  sync_selection()
+  local row = selected_row()
+  if row.key == 'datetime' then
+    toggle_all_day()
+  elseif row.key == 'meet' then
+    toggle_meet()
+  end
 end
 
 local function validate(values)
@@ -405,6 +671,7 @@ local function close_edit_windows()
   local on_changed = form.on_changed
   form.on_changed = nil
 
+  close_editor()
   window.close('form')
   window.close('detail')
 
@@ -454,6 +721,7 @@ local function save_edit(fields)
     form.saving = false
     form.active = false
     form.on_changed = nil
+    close_editor()
     window.close('form')
     return
   end
@@ -515,6 +783,7 @@ local function save_create(fields)
       local on_created = form.on_created
       local in_range = in_display_range(created)
 
+      close_editor()
       window.close('form')
       form.active = false
       form.on_created = nil
@@ -541,7 +810,6 @@ local function save()
     return
   end
 
-  read_values()
   local fields, message, error_field = validate(form.values)
   if fields == nil then
     form.error = message
@@ -567,6 +835,7 @@ local function cancel()
     return
   end
 
+  close_editor()
   form.active = false
   form.on_created = nil
   form.on_changed = nil
@@ -577,7 +846,6 @@ local function open_help()
   if not form.active or form.saving then
     return
   end
-
   require('google-calendar.ui.help').open('form')
 end
 
@@ -598,31 +866,20 @@ local function set_keymaps(buf)
     move_field(-1)
   end)
 
-  local edit_key = config.resolve('form', 'edit')
-  if edit_key ~= nil then
-    vim.keymap.set('n', edit_key, edit_selected, { buffer = buf, nowait = true, silent = true })
-    vim.keymap.set('i', edit_key, function()
-      vim.cmd('stopinsert')
-    end, { buffer = buf, nowait = true, silent = true })
-  end
-
+  map('n', 'edit', open_selected)
   map('n', 'toggle', toggle_selected)
   map({ 'n', 'i' }, 'save', function()
     vim.cmd('stopinsert')
     save()
   end)
   map('n', 'cancel', cancel)
-  -- insert モードの Esc は Vim の慣習どおり insert を抜けるだけにし、フォームは閉じない
-  map('i', 'cancel', function()
-    vim.cmd('stopinsert')
-  end)
   map('n', 'close', cancel)
   map('n', 'help', open_help)
 end
 
 local function open_window(title)
-  local width = math.max(1, math.min(80, vim.o.columns - 8))
-  local height = #FIELDS + 2
+  local width = math.max(1, math.min(FORM_WIDTH_MAX, vim.o.columns - 8))
+  local height = FORM_HEIGHT
   local row = math.max(0, math.floor((vim.o.lines - height - 2) / 2))
   local col = math.max(0, math.floor((vim.o.columns - width) / 2))
 
@@ -637,14 +894,13 @@ local function open_window(title)
   local buf = vim.api.nvim_win_get_buf(win)
   vim.wo[win].wrap = false
   vim.wo[win].cursorline = true
+  form.width = width
 
   set_keymaps(buf)
-  vim.api.nvim_create_autocmd('InsertLeave', { buffer = buf, callback = on_insert_leave })
 
   return win, buf
 end
 
--- 表示と変更検知は read_values の正規化 (改行の空白置換・前後空白の除去) と揃える。揃えないと、初期値のままでも変更ありと判定して gws を呼び、元の値を平坦化してしまう
 local function edit_values(item)
   return {
     summary = vim.trim(event.sanitize(item.summary)),
@@ -652,8 +908,9 @@ local function edit_values(item)
     ['end'] = event.display_datetime(item['end']) or '',
     all_day = event.is_all_day(item),
     location = vim.trim(event.sanitize(item.location)),
-    description = vim.trim(event.sanitize(item.description)),
+    description = vim.trim(item.description or ''),
     meet = item.hangout_link or '',
+    attendees = item.attendees,
   }
 end
 
@@ -666,7 +923,7 @@ function M.open_create(opts)
   end
 
   local date = state.selected_date or calendar.today()
-  local win, buf = open_window(' 予定を登録 ')
+  local win, buf = open_window(' 新しい予定 ')
 
   form.active = true
   form.mode = 'create'
@@ -688,9 +945,11 @@ function M.open_create(opts)
     location = '',
     description = '',
     meet = false,
+    attendees = nil,
   }
 
   render()
+  vim.api.nvim_set_current_win(win)
 
   return win
 end
@@ -724,6 +983,7 @@ function M.open_edit(item, opts)
   form.initial_values = vim.deepcopy(form.values)
 
   render()
+  vim.api.nvim_set_current_win(win)
 
   return win
 end

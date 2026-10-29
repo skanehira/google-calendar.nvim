@@ -75,6 +75,7 @@ Use `r` or `R` in the month view to refetch the displayed month.
 | Month | `q` / `<Esc>` | Close the month view |
 | Agenda | `j` / `k` | Select an event |
 | Agenda | `<CR>` | Open the selected event |
+| Agenda | `d` | Delete the selected event |
 | Agenda | `?` | Open help |
 | Agenda | `q` / `<Esc>` | Return to the month view |
 | Detail | `e` | Open the update form |

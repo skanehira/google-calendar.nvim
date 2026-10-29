@@ -10,6 +10,15 @@ M.openers = {
   open_detail = function(item, opts)
     require('google-calendar.ui.detail').open(item, opts)
   end,
+  delete = function(item, opts)
+    require('google-calendar.ui.confirm').open(item, {
+      on_finished = function()
+        if opts ~= nil and opts.on_finished ~= nil then
+          opts.on_finished()
+        end
+      end,
+    })
+  end,
   help = function(screen)
     require('google-calendar.ui.help').open(screen)
   end,
@@ -172,6 +181,30 @@ local function open_detail()
   M.openers.open_detail(item, current_opts)
 end
 
+local function delete()
+  local item = current_events()[selected_index]
+  if item == nil then
+    return
+  end
+
+  M.openers.delete(item, {
+    on_finished = function()
+      local events = current_events()
+      for index, candidate in ipairs(events) do
+        if candidate.id == item.id then
+          table.remove(events, index)
+          break
+        end
+      end
+
+      M.refresh()
+      if current_opts.on_changed ~= nil then
+        current_opts.on_changed()
+      end
+    end,
+  })
+end
+
 local function open_help()
   M.openers.help('agenda')
 end
@@ -188,6 +221,7 @@ local key_actions = {
     move(-1)
   end,
   open = open_detail,
+  delete = delete,
   help = open_help,
   close = close,
   esc_close = close,

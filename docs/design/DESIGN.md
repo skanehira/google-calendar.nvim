@@ -208,10 +208,10 @@ nvim --headless -u tests/minimal_init.lua \
 
 実測値:
 
-- `make test`: 256 tests passed / 0 failed / 0 errors、exit 0
+- `make test`: 257 tests passed / 0 failed / 0 errors、exit 0
 - `make test-file FILE=lua/google-calendar/config_spec.lua`: 17 tests passed、exit 0
 - `make test-file FILE=lua/google-calendar/gws_spec.lua`: 17 tests passed、exit 0
-- `XDG_STATE_HOME="$PWD/.tmp-state" make test`: 256 tests passed、exit 0
+- `XDG_STATE_HOME="$PWD/.tmp-state" make test`: 257 tests passed、exit 0
 - `make test TEST_DIR=<空ディレクトリ>`: exit 2、`spec が 0 件です` を出力（0 件のまま成功しない）
 
 `TEST_DIR` は既定 `lua/`。spec は実装ファイルの隣 (`lua/**/*_spec.lua`) に置く。テストハーネスの spec も `lua/google-calendar/test_harness_spec.lua` に置き、`make test` の走査対象に含める。E2E の spec は `tests/e2e/` に置き、`make test-e2e` で実行する。
@@ -247,7 +247,7 @@ make test-e2e
 
 `scripts/e2e.sh` は `tests/fixtures/fake-gws.py` への `gws` シンボリックリンクを一時 `PATH` の先頭に置き、`FAKE_GWS_STATE` / `XDG_STATE_HOME` / `FAKE_GWS_CWD_LOG` / `FAKE_GWS_CALL_LOG` を一時ディレクトリに設定して `tests/e2e` を plenary で実行する。実カレンダーは変更しない。
 
-実測値: `make test-e2e` は 11 tests passed / 0 failed / 0 errors、exit 0。スモークテストは偽 gws が PATH の先頭にあること、空の `events list`、`+insert` 後の `list` への反映、`:GoogleCalendar` の登録、`setup()` の既定値を確認する。`tests/e2e/crud_spec.lua` は偽 gws を使い、月表示を開いて登録・更新・削除を通しで検証し、`+N`、認証エラー、作成失敗、`:w` 連打、各操作後の状態ファイルとバッファ内容の一致を確認する。
+実測値: `make test-e2e` は 12 tests passed / 0 failed / 0 errors、exit 0。スモークテストは偽 gws が PATH の先頭にあること、空の `events list`、`+insert` 後の `list` への反映、`:GoogleCalendar` の登録、`setup()` の既定値を確認する。`tests/e2e/crud_spec.lua` は偽 gws を使い、月表示を開いて登録・更新・削除を通しで検証し、`+N`、認証エラー、作成失敗、`:w` 連打、各操作後の状態ファイルとバッファ内容の一致を確認する。
 
 **実 API の手動確認**（任意）:
 
@@ -291,6 +291,7 @@ GOOGLE_WORKSPACE_CLI_CONFIG_DIR="$PWD/.local/gws-config" gws calendar calendarLi
 | 月表示 | `q` / `<Esc>` | 月表示を閉じる |
 | アジェンダ | `j` / `k` | 予定を選択 |
 | アジェンダ | `<CR>` | 予定詳細を開く |
+| アジェンダ | `d` | 選択中の予定を削除する |
 | アジェンダ | `q` / `<Esc>` | 月表示に戻る |
 | 詳細 | `e` | 更新フォームを開く |
 | 詳細 | `d` | 削除確認を開く |

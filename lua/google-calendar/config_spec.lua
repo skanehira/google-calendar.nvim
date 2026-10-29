@@ -137,6 +137,18 @@ describe('config', function()
     assert.are.same({ 'primary' }, config.get().calendars)
   end)
 
+  it('primary は常に先頭に含まれ、calendars から省略できる', function()
+    config.setup({ calendars = { 'work@example.com' } })
+
+    assert.are.same({ 'primary', 'work@example.com' }, config.get().calendars)
+  end)
+
+  it('calendars に primary を書いても重複しない', function()
+    config.setup({ calendars = { 'work@example.com', 'primary' } })
+
+    assert.are.same({ 'primary', 'work@example.com' }, config.get().calendars)
+  end)
+
   it('設定ファイルの calendars を読み込む', function()
     local path = vim.fn.tempname() .. '.json'
     vim.fn.writefile({ vim.json.encode({ calendars = { 'primary', 'work@example.com' } }) }, path)
@@ -144,6 +156,24 @@ describe('config', function()
     config.setup({ config_file = path })
 
     assert.are.same({ 'primary', 'work@example.com' }, config.get().calendars)
+  end)
+
+  it('設定ファイルの calendars に primary がなくても primary を含める', function()
+    local path = vim.fn.tempname() .. '.json'
+    vim.fn.writefile({ vim.json.encode({ calendars = { 'work@example.com' } }) }, path)
+
+    config.setup({ config_file = path })
+
+    assert.are.same({ 'primary', 'work@example.com' }, config.get().calendars)
+  end)
+
+  it('設定ファイルの calendars が空でも primary のみになる', function()
+    local path = vim.fn.tempname() .. '.json'
+    vim.fn.writefile({ vim.json.encode({ calendars = {} }) }, path)
+
+    config.setup({ config_file = path })
+
+    assert.are.same({ 'primary' }, config.get().calendars)
   end)
 
   it('設定ファイルが不正な JSON の場合は警告し、primary を使う', function()
@@ -171,7 +201,7 @@ describe('config', function()
       config_file = path,
     })
 
-    assert.are.same({ 'option@example.com' }, config.get().calendars)
+    assert.are.same({ 'primary', 'option@example.com' }, config.get().calendars)
   end)
 
   it('setup() が keymaps の上書きを既定値とマージする', function()

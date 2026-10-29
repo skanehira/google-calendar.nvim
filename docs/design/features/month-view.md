@@ -28,7 +28,7 @@ Google カレンダーの月表示を Neovim の float window に描画する。
 **複数カレンダー**:
 
 - カレンダー ID は `stdpath('data')/google-calendar.nvim/config.json` から読み込む。ファイルがなければ `primary` を使う
-- `config.calendars` の全カレンダーを取得し、予定を 1 つの月表示に統合する
+- `primary` と `config.calendars` の追加カレンダーを取得し、予定を 1 つの月表示に統合する。`primary` は常に含まれる
 - 予定モデルの `calendar_id` を保持し、詳細のカレンダー表示、更新、削除に使う
 - 新規作成は `config.calendars[1]` に対して行う
 - いずれかのカレンダーの取得に失敗した場合はエラーを通知し、既存の表示を維持する
@@ -60,7 +60,7 @@ Google カレンダーの月表示を Neovim の float window に描画する。
 - 選択中のセルは背景を塗らず、オレンジ・bold の二重線フレーム（`GoogleCalendarSelectedBorder`）で囲む。日付は `GoogleCalendarSelected` でオレンジにする。予定バー・ドットはカレンダー色を保つ。ウィンドウタイトルにも `選択: MM-DD` を表示する
 - 予定チップは Google カレンダー風に表示する。終日・複数日予定はカレンダー色のバー（白文字、時刻付き複数日は `HH:MM タイトル`）、単日の時刻付き予定はカレンダー色の `●` / `○` ドット＋`HH:MM`＋タイトル。タイトルはセル幅に合わせて `…` で切り詰める
 - 複数日予定は週内の列を跨ぐ行に割り当て、隣接セルの `│` をバー背景で覆って連続表示する。週をまたぐ場合は次の週の行にも続けて表示する。バーのタイトルはバー全体の幅に合わせて切り詰め、1 セル幅で省略しない。選択セルのフレーム境界では `┃` を優先する
-- カレンダー色は `config.calendars` の順に 11 色を自動割り当てする（12 件目以降は先頭に戻る）。`GoogleCalendarCalendarColorN` がドット、`GoogleCalendarCalendarBgN` がバー背景
+- カレンダー色は `primary` を先頭に、続いて `config.calendars` の順で 11 色を自動割り当てする（12 件目以降は先頭に戻る）。`GoogleCalendarCalendarColorN` がドット、`GoogleCalendarCalendarBgN` がバー背景
 - 予定が `max_events_per_cell` を超える日は、`max_events_per_cell` 件までを表示し、最後の行に `+N` を表示する
 - 予定がない日もセルの高さを固定するため、空の予定行を `max_events_per_cell + 1` 行描画する
 - ヘッダーに `読み込み中...` を表示するが、取得中も移動・再取得・アジェンダ/フォーム/ヘルプを開く・close は受け付ける

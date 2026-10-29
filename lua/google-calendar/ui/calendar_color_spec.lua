@@ -23,8 +23,10 @@ describe('ui.calendar_color', function()
     end
     config.setup({ calendars = calendars })
 
-    assert.are.equal('GoogleCalendarCalendarColor11', calendar_color.dot_group(calendars[11]))
-    assert.are.equal('GoogleCalendarCalendarColor1', calendar_color.dot_group(calendars[12]))
+    assert.are.equal('GoogleCalendarCalendarColor1', calendar_color.dot_group('primary'))
+    assert.are.equal('GoogleCalendarCalendarColor11', calendar_color.dot_group(calendars[10]))
+    assert.are.equal('GoogleCalendarCalendarColor1', calendar_color.dot_group(calendars[11]))
+    assert.are.equal('GoogleCalendarCalendarColor2', calendar_color.dot_group(calendars[12]))
   end)
 
   it('未設定のカレンダーは同じ ID に対して安定した色を返す', function()

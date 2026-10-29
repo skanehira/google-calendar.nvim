@@ -105,39 +105,187 @@ end
 
 local function build_event_rows(week, events_by_date, max_events, cell_w, rows, selected_index)
   local lists = {}
+  local date_columns = {}
   for index, cell in ipairs(week) do
     lists[index] = events_by_date[cell.date] or {}
+    date_columns[cell.date] = index
   end
 
-  -- 最低限 max_events + N 行を確保し、画面に合わせて余った高さを空行で埋める
   local base_rows = max_events + 1
   rows = rows or base_rows
   local result = {}
+
+  local function is_spanning(item)
+    return event.is_all_day(item) or event.is_multiday(item)
+  end
+
+  local spanning = {}
+  local spanning_ids = {}
+  for _, cell in ipairs(week) do
+    for _, item in ipairs(events_by_date[cell.date] or {}) do
+      if is_spanning(item) and not spanning_ids[item.id] then
+        spanning_ids[item.id] = true
+        local start_date = assert(event.start_date(item))
+        local end_date = event.end_date(item)
+        if type(end_date) ~= 'string' then
+          end_date = start_date
+        end
+        if event.is_all_day(item) then
+          end_date = calendar.add_days(end_date, -1)
+        end
+        if end_date < start_date then
+          end_date = start_date
+        end
+
+        local first_date = week[1].date
+        local last_date = week[7].date
+        if end_date >= first_date and start_date <= last_date then
+          local start_col = date_columns[start_date] or 1
+          local end_col = date_columns[end_date] or 7
+          table.insert(spanning, {
+            item = item,
+            start_col = start_col,
+            end_col = end_col,
+          })
+        end
+      end
+    end
+  end
+
+  table.sort(spanning, function(left, right)
+    if left.start_col ~= right.start_col then
+      return left.start_col < right.start_col
+    end
+    local left_all_day = event.is_all_day(left.item)
+    local right_all_day = event.is_all_day(right.item)
+    if left_all_day ~= right_all_day then
+      return left_all_day
+    end
+    return (left.item.id or '') < (right.item.id or '')
+  end)
+
+  local spanning_at = {}
+  for _, span in ipairs(spanning) do
+    local row_index = nil
+    for candidate = 1, max_events do
+      local free = true
+      for column = span.start_col, span.end_col do
+        if spanning_at[candidate] ~= nil and spanning_at[candidate][column] ~= nil then
+          free = false
+          break
+        end
+      end
+      if free then
+        row_index = candidate
+        break
+      end
+    end
+
+    if row_index ~= nil then
+      spanning_at[row_index] = spanning_at[row_index] or {}
+      for column = span.start_col, span.end_col do
+        spanning_at[row_index][column] = span.item
+      end
+    end
+  end
+
+  local single_at = {}
+  for column = 1, 7 do
+    for _, item in ipairs(lists[column]) do
+      if not spanning_ids[item.id] then
+        for row_index = 1, max_events do
+          local occupied = spanning_at[row_index] ~= nil and spanning_at[row_index][column] ~= nil
+          local used = single_at[row_index] ~= nil and single_at[row_index][column] ~= nil
+          if not occupied and not used then
+            single_at[row_index] = single_at[row_index] or {}
+            single_at[row_index][column] = item
+            break
+          end
+        end
+      end
+    end
+  end
+
+  local overflow = {}
+  for column = 1, 7 do
+    local displayed = 0
+    for row_index = 1, max_events do
+      if spanning_at[row_index] ~= nil and spanning_at[row_index][column] ~= nil then
+        displayed = displayed + 1
+      end
+      if single_at[row_index] ~= nil and single_at[row_index][column] ~= nil then
+        displayed = displayed + 1
+      end
+    end
+    overflow[column] = math.max(0, #lists[column] - displayed)
+  end
+
+  local function separator(index)
+    if index <= 1 then
+      return nil
+    end
+    if selected_index ~= nil and (index == selected_index or index == selected_index + 1) then
+      return { '┃', 'GoogleCalendarSelectedBorder' }
+    end
+    return { '│', 'GoogleCalendarBorder' }
+  end
+
   for row_index = 1, rows do
     local chunks = {}
-    for index = 1, 7 do
-      if index > 1 then
-        local separator = '│'
-        local separator_group = 'GoogleCalendarBorder'
-        if selected_index ~= nil and (index == selected_index or index == selected_index + 1) then
-          separator = '┃'
-          separator_group = 'GoogleCalendarSelectedBorder'
+    local column = 1
+    while column <= 7 do
+      local spanning_item = spanning_at[row_index] ~= nil and spanning_at[row_index][column] or nil
+      local run_end = column
+      if spanning_item ~= nil then
+        while run_end < 7 do
+          local next_item = spanning_at[row_index] ~= nil and spanning_at[row_index][run_end + 1] or nil
+          if next_item ~= nil and next_item.id == spanning_item.id then
+            run_end = run_end + 1
+          else
+            break
+          end
         end
-        table.insert(chunks, { separator, separator_group })
       end
 
-      local list = lists[index]
-      local cell_chunks
-      if row_index <= math.min(#list, max_events) then
-        cell_chunks = chip_chunks(list[row_index], cell_w)
-      elseif row_index == base_rows and #list > max_events then
-        cell_chunks = overflow_chunks(#list - max_events, cell_w)
+      local separator_chunk = separator(column)
+      if separator_chunk ~= nil then
+        table.insert(chunks, separator_chunk)
+      end
+
+      if spanning_item ~= nil then
+        local group = calendar_color.bar_group(spanning_item.calendar_id)
+        for index = column, run_end do
+          if index == column then
+            for _, chunk in ipairs(bar_chunks(spanning_item, cell_w)) do
+              table.insert(chunks, chunk)
+            end
+          else
+            table.insert(chunks, { string.rep(' ', cell_w), group })
+          end
+
+          if index < run_end then
+            if selected_index ~= nil and (index == selected_index or index == selected_index + 1) then
+              table.insert(chunks, { '┃', 'GoogleCalendarSelectedBorder' })
+            else
+              table.insert(chunks, { ' ', group })
+            end
+          end
+        end
+        column = run_end + 1
       else
-        cell_chunks = blank_chunks(cell_w)
-      end
-
-      for _, chunk in ipairs(cell_chunks) do
-        table.insert(chunks, chunk)
+        local item = single_at[row_index] ~= nil and single_at[row_index][column] or nil
+        local cell_chunks
+        if item ~= nil then
+          cell_chunks = chip_chunks(item, cell_w)
+        elseif row_index == base_rows and overflow[column] > 0 then
+          cell_chunks = overflow_chunks(overflow[column], cell_w)
+        else
+          cell_chunks = blank_chunks(cell_w)
+        end
+        for _, chunk in ipairs(cell_chunks) do
+          table.insert(chunks, chunk)
+        end
+        column = column + 1
       end
     end
     result[row_index] = chunks
@@ -573,7 +721,11 @@ local function fetch(initial, selected_event_id)
 end
 
 local function move_days(delta)
-  local date = calendar.add_days(state.selected_date, delta)
+  local selected_date = state.selected_date
+  if type(selected_date) ~= 'string' then
+    return
+  end
+  local date = calendar.add_days(selected_date, delta)
   local year, month = calendar.date_parts(date)
   state.selected_date = date
 

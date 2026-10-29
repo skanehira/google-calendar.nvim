@@ -91,6 +91,9 @@ function M.today()
   return os.date('%Y-%m-%d')
 end
 
+---@param date string
+---@param delta integer
+---@return string
 function M.add_days(date, delta)
   local year, month, day = M.date_parts(date)
   local epoch = os.time({
@@ -99,7 +102,7 @@ function M.add_days(date, delta)
     day = assert(day) + delta,
     hour = 12,
   })
-  return os.date('%Y-%m-%d', epoch)
+  return tostring(os.date('%Y-%m-%d', epoch))
 end
 
 function M.add_months(year, month, delta)

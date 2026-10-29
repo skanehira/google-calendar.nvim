@@ -413,6 +413,51 @@ describe('ui.month_view', function()
     assert.are.same({ 'primary', 'work@example.com' }, event_calendar_ids)
   end)
 
+  it('複数日予定のバーが隣の日のセルを跨ぐ', function()
+    gws_handler = function(_, cb)
+      cb(
+        event.normalize_list({
+          {
+            id = 'evt-span',
+            summary = '旅行',
+            start = { date = '2026-10-25' },
+            ['end'] = { date = '2026-10-28' },
+          },
+        }, { calendar_id = 'primary' }),
+        nil
+      )
+    end
+
+    run_command('2026-10')
+    wait_loading()
+
+    local win = state.windows.month
+    local cell_w = math.floor((vim.api.nvim_win_get_config(win).width - 6) / 7)
+    local group = require('google-calendar.ui.calendar_color').bar_group('primary')
+    local rows = assert(virt_lines(5))
+    local found_text = false
+    local found_separator = false
+    local found_continuation = false
+
+    for _, event_row in ipairs(rows) do
+      for _, chunk in ipairs(event_row) do
+        if chunk[2] == group then
+          if chunk[1]:find('旅行', 1, true) ~= nil then
+            found_text = true
+          elseif chunk[1] == ' ' then
+            found_separator = true
+          elseif chunk[1] == string.rep(' ', cell_w) then
+            found_continuation = true
+          end
+        end
+      end
+    end
+
+    assert.is_true(found_text)
+    assert.is_true(found_separator)
+    assert.is_true(found_continuation)
+  end)
+
   it(
     '終日・複数日予定はカレンダー色のバー、単日予定は色付きドットで表示する',
     function()

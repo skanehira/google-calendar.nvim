@@ -59,6 +59,7 @@ Google カレンダーの月表示を Neovim の float window に描画する。
 - 月タイトルは `FloatTitle`、float のボーダーは `FloatBorder` を `winhl` で `GoogleCalendarHeader` / `GoogleCalendarBorder` に割り当てる
 - 選択中のセルは背景を塗らず、オレンジ・bold の二重線フレーム（`GoogleCalendarSelectedBorder`）で囲む。日付は `GoogleCalendarSelected` でオレンジにする。予定バー・ドットはカレンダー色を保つ。ウィンドウタイトルにも `選択: MM-DD` を表示する
 - 予定チップは Google カレンダー風に表示する。終日・複数日予定はカレンダー色のバー（白文字、時刻付き複数日は `HH:MM タイトル`）、単日の時刻付き予定はカレンダー色の `●` / `○` ドット＋`HH:MM`＋タイトル。タイトルはセル幅に合わせて `…` で切り詰める
+- 複数日予定は週内の列を跨ぐ行に割り当て、隣接セルの `│` をバー背景で覆って連続表示する。週をまたぐ場合は次の週の行にも続けて表示する。選択セルのフレーム境界では `┃` を優先する
 - カレンダー色は `config.calendars` の順に 11 色を自動割り当てする（12 件目以降は先頭に戻る）。`GoogleCalendarCalendarColorN` がドット、`GoogleCalendarCalendarBgN` がバー背景
 - 予定が `max_events_per_cell` を超える日は、`max_events_per_cell` 件までを表示し、最後の行に `+N` を表示する
 - 予定がない日もセルの高さを固定するため、空の予定行を `max_events_per_cell + 1` 行描画する
@@ -68,7 +69,7 @@ Google カレンダーの月表示を Neovim の float window に描画する。
 **データ**:
 
 - 取得範囲は月初を含む週の開始曜日から 42 日。`timeMin` は範囲の 0 時、`timeMax` は範囲の翌日 0 時（ローカルオフセット付き RFC3339）
-- 時刻付き予定は開始日に、終日予定は開始日から終了日の前日まで各日に載せる
+- 時刻付き予定は開始日から終了日まで、終日予定は開始日から終了日の前日まで各日に載せる
 - 予定は `events_by_date` に `YYYY-MM-DD` をキーとして保持する
 - 取得済みの月は `state.month_cache[YYYY-MM]` に保持し、同じ月へ戻るときは `gws` を呼ばずに再利用する。月表示を閉じるか、`r` / `R` で再取得するとキャッシュを破棄する
 

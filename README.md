@@ -6,9 +6,9 @@ Calendar operations are delegated to [`gws`](https://github.com/googleworkspace/
 
 ## Features
 
-- Month view with previous/next month navigation, today jump, and a highlighted selected day
+- Month view with previous/next month navigation, today jump, a highlighted selected day, and Google Calendar-style event bars and dots
 - Day agenda with colored dots, start times, and event titles
-- Events from multiple configured calendars, merged into one month view
+- Events from multiple configured calendars, merged into one month view with automatically assigned calendar colors
 - Google Calendar-style event detail card with attendees, organizer, description, and Meet URL
 - Create, update, and delete events
 - Multi-window event composer modeled after Google Calendar's create dialog
@@ -239,7 +239,8 @@ The default highlight groups are:
 | `GoogleCalendarOtherMonth` | Dates from adjacent months |
 | `GoogleCalendarEvent` | Event title text (no background) |
 | `GoogleCalendarEventTime` | Event time |
-| `GoogleCalendarEventColor1` ... `GoogleCalendarEventColor11` | Agenda dot colors mapped from `colorId` |
+| `GoogleCalendarCalendarColor1` ... `GoogleCalendarCalendarColor11` | Calendar dot colors, assigned by the order of `calendars` |
+| `GoogleCalendarCalendarBg1` ... `GoogleCalendarCalendarBg11` | Calendar event bar backgrounds, assigned by the order of `calendars` |
 | `GoogleCalendarDetailTitle` | Detail title |
 | `GoogleCalendarDetailIcon` | Detail section icons |
 | `GoogleCalendarDetailMuted` | Detail secondary text |
@@ -260,10 +261,11 @@ Override any group with `setup({ highlights = { ... } })`. Set a group to `false
 ## Behavior notes
 
 - Events from every calendar in `calendars` are fetched and merged into the month view. The first calendar is used for new events; updates and deletes use the event's own calendar ID.
-- The selected day is shown with the `GoogleCalendarSelected` background across the whole cell and in the month window title.
+- The selected day is shown with the `GoogleCalendarSelected` background across the cell and in the month window title. Event bars and dots keep their calendar colors.
+- Month cells use Google Calendar-style event chips: all-day and multi-day events are colored bars with white text, and single-day timed events are a colored `●` / `○` dot followed by the start time and title. Calendar colors are assigned automatically from the order of `calendars` (11 colors, wrapping).
 - Month grid separators use the same `GoogleCalendarBorder` highlight for both horizontal and vertical lines.
 - Month data is cached in memory. The cache is cleared when the month window closes, when you press `r` or `R`, and after creating, updating, or deleting an event.
-- Agenda rows use a colored `●` or `○` dot, the start time, and the title. Events with `status == 'tentative'` or `transparency == 'transparent'` use the hollow `○` dot. All-day events use the all-day label.
+- Agenda rows use a colored `●` or `○` dot, the start time, and the title. The dot uses the event's calendar color. Events with `status == 'tentative'` or `transparency == 'transparent'` use the hollow `○` dot. All-day events use the all-day label.
 - The detail view uses a Google Calendar-style card. Guests are collapsed by default when there are more than five attendees; press `g` to expand or collapse them. The cursor stays in place when toggling.
 - Event descriptions wrap to the window width and are never truncated.
 - `y` copies the Meet URL to the `+` register. If the event has no Meet URL, the plugin reports that instead.

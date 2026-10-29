@@ -292,6 +292,32 @@ function M.start_time(item, local_offset)
   return time
 end
 
+function M.end_date(item, local_offset)
+  if M.is_all_day(item) then
+    return item['end'] and item['end'].date
+  end
+
+  if type(item['end']) ~= 'table' or present(item['end'].dateTime) == nil then
+    return nil
+  end
+
+  return M.local_datetime(item['end'].dateTime, local_offset)
+end
+
+function M.is_multiday(item, local_offset)
+  local start_date = M.start_date(item, local_offset)
+  local end_date = M.end_date(item, local_offset)
+  if start_date == nil or end_date == nil then
+    return false
+  end
+
+  if M.is_all_day(item) then
+    return end_date > calendar.add_days(start_date, 1)
+  end
+
+  return end_date > start_date
+end
+
 function M.end_time(item, local_offset)
   local finish = item['end']
   if type(finish) ~= 'table' or present(finish.dateTime) == nil then

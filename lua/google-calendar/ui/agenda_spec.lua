@@ -129,10 +129,17 @@ describe('ui.agenda', function()
 
   it('予定の色と状態に応じたドットを表示する', function()
     set_events({
-      timed_event('e1', '通常', '2026-10-28T09:00:00+09:00', '2026-10-28T10:00:00+09:00'),
+      {
+        id = 'e1',
+        summary = '通常',
+        calendar_id = 'primary',
+        start = { dateTime = '2026-10-28T09:00:00+09:00' },
+        ['end'] = { dateTime = '2026-10-28T10:00:00+09:00' },
+      },
       {
         id = 'e2',
         summary = '仮',
+        calendar_id = 'primary',
         status = 'tentative',
         start = { dateTime = '2026-10-28T10:00:00+09:00' },
         ['end'] = { dateTime = '2026-10-28T11:00:00+09:00' },
@@ -140,6 +147,7 @@ describe('ui.agenda', function()
       {
         id = 'e3',
         summary = '空き',
+        calendar_id = 'primary',
         transparency = 'transparent',
         start = { dateTime = '2026-10-28T11:00:00+09:00' },
         ['end'] = { dateTime = '2026-10-28T12:00:00+09:00' },
@@ -147,6 +155,7 @@ describe('ui.agenda', function()
       {
         id = 'e4',
         summary = '色付き',
+        calendar_id = 'work@example.com',
         colorId = '6',
         start = { dateTime = '2026-10-28T12:00:00+09:00' },
         ['end'] = { dateTime = '2026-10-28T13:00:00+09:00' },
@@ -169,10 +178,10 @@ describe('ui.agenda', function()
       table.insert(groups, mark[4].hl_group)
     end
     assert.are.same({
-      'GoogleCalendarEventColor7',
-      'GoogleCalendarEventColor7',
-      'GoogleCalendarEventColor7',
-      'GoogleCalendarEventColor6',
+      'GoogleCalendarCalendarColor1',
+      'GoogleCalendarCalendarColor1',
+      'GoogleCalendarCalendarColor1',
+      'GoogleCalendarCalendarColor2',
     }, groups)
   end)
 

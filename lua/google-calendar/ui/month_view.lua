@@ -4,6 +4,7 @@ local event = require('google-calendar.event')
 local notify = require('google-calendar.notify')
 local state = require('google-calendar.state')
 local window = require('google-calendar.ui.window')
+local calendar_color = require('google-calendar.ui.calendar_color')
 
 local M = {}
 
@@ -37,16 +38,56 @@ local function cell_highlights(cell, today, selected_date)
   return highlights
 end
 
-local function chip_chunks(item, cell_w)
-  local prefix, title = event.chip_parts(item, cell_w - 1)
-  local chunks = { { ' ' .. prefix, 'GoogleCalendarEventTime' } }
-  if title ~= '' then
-    table.insert(chunks, { title, 'GoogleCalendarEvent' })
+local function event_dot(item)
+  if item.status == 'tentative' or item.transparency == 'transparent' then
+    return '○'
+  end
+  return '●'
+end
+
+local function bar_chunks(item, cell_w)
+  local prefix = ''
+  if not event.is_all_day(item) then
+    local time = event.start_time(item)
+    if time ~= nil then
+      prefix = time .. ' '
+    end
   end
 
-  local used = 1 + vim.fn.strdisplaywidth(prefix) + vim.fn.strdisplaywidth(title)
-  table.insert(chunks, { string.rep(' ', cell_w - used), 'GoogleCalendarEvent' })
-  return chunks
+  local available = math.max(0, cell_w - 1 - vim.fn.strdisplaywidth(prefix))
+  local title = event.truncate(event.sanitize(item.summary), available)
+  local text = ' ' .. prefix .. title
+  local used = vim.fn.strdisplaywidth(text)
+  local group = calendar_color.bar_group(item.calendar_id)
+
+  return {
+    { text, group },
+    { string.rep(' ', math.max(0, cell_w - used)), group },
+  }
+end
+
+local function dot_chunks(item, cell_w)
+  local dot = event_dot(item)
+  local time = event.start_time(item) or ''
+  local prefix = ' ' .. dot .. ' ' .. time .. ' '
+  local available = math.max(0, cell_w - vim.fn.strdisplaywidth(prefix))
+  local title = event.truncate(event.sanitize(item.summary), available)
+  local used = vim.fn.strdisplaywidth(prefix) + vim.fn.strdisplaywidth(title)
+
+  return {
+    { ' ', 'GoogleCalendarEvent' },
+    { dot, calendar_color.dot_group(item.calendar_id) },
+    { ' ' .. time .. ' ', 'GoogleCalendarEvent' },
+    { title, 'GoogleCalendarEvent' },
+    { string.rep(' ', math.max(0, cell_w - used)), 'GoogleCalendarEvent' },
+  }
+end
+
+local function chip_chunks(item, cell_w)
+  if event.is_all_day(item) or event.is_multiday(item) then
+    return bar_chunks(item, cell_w)
+  end
+  return dot_chunks(item, cell_w)
 end
 
 local function overflow_chunks(count, cell_w)
@@ -89,10 +130,12 @@ local function build_event_rows(week, events_by_date, max_events, cell_w, select
         cell_chunks = blank_chunks(cell_w)
       end
 
-      -- 選択中の日は、日付行だけでなく予定行も含めたセル全体をハイライトする
+      -- 選択中の日は空き部分をハイライトし、予定の色は保持する
       if week[index].date == selected_date then
         for _, chunk in ipairs(cell_chunks) do
-          chunk[2] = 'GoogleCalendarSelected'
+          if chunk[1]:match('^%s*$') ~= nil or chunk[1]:match('^%s%+') ~= nil then
+            chunk[2] = 'GoogleCalendarSelected'
+          end
         end
       end
 
@@ -289,6 +332,9 @@ function M.render(win, view)
     end
   end
   vim.api.nvim_win_set_cursor(win, { selected_line, 0 })
+  vim.api.nvim_win_call(win, function()
+    vim.cmd('normal! zz')
+  end)
 end
 
 local function render()

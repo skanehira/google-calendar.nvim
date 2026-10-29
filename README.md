@@ -225,7 +225,7 @@ The default highlight groups are:
 | `GoogleCalendarFormIcon` | Composer section icons |
 | `GoogleCalendarFormButton` | Composer buttons such as Save |
 | `GoogleCalendarFormSeparator` | Composer title separator |
-| `GoogleCalendarBorder` | Float border |
+| `GoogleCalendarBorder` | Float border and month grid separators |
 | `GoogleCalendarError` | Form errors |
 
 Override any group with `setup({ highlights = { ... } })`. Set a group to `false` to disable it.
@@ -233,6 +233,7 @@ Override any group with `setup({ highlights = { ... } })`. Set a group to `false
 ## Behavior notes
 
 - The selected day is shown with the `GoogleCalendarSelected` background across the whole cell and in the month window title.
+- Month grid separators use the same `GoogleCalendarBorder` highlight for both horizontal and vertical lines.
 - Month data is cached in memory. The cache is cleared when the month window closes, when you press `r` or `R`, and after creating, updating, or deleting an event.
 - Agenda rows use a colored `●` or `○` dot, the start time, and the title. Events with `status == 'tentative'` or `transparency == 'transparent'` use the hollow `○` dot. All-day events use the all-day label.
 - The detail view uses a Google Calendar-style card. Guests are collapsed by default when there are more than five attendees; press `g` to expand or collapse them. The cursor stays in place when toggling.

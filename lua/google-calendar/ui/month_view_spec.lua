@@ -318,6 +318,37 @@ describe('ui.month_view', function()
     assert.is_true(has_highlight('GoogleCalendarSelected', 5, 45))
   end)
 
+  it('縦線を横線と同じ GoogleCalendarBorder でハイライトする', function()
+    run_command('2026-10')
+    wait_loading()
+
+    local lines = buffer_lines()
+    for line_number = 1, 3 do
+      local line = lines[line_number]
+      local init = 1
+      while true do
+        local pos = line:find('│', init, true)
+        if pos == nil then
+          break
+        end
+        assert.is_true(has_highlight('GoogleCalendarBorder', line_number - 1, pos - 1))
+        init = pos + #'│'
+      end
+    end
+
+    local rows = assert(virt_lines(1))
+    local found_vertical = false
+    for _, event_row in ipairs(rows) do
+      for _, chunk in ipairs(event_row) do
+        if chunk[1] == '│' then
+          found_vertical = true
+          assert.are.equal('GoogleCalendarBorder', chunk[2])
+        end
+      end
+    end
+    assert.is_true(found_vertical)
+  end)
+
   it(':GoogleCalendar YYYY-MM が指定月の月表示を開く', function()
     run_command('2026-11')
     wait_loading()

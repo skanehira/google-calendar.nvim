@@ -76,7 +76,7 @@ local function build_event_rows(week, events_by_date, max_events, cell_w, select
     local chunks = {}
     for index = 1, 7 do
       if index > 1 then
-        table.insert(chunks, { '│' })
+        table.insert(chunks, { '│', 'GoogleCalendarBorder' })
       end
 
       local list = lists[index]
@@ -208,6 +208,22 @@ local function month_title(loading)
   return title .. ' '
 end
 
+local function highlight_vertical_lines(buf, ns, line, text)
+  local init = 1
+  while true do
+    local start_pos = text:find('│', init, true)
+    if start_pos == nil then
+      break
+    end
+    vim.api.nvim_buf_set_extmark(buf, ns, line, start_pos - 1, {
+      end_col = start_pos - 1 + #'│',
+      hl_group = 'GoogleCalendarBorder',
+      priority = 10,
+    })
+    init = start_pos + #'│'
+  end
+end
+
 function M.render(win, view)
   local buf = vim.api.nvim_win_get_buf(win)
   local ns = vim.api.nvim_create_namespace(namespace_name)
@@ -224,9 +240,11 @@ function M.render(win, view)
     end_col = #view.header,
     hl_group = 'GoogleCalendarHeader',
   })
+  highlight_vertical_lines(buf, ns, 0, view.header)
 
   for week_index, week in ipairs(view.weeks) do
     local line = week_index
+    highlight_vertical_lines(buf, ns, line, week.date_line)
     for _, cell in ipairs(week.cells) do
       for _, highlight in ipairs(cell.highlights) do
         local start_col = highlight.full_cell and cell.cell_col or cell.col

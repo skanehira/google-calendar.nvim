@@ -668,6 +668,34 @@ describe('gws adapter', function()
     assert.are.same({ '--format', 'json' }, { call.argv[6], call.argv[7] })
   end)
 
+  it('get_event / delete_event は指定したカレンダー ID を使う', function()
+    write_json(state_path, { items = { timed_event } })
+
+    local item, err = await(function(callback)
+      gws.get_event('evt-timed-1', 'work@example.com', callback)
+    end)
+
+    assert.is_nil(err)
+    assert.is_not_nil(item)
+    local get_call = vim.json.decode(read_lines(call_log)[1])
+    assert.are.same({
+      calendarId = 'work@example.com',
+      eventId = 'evt-timed-1',
+    }, vim.json.decode(get_call.argv[5]))
+
+    local ok, delete_err = await(function(callback)
+      gws.delete_event('evt-timed-1', 'work@example.com', callback)
+    end)
+
+    assert.is_nil(delete_err)
+    assert.is_true(ok)
+    local delete_call = vim.json.decode(read_lines(call_log)[2])
+    assert.are.same({
+      calendarId = 'work@example.com',
+      eventId = 'evt-timed-1',
+    }, vim.json.decode(delete_call.argv[5]))
+  end)
+
   it('list で時間範囲を指定しないとき params に timeMin/timeMax を含めない', function()
     local events, err = await(function(callback)
       gws.list_events({ calendar_id = 'primary' }, callback)

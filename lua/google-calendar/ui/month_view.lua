@@ -327,7 +327,12 @@ local function event_date(events_by_date, event_id)
 end
 
 local function cache_key(year, month)
-  return string.format('%04d-%02d', year, month)
+  local calendars = config.get().calendars
+  local calendar_key = 'primary'
+  if type(calendars) == 'table' and #calendars > 0 then
+    calendar_key = table.concat(calendars, ',')
+  end
+  return string.format('%04d-%02d:%s', year, month, calendar_key)
 end
 
 local function fetch(initial, selected_event_id)
@@ -356,51 +361,83 @@ local function fetch(initial, selected_event_id)
   local request_id = request_seq
 
   local gws = require('google-calendar.gws')
-  gws.list_events({
-    calendar_id = cfg.calendars[1],
-    time_min = time_min,
-    time_max = time_max,
-  }, function(events, err)
-    vim.schedule(function()
-      if request_id ~= request_seq then
-        return
-      end
+  local calendar_ids = cfg.calendars
+  if type(calendar_ids) ~= 'table' or #calendar_ids == 0 then
+    calendar_ids = { 'primary' }
+  end
 
-      if state.windows.month == nil or not vim.api.nvim_win_is_valid(state.windows.month) then
-        state.loading = false
-        return
-      end
+  local all_events = {}
+  local remaining = #calendar_ids
+  local first_error = nil
 
-      if err ~= nil then
-        state.loading = false
-        notify.error(err)
-        if initial then
-          state.month_cache = {}
-          window.close('month')
-        else
-          render()
-        end
-        return
-      end
+  local function finish()
+    if request_id ~= request_seq then
+      return
+    end
 
+    if state.windows.month == nil or not vim.api.nvim_win_is_valid(state.windows.month) then
       state.loading = false
-      notify.reset()
-      state.month_cache[key] = {
-        events = events or {},
-        start_date = start_date,
-        end_date = end_date,
-      }
-      state.events_by_date = event.events_by_date(events or {}, start_date, calendar.add_days(end_date, -1))
-      if selected_event_id ~= nil then
-        local date = event_date(state.events_by_date, selected_event_id)
-        if date ~= nil then
-          state.selected_date = date
-        end
+      return
+    end
+
+    if first_error ~= nil then
+      state.loading = false
+      notify.error(first_error)
+      if initial then
+        state.month_cache = {}
+        window.close('month')
+      else
+        render()
       end
-      render()
-      require('google-calendar.ui.agenda').refresh(selected_event_id)
+      return
+    end
+
+    state.loading = false
+    notify.reset()
+    state.month_cache[key] = {
+      events = all_events,
+      start_date = start_date,
+      end_date = end_date,
+    }
+    state.events_by_date = event.events_by_date(all_events, start_date, calendar.add_days(end_date, -1))
+    if selected_event_id ~= nil then
+      local date = event_date(state.events_by_date, selected_event_id)
+      if date ~= nil then
+        state.selected_date = date
+      end
+    end
+    render()
+    require('google-calendar.ui.agenda').refresh(selected_event_id)
+  end
+
+  for _, calendar_id in ipairs(calendar_ids) do
+    gws.list_events({
+      calendar_id = calendar_id,
+      time_min = time_min,
+      time_max = time_max,
+    }, function(events, err)
+      vim.schedule(function()
+        if request_id ~= request_seq then
+          return
+        end
+
+        if err ~= nil then
+          if first_error == nil then
+            first_error = err
+          end
+        else
+          for _, item in ipairs(events or {}) do
+            table.insert(all_events, item)
+          end
+        end
+
+        remaining = remaining - 1
+        if remaining == 0 then
+          finish()
+        end
+      end)
     end)
-  end)
+  end
 end
 
 local function move_days(delta)

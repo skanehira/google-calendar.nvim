@@ -262,8 +262,12 @@ function M.create_event(fields, callback)
   end)
 end
 
-function M.get_event(event_id, callback)
-  local calendar_id = default_calendar_id()
+function M.get_event(event_id, calendar_id, callback)
+  if type(calendar_id) == 'function' then
+    callback = calendar_id
+    calendar_id = nil
+  end
+  calendar_id = calendar_id or default_calendar_id()
   local params = { calendarId = calendar_id, eventId = event_id }
   execute({ 'calendar', 'events', 'get', '--params', vim.json.encode(params) }, function(response, err)
     if err ~= nil then
@@ -298,8 +302,12 @@ function M.update_event(fields, callback)
   end)
 end
 
-function M.delete_event(event_id, callback)
-  local calendar_id = default_calendar_id()
+function M.delete_event(event_id, calendar_id, callback)
+  if type(calendar_id) == 'function' then
+    callback = calendar_id
+    calendar_id = nil
+  end
+  calendar_id = calendar_id or default_calendar_id()
   local params = { calendarId = calendar_id, eventId = event_id }
   execute({ 'calendar', 'events', 'delete', '--params', vim.json.encode(params) }, function(_, err)
     if err ~= nil then

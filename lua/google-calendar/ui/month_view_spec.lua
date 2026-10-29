@@ -349,6 +349,55 @@ describe('ui.month_view', function()
     assert.is_true(found_vertical)
   end)
 
+  it('設定した複数カレンダーの予定を取得して表示する', function()
+    plugin.setup({
+      notify = notify,
+      width = 1.0,
+      height = 1.0,
+      calendars = { 'primary', 'work@example.com' },
+      gws_cmd = repo_root .. '/tests/fixtures/fake-gws.py',
+    })
+    gws_handler = function(opts, cb)
+      local calendar_id = opts.calendar_id
+      local summary = calendar_id == 'primary' and 'Primary' or 'Work'
+      cb(
+        event.normalize_list({
+          {
+            id = 'evt-' .. calendar_id,
+            summary = summary,
+            start = { dateTime = '2026-10-28T09:00:00+09:00' },
+            ['end'] = { dateTime = '2026-10-28T10:00:00+09:00' },
+          },
+        }, { calendar_id = calendar_id }),
+        nil
+      )
+    end
+
+    run_command('2026-10')
+    wait_loading()
+
+    assert.are.equal(2, #gws_calls)
+    local calendar_ids = {}
+    for _, call in ipairs(gws_calls) do
+      table.insert(calendar_ids, call.calendar_id)
+    end
+    table.sort(calendar_ids)
+    assert.are.same({ 'primary', 'work@example.com' }, calendar_ids)
+
+    local events = state.events_by_date['2026-10-28']
+    assert.are.equal(2, #events)
+    local summaries = {}
+    local event_calendar_ids = {}
+    for _, item in ipairs(events) do
+      table.insert(summaries, item.summary)
+      table.insert(event_calendar_ids, item.calendar_id)
+    end
+    table.sort(summaries)
+    table.sort(event_calendar_ids)
+    assert.are.same({ 'Primary', 'Work' }, summaries)
+    assert.are.same({ 'primary', 'work@example.com' }, event_calendar_ids)
+  end)
+
   it(':GoogleCalendar YYYY-MM が指定月の月表示を開く', function()
     run_command('2026-11')
     wait_loading()

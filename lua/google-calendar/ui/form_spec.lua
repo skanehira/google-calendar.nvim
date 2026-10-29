@@ -17,6 +17,7 @@ local created
 local created_call
 local updated_call
 local get_call
+local get_calendar
 local create_handler
 local update_handler
 
@@ -29,14 +30,19 @@ local fake_gws = {
     updated_call = fields
     update_handler(fields, callback)
   end,
-  get_event = function(id, callback)
+  get_event = function(id, calendar_id, callback)
+    if type(calendar_id) == 'function' then
+      callback = calendar_id
+      calendar_id = nil
+    end
     get_call = id
+    get_calendar = calendar_id
     callback({
       id = id,
       summary = '更新前',
       start = { dateTime = '2026-10-28T09:00:00+09:00' },
       ['end'] = { dateTime = '2026-10-28T10:00:00+09:00' },
-      calendar_id = 'primary',
+      calendar_id = calendar_id or 'primary',
     }, nil)
   end,
 }
@@ -170,6 +176,7 @@ describe('ui.form', function()
     created_call = nil
     updated_call = nil
     get_call = nil
+    get_calendar = nil
     create_handler = default_create_handler
     update_handler = default_update_handler
 
@@ -476,6 +483,24 @@ describe('ui.form', function()
       { email = 'alice@example.com', responseStatus = 'accepted' },
       { email = 'bob@example.com' },
     }, updated_call.attendees)
+  end)
+
+  it('更新フォームは予定のカレンダーを使って取得・更新する', function()
+    local item = {
+      id = 'evt-work',
+      summary = '仕事',
+      start = { dateTime = '2026-10-28T09:00:00+09:00' },
+      ['end'] = { dateTime = '2026-10-28T10:00:00+09:00' },
+      calendar_id = 'work@example.com',
+    }
+
+    form.open_edit(item)
+    edit_summary('仕事更新')
+    save()
+
+    wait_closed()
+    assert.are.equal('work@example.com', get_calendar)
+    assert.are.equal('work@example.com', updated_call.calendar_id)
   end)
 
   it('保存中は連打しても gws を 1 回だけ呼ぶ', function()

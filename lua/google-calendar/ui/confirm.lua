@@ -93,7 +93,7 @@ local function delete()
 
   local item = confirm.item
   local gws = require('google-calendar.gws')
-  gws.delete_event(item.id, function(_, err)
+  gws.delete_event(item.id, item.calendar_id, function(_, err)
     vim.schedule(function()
       if not confirm.active then
         return

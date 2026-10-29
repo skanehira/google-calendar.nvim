@@ -28,7 +28,7 @@
 **gws の呼び出し**:
 
 ```text
-gws calendar events delete --params '{"calendarId":"primary","eventId":"<id>"}' --format json
+gws calendar events delete --params '{"calendarId":"<event.calendar_id>","eventId":"<id>"}' --format json
 ```
 
 - `cwd` はキャッシュディレクトリ（`stdpath('cache')/google-calendar.nvim`）

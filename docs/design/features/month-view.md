@@ -5,7 +5,7 @@
 
 ## 何を作るか
 
-Google カレンダーの月表示を Neovim の float window に描画する。月タイトル、曜日ヘッダー、6 週×7 日の日付セル、セル内の予定チップ（最大 3 件、超過は `+N`）を表示し、`h` / `l` / `j` / `k` で日を移動、`H` / `L` で前月・次月、`t` で今日へ移動する。`:GoogleCalendar [YYYY-MM]` で開く。予定の取得は `gws` の `events.list` を `singleEvents=true` で呼び、`nextPageToken` があれば追加取得する（[DESIGN.md](../DESIGN.md)「既知の制約」参照）。
+Google カレンダーの月表示を Neovim の float window に描画する。月タイトル、曜日ヘッダー、6 週×7 日の日付セル、セル内の予定チップ（最大 3 件、超過は `+N`）を表示し、`h` / `l` / `j` / `k` で日を移動、`H` / `L` で前月・次月、`t` で今日へ移動する。`:GoogleCalendar [YYYY-MM]` で開く。予定の取得は `config.calendars` の各カレンダーについて `gws` の `events.list` を `singleEvents=true` で呼び、結果を統合する。`nextPageToken` があれば追加取得する（[DESIGN.md](../DESIGN.md)「既知の制約」参照）。
 
 ## 入出力と振る舞い
 
@@ -24,6 +24,13 @@ Google カレンダーの月表示を Neovim の float window に描画する。
 │ ...                                                               │
 ╰───────────────────────────────────────────────────────────────────╯
 ```
+
+**複数カレンダー**:
+
+- `config.calendars` の全カレンダーを取得し、予定を 1 つの月表示に統合する
+- 予定モデルの `calendar_id` を保持し、詳細のカレンダー表示、更新、削除に使う
+- 新規作成は `config.calendars[1]` に対して行う
+- いずれかのカレンダーの取得に失敗した場合はエラーを通知し、既存の表示を維持する
 
 **操作 → 振る舞い**:
 

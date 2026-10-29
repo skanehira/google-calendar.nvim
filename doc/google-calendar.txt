@@ -122,13 +122,18 @@ Delete confirmation ~
   n / q / <Esc>      Close the confirmation without deleting
 
 Create / update form ~
-  <Tab> / <S-Tab>    Move to the next / previous field
-  <CR>               Start editing a text field
+  <Tab> / <S-Tab>    Move to the next / previous composer row
+  <CR>               Open the editor for the selected row, or toggle Meet
   <Space>            Toggle all-day or Meet
   <F2>               Save
   <Esc> / q          Cancel. <Esc> leaves insert mode first; q works in
                      normal mode only.
   ?                  Open form help
+
+Form editor ~
+  <CR>               Edit the selected date/time field
+  <F2>               Apply the editor value and close it
+  <Esc> / q          Close the editor without applying
 
 Help ~
   q / <Esc>          Close help
@@ -257,6 +262,12 @@ Default highlight groups:
   `GoogleCalendarDetailAccepted`  Accepted guests
   `GoogleCalendarDetailPending`   Pending or tentative guests
   `GoogleCalendarDetailDeclined`  Declined guests
+  `GoogleCalendarFormTitle`       Composer title
+  `GoogleCalendarFormMuted`       Composer placeholder and secondary text
+  `GoogleCalendarFormIcon`        Composer section icons
+  `GoogleCalendarFormTabActive`   Active composer tab
+  `GoogleCalendarFormButton`      Composer buttons such as Save
+  `GoogleCalendarFormSeparator`   Composer title separator
   `GoogleCalendarBorder`          Float border
   `GoogleCalendarError`           Form errors
 
@@ -294,6 +305,17 @@ Event detail ~
     detail window to read long descriptions.
   - `y` copies the Meet URL to the `+` register. If the event has no Meet URL,
     the plugin reports that instead.
+
+Create / update composer ~
+  - The composer uses a Google Calendar-style layout with a main window and
+    dedicated editor windows for the title, date/time, location, and
+    description.
+  - The guests row and the task / out-of-office tabs are visual only; attendee
+    invitations, tasks, and out-of-office events are not supported in the MVP.
+  - <Space> on the date/time row toggles between a timed event and an all-day
+    event. <CR> or <Space> on the Meet row toggles Meet.
+  - Save from the main composer with <F2>. Editor windows apply with <F2> and
+    close with <Esc>.
 
 ==============================================================================
 9. Troubleshooting                           *google-calendar-troubleshooting*

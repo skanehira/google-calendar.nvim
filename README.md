@@ -10,6 +10,7 @@ Calendar operations are delegated to [`gws`](https://github.com/googleworkspace/
 - Day agenda with colored dots, start times, and event titles
 - Google Calendar-style event detail card with attendees, organizer, description, and Meet URL
 - Create, update, and delete events
+- Multi-window event composer modeled after Google Calendar's create dialog
 - Add a Google Meet URL when creating an event, and copy it from the detail view
 - In-memory month cache for fast month navigation
 - Configurable window sizes, keymaps, and highlight groups
@@ -83,12 +84,15 @@ Use `r` or `R` in the month view to refetch the displayed month.
 | Detail | `q` / `<Esc>` | Return to the agenda |
 | Confirm | `y` | Delete the event |
 | Confirm | `n` / `q` / `<Esc>` | Close the confirmation without deleting |
-| Form | `<Tab>` / `<S-Tab>` | Move to the next / previous field |
-| Form | `<CR>` | Start editing a text field |
+| Form | `<Tab>` / `<S-Tab>` | Move to the next / previous composer row |
+| Form | `<CR>` | Open the editor for the selected row, or toggle Meet |
 | Form | `<Space>` | Toggle all-day or Meet |
 | Form | `<F2>` | Save |
 | Form | `<Esc>` / `q` | Cancel. `<Esc>` leaves insert mode first; `q` works in normal mode only. |
 | Form | `?` | Open help |
+| Form editor | `<CR>` | Edit the selected date/time field |
+| Form editor | `<F2>` | Apply the editor value and close it |
+| Form editor | `<Esc>` / `q` | Close the editor without applying |
 | Help | `q` / `<Esc>` | Close help |
 
 All keys can be changed through `setup()`. See `:help google-calendar-keymaps` for details.
@@ -214,6 +218,12 @@ The default highlight groups are:
 | `GoogleCalendarDetailAccepted` | Accepted guests |
 | `GoogleCalendarDetailPending` | Pending or tentative guests |
 | `GoogleCalendarDetailDeclined` | Declined guests |
+| `GoogleCalendarFormTitle` | Composer title |
+| `GoogleCalendarFormMuted` | Composer placeholder and secondary text |
+| `GoogleCalendarFormIcon` | Composer section icons |
+| `GoogleCalendarFormTabActive` | Active composer tab |
+| `GoogleCalendarFormButton` | Composer buttons such as Save |
+| `GoogleCalendarFormSeparator` | Composer title separator |
 | `GoogleCalendarBorder` | Float border |
 | `GoogleCalendarError` | Form errors |
 
@@ -227,6 +237,17 @@ Override any group with `setup({ highlights = { ... } })`. Set a group to `false
 - The detail view uses a Google Calendar-style card. Guests are collapsed by default when there are more than five attendees; press `g` to expand or collapse them. The cursor stays in place when toggling.
 - Event descriptions wrap to the window width and are never truncated.
 - `y` copies the Meet URL to the `+` register. If the event has no Meet URL, the plugin reports that instead.
+
+### Event composer
+
+The create and update form uses a Google Calendar-style composer with separate editor windows:
+
+- The main composer shows the title, tabs, date/time, guests, Google Meet, location, description, and calendar.
+- `<CR>` on the title, date/time, location, or description row opens a dedicated editor window.
+- `<CR>` or `<Space>` on the Google Meet row toggles Meet.
+- `<Space>` on the date/time row toggles between a timed event and an all-day event.
+- The guests row is displayed for parity with Google Calendar, but attendee invitations are not supported in the MVP. The Task and Out of office tabs are likewise visual only.
+- Save from the main composer with `<F2>`. Editor windows apply with `<F2>` and close with `<Esc>`.
 
 ## Help
 
@@ -249,7 +270,7 @@ If you add the plugin to `runtimepath` manually, run `:helptags doc` once to gen
 
 ## Scope
 
-The MVP targets a single primary calendar and a month view. Week view, multiple calendars, keyword search, and inviting attendees are out of scope.
+The MVP targets a single primary calendar and a month view. Week view, multiple calendars, keyword search, attendee invitations, tasks, and out-of-office events are out of scope.
 
 ## Contributing
 

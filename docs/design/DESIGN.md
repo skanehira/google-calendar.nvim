@@ -208,10 +208,10 @@ nvim --headless -u tests/minimal_init.lua \
 
 実測値:
 
-- `make test`: 293 tests passed / 0 failed / 0 errors、exit 0
+- `make test`: 253 tests passed / 0 failed / 0 errors、exit 0
 - `make test-file FILE=lua/google-calendar/config_spec.lua`: 17 tests passed、exit 0
 - `make test-file FILE=lua/google-calendar/gws_spec.lua`: 17 tests passed、exit 0
-- `XDG_STATE_HOME="$PWD/.tmp-state" make test`: 293 tests passed、exit 0
+- `XDG_STATE_HOME="$PWD/.tmp-state" make test`: 253 tests passed、exit 0
 - `make test TEST_DIR=<空ディレクトリ>`: exit 2、`spec が 0 件です` を出力（0 件のまま成功しない）
 
 `TEST_DIR` は既定 `lua/`。spec は実装ファイルの隣 (`lua/**/*_spec.lua`) に置く。テストハーネスの spec も `lua/google-calendar/test_harness_spec.lua` に置き、`make test` の走査対象に含める。E2E の spec は `tests/e2e/` に置き、`make test-e2e` で実行する。
@@ -299,12 +299,15 @@ GOOGLE_WORKSPACE_CLI_CONFIG_DIR="$PWD/.local/gws-config" gws calendar calendarLi
 | 詳細 | `q` / `<Esc>` | アジェンダに戻る |
 | 確認 | `y` | 予定を削除する |
 | 確認 | `n` / `q` / `<Esc>` | 確認を閉じる（削除しない） |
-| フォーム | `<Tab>` / `<S-Tab>` | 次のフィールド / 前のフィールド |
-| フォーム | `<CR>` | テキストフィールドの編集を開始する |
+| フォーム | `<Tab>` / `<S-Tab>` | 次の行 / 前の行へ移動する |
+| フォーム | `<CR>` | 選択行のエディタを開く。Meet 行ではトグル |
 | フォーム | `<Space>` | 終日・Meet のトグルを切り替える |
 | フォーム | `<F2>` | 保存する（`<C-s>` は herdr の prefix と衝突するため使わない） |
 | フォーム | `<Esc>` / `q` | キャンセルする（入力は破棄）。`<Esc>` は insert モードでは insert を抜けるだけで、normal モードでキャンセルする。`q` は normal モードのみ |
 | フォーム | `?` | フォームのヘルプを開く |
+| フォームエディタ | `<CR>` | 日時フィールドの編集を開始する |
+| フォームエディタ | `<F2>` | エディタの値を適用して閉じる |
+| フォームエディタ | `<Esc>` / `q` | 適用せずにエディタを閉じる |
 | ヘルプ | `q` / `<Esc>` | ヘルプを閉じる |
 
 キーマップは `setup({ keymaps = { ... } })` で画面ごとに上書きできる。`false` を指定するとそのキーを無効にする。すべての画面のキーは `config.keymaps.<screen>.<action>` から解決し、実装に直書きしない。ヘルプを閉じる `q` / `<Esc>` は `help.close` / `help.esc_close`、アジェンダ・詳細を閉じる `q` / `<Esc>` は `agenda.esc_close` / `detail.esc_close`、月表示を閉じる `q` / `<Esc>` は `month.close` / `month.esc_close` で別々に変更・無効化できる。フォームの `<Esc>` / `q` も `form.cancel` / `form.close` で別々に変更・無効化できる（`q` は normal モードのみ。`form.cancel` は insert モードでは insert を抜けるだけ、normal モードでキャンセルする）。保存の既定キーは `<F2>`（`<C-s>` は herdr の prefix と衝突するため使わない）。
@@ -447,6 +450,12 @@ require('google-calendar').setup({
 | `GoogleCalendarDetailAccepted` | 参加済みゲスト |
 | `GoogleCalendarDetailPending` | 返答待ち・仮のゲスト |
 | `GoogleCalendarDetailDeclined` | 辞退したゲスト |
+| `GoogleCalendarFormTitle` | フォームのタイトル |
+| `GoogleCalendarFormMuted` | フォームのプレースホルダー・補助情報 |
+| `GoogleCalendarFormIcon` | フォームのセクションアイコン |
+| `GoogleCalendarFormTabActive` | フォームのアクティブタブ |
+| `GoogleCalendarFormButton` | フォームの保存などのボタン |
+| `GoogleCalendarFormSeparator` | フォームのタイトル下の区切り線 |
 | `GoogleCalendarBorder` | float のボーダー |
 | `GoogleCalendarError` | フォーム内のエラー |
 
@@ -462,6 +471,7 @@ require('google-calendar').setup({
 
 - 月表示は画面の利用可能領域に対する `width` / `height`（既定 0.7）でサイズを決める。各週は最低 `max_events_per_cell + 1` 行を確保し、余った高さを空の予定行に配分する。取得中と取得完了でサイズを変えない。アジェンダは `agenda` の `width` / `height`（既定 0.5 / 0.7）で縦長にし、詳細は `detail` の `width` / `height`（既定 0.5）でサイズを決める。フォーム・ヘルプ・確認は内容に合わせる
 - 予定詳細は Google カレンダーの予定カード風に、アイコン付きのセクション（タイトル・日時・場所・ゲスト・説明・カレンダー）で表示する。ゲストの参加状況は `✓` / `○` / `?` / `✕` で示し、主催者には `主催者` を付ける。ゲストが 5 人を超える場合は折り畳んだ状態で開き、`g` で展開・折り畳みを切り替える
+- 予定の登録・更新は Google カレンダーの作成ダイアログ風のメインウィンドウと、タイトル・日時・場所・説明用の個別エディタウィンドウを組み合わせて表示する
 - 日別アジェンダは予定ごとに色付きの `●` / `○` ドット、開始時刻、タイトルを 1 行で表示する。場所は表示しない。仮・終日以外の空き予定は `○` にする
 - 選択中の日付は、日付行と予定行を含むセル全体を `GoogleCalendarSelected` の目立つ背景で示す（今日の `GoogleCalendarToday` と重なっても選択が分かるようにする）。ウィンドウタイトルの `選択: MM-DD` でも示す
 - 月グリッドは `│` の縦線に加えて、各週の上に `─` / `┼` の横線を引いてセルを区切る

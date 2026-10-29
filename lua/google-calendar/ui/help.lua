@@ -37,6 +37,7 @@ local layouts = {
     { { action = 'toggle', label = '切替' } },
     { { action = 'save', label = '保存' } },
     { { action = 'cancel', label = '取消' }, { action = 'close', label = '取消' } },
+    { { action = 'help', label = 'ヘルプ' } },
   },
 }
 

@@ -42,7 +42,7 @@
 **更新の手順**:
 
 1. フォームの値を検証する（[event-create.md](event-create.md) と同じ規則）
-2. 現在の予定を `gws calendar events get --params '{"calendarId":"primary","eventId":"<id>"}'` で取得する
+2. 現在の予定を `gws calendar events get --params '{"calendarId":"<event.calendar_id>","eventId":"<id>"}'` で取得する
 3. 取得した予定の編集可能フィールド（`summary` / `description` / `location` / `start` / `end` / `attendees` / `reminders` / `colorId` / `visibility` / `transparency` / `conferenceData`）を保持し、フォームの変更分で上書きする
 4. ゲストを変更した場合は `attendees` を既存の参加情報（`responseStatus` など）を保ったまま差し替える
 5. `gws calendar events update --params '{"calendarId":"primary","eventId":"<id>","conferenceDataVersion":1}' --json <body>` を実行する（`conferenceData` がある場合のみ `conferenceDataVersion=1`）

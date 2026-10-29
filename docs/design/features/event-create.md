@@ -86,7 +86,7 @@ Google カレンダーの作成ダイアログ風のメインウィンドウと�
 - 成功時はフォームを閉じ、月表示を再取得し、`Event created` と通知する
 - Meet 有効時は応答の `hangoutLink` を予定モデルに含める。`hangoutLink` が無い場合は「予定は作成されたが Meet URL が付かなかった」旨の警告を出す
 
-キーマップは `config.keymaps.form` から解決し、`setup()` で上書きできる。保存の既定コマンドは `:w`（`<C-s>` は herdr の prefix と衝突するため使わない）。
+新規作成は `config.calendars[1]` に対して行う。キーマップは `config.keymaps.form` から解決し、`setup()` で上書きできる。保存の既定コマンドは `:w`（`<C-s>` は herdr の prefix と衝突するため使わない）。
 
 ## API
 

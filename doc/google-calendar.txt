@@ -28,6 +28,7 @@ Features:
   - Month view with previous/next month navigation, today jump, and a
     highlighted selected day
   - Day agenda with colored dots, start times, and event titles
+  - Events from multiple configured calendars, merged into one month view
   - Google Calendar-style event detail card with attendees, organizer,
     description, and Meet URL
   - Create, update, and delete events
@@ -148,7 +149,7 @@ herdr prefix.
 Options and defaults:
 >lua
   require('google-calendar').setup({
-    -- Calendar to display. The MVP targets the primary calendar only.
+    -- Calendars to display. Events from all configured calendars are merged.
     calendars = { 'primary' },
 
     -- First day of the week: 'sunday' or 'monday'.
@@ -278,6 +279,9 @@ Override any group with `setup({ highlights = { ... } })`. Set a group to
 8. Behavior                                         *google-calendar-behavior*
 
 Month view ~
+  - Events from every calendar in `calendars` are fetched and merged into the
+    month view. The first calendar is used for new events; updates and deletes
+    use the event's own calendar ID.
   - The selected day is shown with the `GoogleCalendarSelected` background
     across the whole cell and in the month window title.
   - Month grid separators use the same `GoogleCalendarBorder` highlight for

@@ -8,6 +8,7 @@ Calendar operations are delegated to [`gws`](https://github.com/googleworkspace/
 
 - Month view with previous/next month navigation, today jump, and a highlighted selected day
 - Day agenda with colored dots, start times, and event titles
+- Events from multiple configured calendars, merged into one month view
 - Google Calendar-style event detail card with attendees, organizer, description, and Meet URL
 - Create, update, and delete events
 - Multi-window event composer modeled after Google Calendar's create dialog
@@ -103,7 +104,7 @@ All keys can be changed through `setup()`. See `:help google-calendar-keymaps` f
 
 ```lua
 require('google-calendar').setup({
-  -- Calendar to display. The MVP targets the primary calendar only.
+  -- Calendars to display. Events from all configured calendars are merged.
   calendars = { 'primary' },
 
   -- First day of the week: 'sunday' or 'monday'.
@@ -232,6 +233,7 @@ Override any group with `setup({ highlights = { ... } })`. Set a group to `false
 
 ## Behavior notes
 
+- Events from every calendar in `calendars` are fetched and merged into the month view. The first calendar is used for new events; updates and deletes use the event's own calendar ID.
 - The selected day is shown with the `GoogleCalendarSelected` background across the whole cell and in the month window title.
 - Month grid separators use the same `GoogleCalendarBorder` highlight for both horizontal and vertical lines.
 - Month data is cached in memory. The cache is cleared when the month window closes, when you press `r` or `R`, and after creating, updating, or deleting an event.
@@ -274,7 +276,7 @@ If you add the plugin to `runtimepath` manually, run `:helptags doc` once to gen
 
 ## Scope
 
-The MVP targets a single primary calendar and a month view. Week view, multiple calendars, keyword search, tasks, and out-of-office events are out of scope.
+The MVP targets a month view over the calendars configured in `calendars`. Week view, keyword search, tasks, and out-of-office events are out of scope.
 
 ## Contributing
 

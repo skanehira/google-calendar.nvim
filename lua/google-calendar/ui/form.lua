@@ -53,6 +53,7 @@ local form = {
   active = false,
   mode = 'create',
   event_id = nil,
+  calendar_id = nil,
   initial_values = nil,
   on_changed = nil,
   win = 0,
@@ -793,7 +794,7 @@ local function save_edit(fields)
   local changes = update_changes(fields, changed)
   local gws = require('google-calendar.gws')
 
-  gws.get_event(form.event_id, function(base, err)
+  gws.get_event(form.event_id, form.calendar_id, function(base, err)
     vim.schedule(function()
       if not form.active or not vim.api.nvim_win_is_valid(form.win) then
         return
@@ -805,7 +806,7 @@ local function save_edit(fields)
       end
 
       local update_fields = event.merge_update(base, changes)
-      update_fields.calendar_id = base.calendar_id or config.get().calendars[1] or 'primary'
+      update_fields.calendar_id = base.calendar_id or form.calendar_id or config.get().calendars[1] or 'primary'
 
       gws.update_event(update_fields, function(updated, update_err)
         vim.schedule(function()
@@ -1004,6 +1005,7 @@ function M.open_create(opts)
   form.active = true
   form.mode = 'create'
   form.event_id = nil
+  form.calendar_id = nil
   form.initial_values = nil
   form.on_changed = nil
   form.win = win
@@ -1047,6 +1049,7 @@ function M.open_edit(item, opts)
   form.active = true
   form.mode = 'edit'
   form.event_id = item.id
+  form.calendar_id = item.calendar_id
   form.on_created = nil
   form.on_changed = opts.on_changed
   form.win = win

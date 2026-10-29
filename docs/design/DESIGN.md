@@ -26,7 +26,7 @@
 
 | 非ゴール | 理由 |
 | --- | --- |
-| 複数カレンダーの横断表示・表示/非表示の切り替え | MVP は primary カレンダー 1 つに絞る。将来拡張 |
+| カレンダーごとの表示/非表示の切り替え | 設定した全カレンダーを統合表示する |
 | 予定のキーワード絞り込み | 月表示の一覧性を優先する |
 | 週表示・日表示 | MVP は月表示のみ |
 | 招待メールの文面カスタマイズ | gws の既定の招待に任せる |
@@ -208,10 +208,10 @@ nvim --headless -u tests/minimal_init.lua \
 
 実測値:
 
-- `make test`: 258 tests passed / 0 failed / 0 errors、exit 0
+- `make test`: 261 tests passed / 0 failed / 0 errors、exit 0
 - `make test-file FILE=lua/google-calendar/config_spec.lua`: 17 tests passed、exit 0
 - `make test-file FILE=lua/google-calendar/gws_spec.lua`: 17 tests passed、exit 0
-- `XDG_STATE_HOME="$PWD/.tmp-state" make test`: 258 tests passed、exit 0
+- `XDG_STATE_HOME="$PWD/.tmp-state" make test`: 261 tests passed、exit 0
 - `make test TEST_DIR=<空ディレクトリ>`: exit 2、`spec が 0 件です` を出力（0 件のまま成功しない）
 
 `TEST_DIR` は既定 `lua/`。spec は実装ファイルの隣 (`lua/**/*_spec.lua`) に置く。テストハーネスの spec も `lua/google-calendar/test_harness_spec.lua` に置き、`make test` の走査対象に含める。E2E の spec は `tests/e2e/` に置き、`make test-e2e` で実行する。
@@ -317,7 +317,7 @@ GOOGLE_WORKSPACE_CLI_CONFIG_DIR="$PWD/.local/gws-config" gws calendar calendarLi
 
 ```lua
 require('google-calendar').setup({
-  -- 表示するカレンダー。MVP は primary のみを想定（複数指定は将来拡張）
+  -- 表示するカレンダー。指定した全カレンダーの予定を統合して表示する
   calendars = { 'primary' },
   -- 週の開始曜日。'sunday' または 'monday'
   week_start = 'sunday',
@@ -470,6 +470,7 @@ require('google-calendar').setup({
 ### UI の原則
 
 - 月表示の縦線・横線は同じ `GoogleCalendarBorder` でハイライトする。
+- 設定 `calendars` の全カレンダーから予定を取得して統合し、月表示・アジェンダ・詳細に表示する。新規作成は先頭のカレンダー、更新・削除は予定の `calendar_id` を使う。
 - 月表示は画面の利用可能領域に対する `width` / `height`（既定 0.7）でサイズを決める。各週は最低 `max_events_per_cell + 1` 行を確保し、余った高さを空の予定行に配分する。取得中と取得完了でサイズを変えない。アジェンダは `agenda` の `width` / `height`（既定 0.5 / 0.7）で縦長にし、詳細は `detail` の `width` / `height`（既定 0.5）でサイズを決める。フォーム・ヘルプ・確認は内容に合わせる
 - 予定詳細は Google カレンダーの予定カード風に、アイコン付きのセクション（タイトル・日時・場所・ゲスト・説明・カレンダー）で表示する。ゲストの参加状況は `✓` / `○` / `?` / `✕` で示し、主催者には `主催者` を付ける。ゲストが 5 人を超える場合は折り畳んだ状態で開き、`g` で展開・折り畳みを切り替える
 - 予定の登録・更新は Google カレンダーの作成ダイアログ風のメインウィンドウと、タイトル・日時・場所・説明・ゲスト用の個別エディタウィンドウを組み合わせて表示する。説明エディタはメインウィンドウと同じサイズで開く。アイコンは表示幅2文字に揃え、説明文を同じ列から開始する
@@ -541,6 +542,5 @@ require('google-calendar').setup({
 
 ## 未解決の論点
 
-- 複数カレンダーの横断表示（MVP 後の拡張。`calendars` 設定は予約済み）
 - 夏時間のあるタイムゾーンでの表示方針（MVP はイベントのオフセットを優先）
 - キーマップの既定値の最終調整（`h/l` と `H/L` の割り当ては実装後に usability を確認）

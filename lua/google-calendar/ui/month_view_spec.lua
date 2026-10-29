@@ -230,6 +230,7 @@ describe('ui.month_view', function()
       notify = notify,
       width = 1.0,
       height = 1.0,
+      max_events_per_cell = 3,
       gws_cmd = repo_root .. '/tests/fixtures/fake-gws.py',
     })
     vim.cmd('runtime! plugin/google-calendar.lua')
@@ -413,13 +414,39 @@ describe('ui.month_view', function()
     assert.are.same({ 'primary', 'work@example.com' }, event_calendar_ids)
   end)
 
+  it('max_events_per_cell の既定値は 7 で、7 件まで表示する', function()
+    plugin.setup({
+      notify = notify,
+      width = 1.0,
+      height = 1.0,
+      gws_cmd = repo_root .. '/tests/fixtures/fake-gws.py',
+    })
+    gws_handler = function(_, cb)
+      local events = {}
+      for index = 1, 8 do
+        table.insert(
+          events,
+          timed_event('e' .. index, '予定' .. index, '2026-10-28T' .. (8 + index) .. ':00:00+09:00')
+        )
+      end
+      cb(events, nil)
+    end
+
+    run_command()
+    wait_loading()
+
+    local rows = assert(virt_lines(5))
+    assert.are.equal(8, #rows)
+    assert.is_true(has_chunk(rows[8], ' +1', 'GoogleCalendarEvent'))
+  end)
+
   it('複数日予定のバーが隣の日のセルを跨ぐ', function()
     gws_handler = function(_, cb)
       cb(
         event.normalize_list({
           {
             id = 'evt-span',
-            summary = '旅行',
+            summary = 'とても長い複数日予定のタイトル',
             start = { date = '2026-10-25' },
             ['end'] = { date = '2026-10-28' },
           },
@@ -436,26 +463,19 @@ describe('ui.month_view', function()
     local group = require('google-calendar.ui.calendar_color').bar_group('primary')
     local rows = assert(virt_lines(5))
     local found_text = false
-    local found_separator = false
-    local found_continuation = false
+    local bar_width = 0
 
     for _, event_row in ipairs(rows) do
       for _, chunk in ipairs(event_row) do
-        if chunk[2] == group then
-          if chunk[1]:find('旅行', 1, true) ~= nil then
-            found_text = true
-          elseif chunk[1] == ' ' then
-            found_separator = true
-          elseif chunk[1] == string.rep(' ', cell_w) then
-            found_continuation = true
-          end
+        if chunk[2] == group and chunk[1]:find('とても長い複数日予定のタイトル', 1, true) ~= nil then
+          found_text = true
+          bar_width = vim.fn.strdisplaywidth(chunk[1])
         end
       end
     end
 
     assert.is_true(found_text)
-    assert.is_true(found_separator)
-    assert.is_true(found_continuation)
+    assert.is_true(bar_width > cell_w)
   end)
 
   it(

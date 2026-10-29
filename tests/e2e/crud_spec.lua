@@ -263,7 +263,7 @@ describe('e2e crud', function()
     vim.o.columns = 100
     vim.o.lines = 40
 
-    plugin.setup({ gws_cmd = fake_gws, notify = notify, width = 1.0, height = 1.0 })
+    plugin.setup({ gws_cmd = fake_gws, notify = notify, width = 1.0, height = 1.0, max_events_per_cell = 3 })
     vim.cmd('runtime! plugin/google-calendar.lua')
   end)
 

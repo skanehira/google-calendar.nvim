@@ -71,6 +71,7 @@ local function setup(opts)
   opts.notify = opts.notify or notify
   opts.width = opts.width or 1.0
   opts.height = opts.height or 1.0
+  opts.max_events_per_cell = opts.max_events_per_cell or 3
   config.setup(opts)
 end
 

@@ -14,7 +14,7 @@
 
 - `:GoogleCalendar` で当月の月表示 float window を開く。`YYYY-MM` を指定するとその月で開く
 - 前月・次月・今日への表示切り替え（月単位の切り替え）
-- 日付セルごとの予定表示（最大 3 件、超過は `+N`）、日別アジェンダ、予定詳細
+- 日付セルごとの予定表示（既定 7 件、設定可能、超過は `+N`）、日別アジェンダ、予定詳細
 - 予定の登録・更新・削除（削除は確認付き）
 - 登録時の Google Meet URL の付与（`gws calendar +insert --meet`）
 - 終日予定の表示・登録・更新
@@ -208,10 +208,10 @@ nvim --headless -u tests/minimal_init.lua \
 
 実測値:
 
-- `make test`: 271 tests passed / 0 failed / 0 errors、exit 0
+- `make test`: 272 tests passed / 0 failed / 0 errors、exit 0
 - `make test-file FILE=lua/google-calendar/config_spec.lua`: 17 tests passed、exit 0
 - `make test-file FILE=lua/google-calendar/gws_spec.lua`: 17 tests passed、exit 0
-- `XDG_STATE_HOME="$PWD/.tmp-state" make test`: 271 tests passed、exit 0
+- `XDG_STATE_HOME="$PWD/.tmp-state" make test`: 272 tests passed、exit 0
 - `make test TEST_DIR=<空ディレクトリ>`: exit 2、`spec が 0 件です` を出力（0 件のまま成功しない）
 
 `TEST_DIR` は既定 `lua/`。spec は実装ファイルの隣 (`lua/**/*_spec.lua`) に置く。テストハーネスの spec も `lua/google-calendar/test_harness_spec.lua` に置き、`make test` の走査対象に含める。E2E の spec は `tests/e2e/` に置き、`make test-e2e` で実行する。
@@ -321,8 +321,8 @@ require('google-calendar').setup({
   calendars = { 'primary' },
   -- 週の開始曜日。'sunday' または 'monday'
   week_start = 'sunday',
-  -- 1 セルに表示する予定の最大件数
-  max_events_per_cell = 3,
+  -- 1 セルに表示する予定の最大件数（1〜10、既定 7）
+  max_events_per_cell = 7,
   -- float のサイズ（ボーダーを除く利用可能領域に対する割合。1.0 で画面いっぱい）
   width = 0.7,
   height = 0.7,
@@ -501,7 +501,7 @@ stdpath('data')/google-calendar.nvim/config.json
 - 予定の登録・更新は Google カレンダーの作成ダイアログ風のメインウィンドウと、タイトル・日時・場所・説明・ゲスト用の個別エディタウィンドウを組み合わせて表示する。説明エディタはメインウィンドウと同じサイズで開く。アイコンは表示幅2文字に揃え、説明文を同じ列から開始する
 - 日別アジェンダは予定ごとにカレンダー色の `●` / `○` ドット、開始時刻、タイトルを 1 行で表示する。場所は表示しない。仮・終日以外の空き予定は `○` にする
 - 選択中の日付はセル全体の背景ではなく、オレンジ・bold の二重線フレーム（`GoogleCalendarSelectedBorder`）とオレンジの日付（`GoogleCalendarSelected`）で示す。予定バー・ドットはカレンダー色を保つ（今日の `GoogleCalendarToday` と重なっても選択が分かるようにする）。ウィンドウタイトルの `選択: MM-DD` でも示す
-- 月表示の予定は Google カレンダー風に、終日・複数日予定はカレンダー色のバー（白文字）、単日の時刻付き予定はカレンダー色の `●` / `○` ドット＋開始時刻＋タイトルで表示する。複数日予定のバーは隣接する日セルと週行を跨いで連続し、セル境界の `│` を背景で覆う。色は `calendars` の順に 11 色を自動割り当てし、12 件目以降は先頭に戻る
+- 月表示の予定は Google カレンダー風に、終日・複数日予定はカレンダー色のバー（白文字）、単日の時刻付き予定はカレンダー色の `●` / `○` ドット＋開始時刻＋タイトルで表示する。複数日予定のバーは隣接する日セルと週行を跨いで連続し、セル境界の `│` を背景で覆う。バーのタイトルはバー全体の幅に合わせて切り詰める。色は `calendars` の順に 11 色を自動割り当てし、12 件目以降は先頭に戻る
 - 月グリッドは `│` の縦線に加えて、各週の上に `─` / `┼` の横線を引いてセルを区切る
 - insert モードの `<Esc>` は insert を抜けるだけにし、normal モードでキャンセルする（Vim の慣習に合わせる）
 - 画面を開いたら、実際のターミナルで代表データ（予定が多い日・長いタイトル・日本語）を使ってキー操作とスクリーンショットを確認する

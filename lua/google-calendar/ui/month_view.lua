@@ -103,6 +103,70 @@ local function blank_chunks(cell_w)
   return { { string.rep(' ', cell_w) } }
 end
 
+local function take_width(text, width)
+  local result = ''
+  local used = 0
+  while #text > 0 do
+    local char = vim.fn.strcharpart(text, 0, 1)
+    local char_width = vim.fn.strdisplaywidth(char)
+    if used + char_width > width then
+      break
+    end
+    result = result .. char
+    used = used + char_width
+    text = vim.fn.strcharpart(text, 1)
+  end
+  return result, used
+end
+
+local function bar_run_chunks(item, total_width, frame_offsets)
+  local prefix = ''
+  if not event.is_all_day(item) then
+    local time = event.start_time(item)
+    if time ~= nil then
+      prefix = time .. ' '
+    end
+  end
+
+  local available = math.max(0, total_width - 1 - vim.fn.strdisplaywidth(prefix))
+  local title = event.truncate(event.sanitize(item.summary), available)
+  local text = ' ' .. prefix .. title
+  local used = vim.fn.strdisplaywidth(text)
+  local padding = string.rep(' ', math.max(0, total_width - used))
+  local group = calendar_color.bar_group(item.calendar_id)
+
+  if #frame_offsets == 0 then
+    return {
+      { text, group },
+      { padding, group },
+    }
+  end
+
+  local chunks = {}
+  local consumed = 0
+  local remaining = text .. padding
+  for _, offset in ipairs(frame_offsets) do
+    local segment_width = offset - consumed
+    local segment, segment_used = take_width(remaining, segment_width)
+    if segment_used < segment_width then
+      segment = segment .. string.rep(' ', segment_width - segment_used)
+    end
+    table.insert(chunks, { segment, group })
+    table.insert(chunks, { '┃', 'GoogleCalendarSelectedBorder' })
+    local skipped, skipped_width = take_width(remaining:sub(#segment + 1), 1)
+    remaining = remaining:sub(#segment + #skipped + 1)
+    consumed = consumed + segment_width + math.max(1, skipped_width)
+  end
+
+  local rest_width = total_width - consumed
+  local rest, rest_used = take_width(remaining, rest_width)
+  if rest_used < rest_width then
+    rest = rest .. string.rep(' ', rest_width - rest_used)
+  end
+  table.insert(chunks, { rest, group })
+  return chunks
+end
+
 local function build_event_rows(week, events_by_date, max_events, cell_w, rows, selected_index)
   local lists = {}
   local date_columns = {}
@@ -253,23 +317,15 @@ local function build_event_rows(week, events_by_date, max_events, cell_w, rows, 
       end
 
       if spanning_item ~= nil then
-        local group = calendar_color.bar_group(spanning_item.calendar_id)
-        for index = column, run_end do
-          if index == column then
-            for _, chunk in ipairs(bar_chunks(spanning_item, cell_w)) do
-              table.insert(chunks, chunk)
-            end
-          else
-            table.insert(chunks, { string.rep(' ', cell_w), group })
+        local total_width = (run_end - column + 1) * cell_w + (run_end - column)
+        local frame_offsets = {}
+        for index = column, run_end - 1 do
+          if selected_index ~= nil and (index == selected_index or index == selected_index + 1) then
+            table.insert(frame_offsets, (index - column + 1) * cell_w + (index - column))
           end
-
-          if index < run_end then
-            if selected_index ~= nil and (index == selected_index or index == selected_index + 1) then
-              table.insert(chunks, { '┃', 'GoogleCalendarSelectedBorder' })
-            else
-              table.insert(chunks, { ' ', group })
-            end
-          end
+        end
+        for _, chunk in ipairs(bar_run_chunks(spanning_item, total_width, frame_offsets)) do
+          table.insert(chunks, chunk)
         end
         column = run_end + 1
       else

@@ -14,7 +14,7 @@
 
 - `:GoogleCalendar` で当月の月表示 float window を開く。`YYYY-MM` を指定するとその月で開く
 - 前月・次月・今日への表示切り替え（月単位の切り替え）
-- 日付セルごとの予定表示（既定 7 件、設定可能、超過は `+N`）、日別アジェンダ、予定詳細
+- 日付セルごとの予定表示（既定 6 件、設定可能、超過は `+N`）、日別アジェンダ、予定詳細
 - 予定の登録・更新・削除（削除は確認付き）
 - 登録時の Google Meet URL の付与（`gws calendar +insert --meet`）
 - 終日予定の表示・登録・更新
@@ -322,8 +322,8 @@ require('google-calendar').setup({
   calendars = { 'work@example.com' },
   -- 週の開始曜日。'sunday' または 'monday'
   week_start = 'sunday',
-  -- 1 セルに表示する予定の最大件数（1〜10、既定 7）
-  max_events_per_cell = 7,
+  -- 1 セルに表示する予定の最大件数（1〜10、既定 6）
+  max_events_per_cell = 6,
   -- float のサイズ（ボーダーを除く利用可能領域に対する割合。1.0 で画面いっぱい）
   width = 1.0,
   height = 1.0,

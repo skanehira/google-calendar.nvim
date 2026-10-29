@@ -414,7 +414,7 @@ describe('ui.month_view', function()
     assert.are.same({ 'primary', 'work@example.com' }, event_calendar_ids)
   end)
 
-  it('max_events_per_cell の既定値は 7 で、7 件まで表示する', function()
+  it('max_events_per_cell の既定値は 6 で、6 件まで表示する', function()
     plugin.setup({
       notify = notify,
       width = 1.0,
@@ -423,7 +423,7 @@ describe('ui.month_view', function()
     })
     gws_handler = function(_, cb)
       local events = {}
-      for index = 1, 8 do
+      for index = 1, 7 do
         table.insert(
           events,
           timed_event('e' .. index, '予定' .. index, '2026-10-28T' .. (8 + index) .. ':00:00+09:00')
@@ -436,8 +436,8 @@ describe('ui.month_view', function()
     wait_loading()
 
     local rows = assert(virt_lines(5))
-    assert.are.equal(8, #rows)
-    assert.is_true(has_chunk(rows[8], ' +1', 'GoogleCalendarEvent'))
+    assert.are.equal(7, #rows)
+    assert.is_true(has_chunk(rows[7], ' +1', 'GoogleCalendarEvent'))
   end)
 
   it('選択セルの次の日から始まる複数日バーに選択枠の色が混ざらない', function()

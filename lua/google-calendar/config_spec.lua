@@ -108,6 +108,49 @@ describe('config', function()
     assert.are.same(default_highlight_groups, vim.fn.sort(vim.tbl_keys(cfg.highlights)))
   end)
 
+  it('設定ファイルがなければ calendars は primary になる', function()
+    config.setup({ config_file = vim.fn.tempname() })
+
+    assert.are.same({ 'primary' }, config.get().calendars)
+  end)
+
+  it('設定ファイルの calendars を読み込む', function()
+    local path = vim.fn.tempname() .. '.json'
+    vim.fn.writefile({ vim.json.encode({ calendars = { 'primary', 'work@example.com' } }) }, path)
+
+    config.setup({ config_file = path })
+
+    assert.are.same({ 'primary', 'work@example.com' }, config.get().calendars)
+  end)
+
+  it('設定ファイルが不正な JSON の場合は警告し、primary を使う', function()
+    local messages = {}
+    local path = vim.fn.tempname() .. '.json'
+    vim.fn.writefile({ 'not json' }, path)
+
+    config.setup({
+      config_file = path,
+      notify = function(message, level)
+        table.insert(messages, { msg = message, level = level })
+      end,
+    })
+
+    assert.are.same({ 'primary' }, config.get().calendars)
+    assert.is_true(messages[1].msg:match('Config file must be valid JSON') ~= nil)
+  end)
+
+  it('setup() の calendars は設定ファイルより優先される', function()
+    local path = vim.fn.tempname() .. '.json'
+    vim.fn.writefile({ vim.json.encode({ calendars = { 'file@example.com' } }) }, path)
+
+    config.setup({
+      calendars = { 'option@example.com' },
+      config_file = path,
+    })
+
+    assert.are.same({ 'option@example.com' }, config.get().calendars)
+  end)
+
   it('setup() が keymaps の上書きを既定値とマージする', function()
     config.setup({ keymaps = { form = { save = '<A-s>' }, month = { close = 'Q' } } })
 

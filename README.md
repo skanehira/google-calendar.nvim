@@ -104,7 +104,8 @@ All keys can be changed through `setup()`. See `:help google-calendar-keymaps` f
 
 ```lua
 require('google-calendar').setup({
-  -- Calendars to display. Events from all configured calendars are merged.
+  -- Optional override. Prefer the config file below so calendar IDs stay
+  -- out of your dotfiles.
   calendars = { 'primary' },
 
   -- First day of the week: 'sunday' or 'monday'.
@@ -181,6 +182,31 @@ require('google-calendar').setup({
   highlights = {},
 })
 ```
+
+### Calendar configuration file
+
+To keep calendar IDs out of your dotfiles, put them in:
+
+```text
+stdpath('config')/google-calendar.nvim/config.json
+```
+
+For a default Neovim setup this is `~/.config/nvim/google-calendar.nvim/config.json`.
+
+```json
+{
+  "calendars": [
+    "primary",
+    "work@example.com"
+  ]
+}
+```
+
+- If the file does not exist, `primary` is used.
+- If the file is invalid, the plugin warns and falls back to `primary`.
+- `GOOGLE_CALENDAR_CONFIG` can point to a different file.
+- `setup({ config_file = '/path/to/config.json' })` also overrides the path.
+- `setup({ calendars = { ... } })` still takes precedence over the file when explicitly provided.
 
 ### Window sizes
 

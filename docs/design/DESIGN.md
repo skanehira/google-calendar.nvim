@@ -208,10 +208,10 @@ nvim --headless -u tests/minimal_init.lua \
 
 実測値:
 
-- `make test`: 261 tests passed / 0 failed / 0 errors、exit 0
+- `make test`: 265 tests passed / 0 failed / 0 errors、exit 0
 - `make test-file FILE=lua/google-calendar/config_spec.lua`: 17 tests passed、exit 0
 - `make test-file FILE=lua/google-calendar/gws_spec.lua`: 17 tests passed、exit 0
-- `XDG_STATE_HOME="$PWD/.tmp-state" make test`: 261 tests passed、exit 0
+- `XDG_STATE_HOME="$PWD/.tmp-state" make test`: 265 tests passed、exit 0
 - `make test TEST_DIR=<空ディレクトリ>`: exit 2、`spec が 0 件です` を出力（0 件のまま成功しない）
 
 `TEST_DIR` は既定 `lua/`。spec は実装ファイルの隣 (`lua/**/*_spec.lua`) に置く。テストハーネスの spec も `lua/google-calendar/test_harness_spec.lua` に置き、`make test` の走査対象に含める。E2E の spec は `tests/e2e/` に置き、`make test-e2e` で実行する。
@@ -317,7 +317,7 @@ GOOGLE_WORKSPACE_CLI_CONFIG_DIR="$PWD/.local/gws-config" gws calendar calendarLi
 
 ```lua
 require('google-calendar').setup({
-  -- 表示するカレンダー。指定した全カレンダーの予定を統合して表示する
+  -- 表示するカレンダー。通常は設定ファイルに書く（dotfiles に個人情報を置かない）
   calendars = { 'primary' },
   -- 週の開始曜日。'sunday' または 'monday'
   week_start = 'sunday',
@@ -367,6 +367,29 @@ require('google-calendar').setup({
   highlights = {},
 })
 ```
+
+**カレンダー設定ファイル**:
+
+カレンダー ID を dotfiles に書かないため、次のファイルから読み込む。
+
+```text
+stdpath('config')/google-calendar.nvim/config.json
+```
+
+```json
+{
+  "calendars": [
+    "primary",
+    "work@example.com"
+  ]
+}
+```
+
+- ファイルがなければ `primary` を使う
+- 不正な JSON や不正な `calendars` の場合は警告し、`primary` にフォールバックする
+- `GOOGLE_CALENDAR_CONFIG` で別のパスを指定できる
+- `setup({ config_file = '/path/to/config.json' })` でもパスを上書きできる
+- `setup({ calendars = { ... } })` を明示した場合はファイルより優先する
 
 **環境変数**:
 

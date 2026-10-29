@@ -24,6 +24,7 @@
 **`setup(opts)`**:
 
 - 既定値と `opts` を深いマージで統合する。`keymaps` / `highlights` は画面ごとにマージし、`false` で無効化できる
+- `calendars` は通常 `stdpath('config')/google-calendar.nvim/config.json` から読み込む。ファイルがなければ `primary` を使う。`setup({ calendars = ... })` を明示した場合はファイルより優先する
 - `keymaps` は `month` / `agenda` / `detail` / `form` / `confirm` / `help` の画面ごとにアクション名で指定する。未知の画面名・アクション名は警告して無視する
 - すべての画面のキーは `config.keymaps` から解決し、実装に直書きしない。保存の既定キーは `<F2>`（`<C-s>` は herdr の prefix と衝突するため使わない）
 - 不正な値（`week_start` が `sunday` / `monday` 以外、`max_events_per_cell` が 1 未満）は `vim.notify` で警告し、既定値を使う

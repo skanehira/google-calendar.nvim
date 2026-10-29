@@ -149,7 +149,8 @@ herdr prefix.
 Options and defaults:
 >lua
   require('google-calendar').setup({
-    -- Calendars to display. Events from all configured calendars are merged.
+    -- Optional override. Prefer the config file below so calendar IDs stay
+    -- out of your dotfiles.
     calendars = { 'primary' },
 
     -- First day of the week: 'sunday' or 'monday'.
@@ -226,6 +227,26 @@ Options and defaults:
     highlights = {},
   })
 <
+Calendar configuration file ~
+  To keep calendar IDs out of your dotfiles, put them in
+  `stdpath('config')/google-calendar.nvim/config.json` (usually
+  `~/.config/nvim/google-calendar.nvim/config.json`):
+>json
+  {
+    "calendars": [
+      "primary",
+      "work@example.com"
+    ]
+  }
+<
+  If the file does not exist, `primary` is used. If it is invalid, the plugin
+  warns and falls back to `primary`.
+
+  `GOOGLE_CALENDAR_CONFIG` can point to a different file, and
+  `setup({ config_file = '/path/to/config.json' })` overrides the path.
+  `setup({ calendars = { ... } })` takes precedence over the file when
+  explicitly provided.
+
 Keymaps are deep-merged with the defaults. Setting a key to `false` disables
 it; unknown screens or actions produce a warning and are ignored.
 

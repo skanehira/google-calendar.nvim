@@ -6,6 +6,9 @@ vim.opt.runtimepath:append(repo_root)
 vim.opt.swapfile = false
 vim.opt.shadafile = 'NONE'
 
+-- テストが開発者の実カレンダー設定を読まないようにする
+vim.env.GOOGLE_CALENDAR_CONFIG = vim.fn.tempname()
+
 vim.cmd('runtime plugin/plenary.vim')
 if vim.fn.exists(':PlenaryBustedDirectory') == 0 then
   io.stderr:write('plenary.nvim was not found. Set PLENARY_PATH: ' .. plenary_path .. '\n')

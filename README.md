@@ -11,6 +11,7 @@ Calendar operations are delegated to [`gws`](https://github.com/googleworkspace/
 - Google Calendar-style event detail card with attendees, organizer, description, and Meet URL
 - Create, update, and delete events
 - Multi-window event composer modeled after Google Calendar's create dialog
+- Guest invitations by email address
 - Add a Google Meet URL when creating an event, and copy it from the detail view
 - In-memory month cache for fast month navigation
 - Configurable window sizes, keymaps, and highlight groups
@@ -221,7 +222,6 @@ The default highlight groups are:
 | `GoogleCalendarFormTitle` | Composer title |
 | `GoogleCalendarFormMuted` | Composer placeholder and secondary text |
 | `GoogleCalendarFormIcon` | Composer section icons |
-| `GoogleCalendarFormTabActive` | Active composer tab |
 | `GoogleCalendarFormButton` | Composer buttons such as Save |
 | `GoogleCalendarFormSeparator` | Composer title separator |
 | `GoogleCalendarBorder` | Float border |
@@ -242,11 +242,11 @@ Override any group with `setup({ highlights = { ... } })`. Set a group to `false
 
 The create and update form uses a Google Calendar-style composer with separate editor windows:
 
-- The main composer shows the title, tabs, date/time, guests, Google Meet, location, description, and calendar.
-- `<CR>` on the title, date/time, location, or description row opens a dedicated editor window.
+- The main composer shows the title, date/time, guests, Google Meet, location, description, and calendar.
+- `<CR>` on the title, date/time, guests, location, or description row opens a dedicated editor window.
 - `<CR>` or `<Space>` on the Google Meet row toggles Meet.
 - `<Space>` on the date/time row toggles between a timed event and an all-day event.
-- The guests row is displayed for parity with Google Calendar, but attendee invitations are not supported in the MVP. The Task and Out of office tabs are likewise visual only.
+- The guests row opens a dedicated guest editor. Enter one email address per line; duplicates are removed and invalid addresses are reported.
 - Save from the main composer with `<F2>`. Editor windows apply with `<F2>` and close with `<Esc>`.
 
 ## Help
@@ -270,7 +270,7 @@ If you add the plugin to `runtimepath` manually, run `:helptags doc` once to gen
 
 ## Scope
 
-The MVP targets a single primary calendar and a month view. Week view, multiple calendars, keyword search, attendee invitations, tasks, and out-of-office events are out of scope.
+The MVP targets a single primary calendar and a month view. Week view, multiple calendars, keyword search, tasks, and out-of-office events are out of scope.
 
 ## Contributing
 

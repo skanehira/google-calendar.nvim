@@ -184,6 +184,13 @@ end
 
 function M.create_event(fields, callback)
   local calendar_id = fields.calendar_id or default_calendar_id()
+  local attendee_emails = {}
+  for _, attendee in ipairs(fields.attendees or {}) do
+    local email = type(attendee) == 'table' and attendee.email or attendee
+    if email ~= nil and email ~= '' then
+      table.insert(attendee_emails, email)
+    end
+  end
 
   if fields.all_day then
     local params = { calendarId = calendar_id }
@@ -192,6 +199,12 @@ function M.create_event(fields, callback)
       start = { date = fields.start },
       ['end'] = { date = fields['end'] },
     }
+    if #attendee_emails > 0 then
+      body.attendees = {}
+      for _, email in ipairs(attendee_emails) do
+        table.insert(body.attendees, { email = email })
+      end
+    end
     if fields.location ~= nil and fields.location ~= '' then
       body.location = fields.location
     end
@@ -234,6 +247,9 @@ function M.create_event(fields, callback)
   end
   if fields.description ~= nil and fields.description ~= '' then
     vim.list_extend(args, { '--description', fields.description })
+  end
+  for _, email in ipairs(attendee_emails) do
+    vim.list_extend(args, { '--attendee', email })
   end
   if fields.meet then
     table.insert(args, '--meet')

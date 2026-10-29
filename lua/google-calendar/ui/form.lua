@@ -12,7 +12,7 @@ local TITLE_LIMIT = 1024
 local LOCATION_LIMIT = 1024
 local DESCRIPTION_LIMIT = 8192
 local FORM_WIDTH_MAX = 80
-local FORM_HEIGHT = 12
+local FORM_HEIGHT = 11
 
 local WEEKDAYS = { '日', '月', '火', '水', '木', '金', '土' }
 local ICON_CALENDAR = '▣'
@@ -24,12 +24,12 @@ local ICON_NOTES = '☰'
 
 local ROWS = {
   { key = 'summary', line = 1, kind = 'summary' },
-  { key = 'datetime', line = 5, kind = 'datetime' },
-  { key = 'guests', line = 6, kind = 'guests' },
-  { key = 'meet', line = 7, kind = 'toggle' },
-  { key = 'location', line = 8, kind = 'text' },
-  { key = 'description', line = 9, kind = 'text' },
-  { key = 'calendar', line = 10, kind = 'calendar' },
+  { key = 'datetime', line = 4, kind = 'datetime' },
+  { key = 'guests', line = 5, kind = 'guests' },
+  { key = 'meet', line = 6, kind = 'toggle' },
+  { key = 'location', line = 7, kind = 'text' },
+  { key = 'description', line = 8, kind = 'text' },
+  { key = 'calendar', line = 9, kind = 'calendar' },
 }
 
 ---@class GoogleCalendarForm
@@ -177,14 +177,6 @@ local function render()
   end
 
   add(string.rep('─', width), { { 0, width, 'GoogleCalendarFormSeparator' } })
-
-  local tabs = '予定    タスク    不在'
-  add(tabs, {
-    { 0, #'予定', 'GoogleCalendarFormTabActive' },
-    { #'予定' + 4, #'予定' + 4 + #'タスク', 'GoogleCalendarFormMuted' },
-    { #'予定' + 4 + #'タスク' + 4, #tabs, 'GoogleCalendarFormMuted' },
-  })
-
   add('')
 
   local when = format_when(form.values)
@@ -195,14 +187,14 @@ local function render()
     { #date_text + 2, #date_text + 2 + #button, 'GoogleCalendarFormButton' },
   })
 
-  local attendees = form.values.attendees
+  local attendees = form.values.attendees or {}
   local guest_text
-  if type(attendees) == 'table' and #attendees > 0 then
-    guest_text = string.format('%d人のゲスト（MVP では未対応）', #attendees)
+  if #attendees > 0 then
+    guest_text = string.format('%d人のゲスト', #attendees)
   else
-    guest_text = 'ゲストを追加（MVP では未対応）'
+    guest_text = 'ゲストを追加'
   end
-  add_icon_line(add, ICON_GUESTS, event.truncate(guest_text, math.max(1, width - 2)), 'GoogleCalendarFormMuted')
+  add_icon_line(add, ICON_GUESTS, event.truncate(guest_text, math.max(1, width - 2)))
 
   local meet_text = 'Google Meet のビデオ会議を追加'
   local meet_state = form.values.meet and 'on' or 'off'
@@ -336,6 +328,23 @@ local function save_editor()
     form.values.start = vim.trim(start_value)
     form.values['end'] = vim.trim(end_value)
     form.values.all_day = all_day
+  elseif editor.kind == 'guests' then
+    local emails = {}
+    local seen = {}
+    for _, line in ipairs(lines) do
+      local email = vim.trim(line)
+      if email ~= '' then
+        if email:match('^[^@%s]+@[^@%s]+$') == nil then
+          notify('ゲストのメールアドレスが不正です: ' .. email, vim.log.levels.WARN)
+          return
+        end
+        if not seen[email] then
+          seen[email] = true
+          table.insert(emails, email)
+        end
+      end
+    end
+    form.values.attendees = emails
   end
 
   close_editor()
@@ -381,6 +390,10 @@ local function set_editor_keymaps(buf)
     if key ~= nil then
       vim.keymap.set(mode, key, handler, { buffer = buf, nowait = true, silent = true })
     end
+  end
+
+  if editor.kind ~= 'datetime' then
+    map('n', 'edit', save_editor)
   end
 
   if editor.kind == 'datetime' then
@@ -465,6 +478,17 @@ local function open_datetime_editor()
   }, 3)
 end
 
+local function open_guests_editor()
+  local lines = {}
+  for _, email in ipairs(form.values.attendees or {}) do
+    table.insert(lines, email)
+  end
+  if #lines == 0 then
+    lines = { '' }
+  end
+  open_editor('guests', ' ゲスト ', lines, math.max(1, math.min(10, #lines)))
+end
+
 local function toggle_all_day()
   local start_date = form.values.start:sub(1, 10)
   if not form.values.all_day then
@@ -500,7 +524,7 @@ local function open_selected()
   elseif row.kind == 'datetime' then
     open_datetime_editor()
   elseif row.kind == 'guests' then
-    notify('ゲスト招待は MVP では未対応です', vim.log.levels.WARN)
+    open_guests_editor()
   elseif row.kind == 'toggle' then
     toggle_meet()
   elseif row.key == 'location' then
@@ -559,6 +583,7 @@ local function validate(values)
       location = values.location,
       description = values.description,
       meet = values.meet,
+      attendees = values.attendees,
     }
   end
 
@@ -588,6 +613,7 @@ local function validate(values)
     location = values.location,
     description = values.description,
     meet = values.meet,
+    attendees = values.attendees,
   }
 end
 
@@ -616,12 +642,20 @@ local function in_display_range(created)
   return date >= grid.weeks[1][1].date and date <= grid.weeks[6][7].date
 end
 
-local CHANGE_KEYS = { 'summary', 'start', 'end', 'all_day', 'location', 'description' }
+local CHANGE_KEYS = { 'summary', 'start', 'end', 'all_day', 'location', 'description', 'attendees' }
+
+local function emails_key(emails)
+  return table.concat(emails or {}, '\n')
+end
 
 local function changed_fields()
   local changed = {}
   for _, key in ipairs(CHANGE_KEYS) do
-    changed[key] = form.values[key] ~= form.initial_values[key]
+    if key == 'attendees' then
+      changed[key] = emails_key(form.values.attendees) ~= emails_key(form.initial_values.attendees)
+    else
+      changed[key] = form.values[key] ~= form.initial_values[key]
+    end
   end
   return changed
 end
@@ -646,6 +680,18 @@ local function update_changes(fields, changed)
   end
   if changed.description then
     changes.description = fields.description
+  end
+  if changed.attendees then
+    local existing = {}
+    for _, attendee in ipairs(form.initial_values.attendee_details or {}) do
+      if attendee.email ~= nil then
+        existing[attendee.email] = attendee
+      end
+    end
+    changes.attendees = {}
+    for _, email in ipairs(fields.attendees or {}) do
+      table.insert(changes.attendees, existing[email] or { email = email })
+    end
   end
 
   local function time_value(value)
@@ -902,6 +948,12 @@ local function open_window(title)
 end
 
 local function edit_values(item)
+  local emails = {}
+  for _, attendee in ipairs(item.attendees or {}) do
+    if attendee.email ~= nil then
+      table.insert(emails, attendee.email)
+    end
+  end
   return {
     summary = vim.trim(event.sanitize(item.summary)),
     start = event.display_datetime(item.start) or '',
@@ -910,7 +962,8 @@ local function edit_values(item)
     location = vim.trim(event.sanitize(item.location)),
     description = vim.trim(item.description or ''),
     meet = item.hangout_link or '',
-    attendees = item.attendees,
+    attendees = emails,
+    attendee_details = item.attendees,
   }
 end
 
@@ -945,7 +998,7 @@ function M.open_create(opts)
     location = '',
     description = '',
     meet = false,
-    attendees = nil,
+    attendees = {},
   }
 
   render()

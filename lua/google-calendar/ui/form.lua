@@ -120,10 +120,10 @@ end
 
 local function footer_text()
   if form.saving then
-    return '保存中...'
+    return 'Saving...'
   end
   if form.error ~= nil then
-    return 'エラー: ' .. form.error
+    return 'Error: ' .. form.error
   end
 
   local save_key = config.resolve('form', 'save')
@@ -349,7 +349,7 @@ local function save_editor()
       local email = vim.trim(line)
       if email ~= '' then
         if email:match('^[^@%s]+@[^@%s]+$') == nil then
-          notify('ゲストのメールアドレスが不正です: ' .. email, vim.log.levels.WARN)
+          notify('Invalid guest email address: ' .. email, vim.log.levels.WARN)
           return
         end
         if not seen[email] then
@@ -550,7 +550,7 @@ local function open_selected()
   elseif row.key == 'description' then
     open_description_editor()
   else
-    notify('この項目は変更できません', vim.log.levels.WARN)
+    notify('This field cannot be changed', vim.log.levels.WARN)
   end
 end
 
@@ -570,27 +570,27 @@ end
 local function validate(values)
   local title = vim.trim(values.summary)
   if title == '' then
-    return nil, 'タイトルを入力してください', 'summary'
+    return nil, 'Title is required', 'summary'
   end
   if vim.fn.strchars(title) > TITLE_LIMIT then
-    return nil, 'タイトルは 1024 文字以内で入力してください', 'summary'
+    return nil, 'Title must be 1024 characters or fewer', 'summary'
   end
   if vim.fn.strchars(values.location) > LOCATION_LIMIT then
-    return nil, '場所は 1024 文字以内で入力してください', 'location'
+    return nil, 'Location must be 1024 characters or fewer', 'location'
   end
   if vim.fn.strchars(values.description) > DESCRIPTION_LIMIT then
-    return nil, '説明は 8192 文字以内で入力してください', 'description'
+    return nil, 'Description must be 8192 characters or fewer', 'description'
   end
 
   if values.all_day then
     if calendar.parse_date(values.start) == nil then
-      return nil, '開始日は YYYY-MM-DD 形式で入力してください', 'start'
+      return nil, 'Start date must be in YYYY-MM-DD format', 'start'
     end
     if calendar.parse_date(values['end']) == nil then
-      return nil, '終了日は YYYY-MM-DD 形式で入力してください', 'end'
+      return nil, 'End date must be in YYYY-MM-DD format', 'end'
     end
     if values['end'] <= values.start then
-      return nil, '終了日は開始日より後にしてください', 'end'
+      return nil, 'End date must be after the start date', 'end'
     end
 
     return {
@@ -607,14 +607,14 @@ local function validate(values)
 
   local start_year, start_month, start_day, start_hour, start_minute = calendar.parse_datetime(values.start)
   if start_year == nil then
-    return nil, '開始日時は YYYY-MM-DD HH:MM 形式で入力してください', 'start'
+    return nil, 'Start date/time must be in YYYY-MM-DD HH:MM format', 'start'
   end
   local end_year, end_month, end_day, end_hour, end_minute = calendar.parse_datetime(values['end'])
   if end_year == nil then
-    return nil, '終了日時は YYYY-MM-DD HH:MM 形式で入力してください', 'end'
+    return nil, 'End date/time must be in YYYY-MM-DD HH:MM format', 'end'
   end
   if values['end'] <= values.start then
-    return nil, '終了は開始より後にしてください', 'end'
+    return nil, 'End must be after the start', 'end'
   end
 
   return {
@@ -642,7 +642,7 @@ local function error_detail(err)
   elseif type(err) == 'table' then
     detail = err.message or err.reason
   end
-  return detail or '不明なエラー'
+  return detail or 'Unknown error'
 end
 
 local function in_display_range(created)
@@ -746,9 +746,9 @@ local function close_after_update(updated)
   local on_changed = close_edit_windows()
 
   if in_display_range(updated) then
-    notify('予定を更新しました', vim.log.levels.INFO)
+    notify('Event updated', vim.log.levels.INFO)
   else
-    notify('予定を更新しました（表示中の月には表示されません）', vim.log.levels.INFO)
+    notify('Event updated (not visible in the current month)', vim.log.levels.INFO)
   end
 
   if on_changed ~= nil then
@@ -800,7 +800,7 @@ local function save_edit(fields)
       end
 
       if err ~= nil then
-        handle_edit_error(err, '予定を取得できませんでした')
+        handle_edit_error(err, 'Could not retrieve the event')
         return
       end
 
@@ -814,7 +814,7 @@ local function save_edit(fields)
           end
 
           if update_err ~= nil then
-            handle_edit_error(update_err, '予定を更新できませんでした')
+            handle_edit_error(update_err, 'Could not update the event')
             return
           end
 
@@ -836,7 +836,7 @@ local function save_create(fields)
 
       form.saving = false
       if err ~= nil then
-        form.error = '予定を作成できませんでした: ' .. error_detail(err)
+        form.error = 'Could not create the event: ' .. error_detail(err)
         form.error_field = nil
         render()
         notify(form.error, vim.log.levels.ERROR)
@@ -853,13 +853,13 @@ local function save_create(fields)
       form.on_created = nil
 
       if in_range then
-        notify('予定を作成しました', vim.log.levels.INFO)
+        notify('Event created', vim.log.levels.INFO)
       else
-        notify('予定を作成しました（表示中の月には表示されません）', vim.log.levels.INFO)
+        notify('Event created (not visible in the current month)', vim.log.levels.INFO)
       end
 
       if meet and created.hangout_link == nil then
-        notify('予定は作成されましたが、Meet URL は付きませんでした', vim.log.levels.WARN)
+        notify('Event created, but no Meet URL was added', vim.log.levels.WARN)
       end
 
       if on_created ~= nil then

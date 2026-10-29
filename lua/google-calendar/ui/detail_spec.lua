@@ -461,7 +461,7 @@ describe('ui.detail', function()
       assert.are.equal('https://meet.google.com/abc-defg-hij', clipboard_url)
       assert.are.same({
         {
-          message = 'Meet URL をコピーしました: https://meet.google.com/abc-defg-hij',
+          message = 'Meet URL copied: https://meet.google.com/abc-defg-hij',
           level = vim.log.levels.INFO,
         },
       }, notifications)
@@ -491,7 +491,7 @@ describe('ui.detail', function()
       assert.are.equal('https://meet.google.com/fallback-url', clipboard_url)
       assert.are.same({
         {
-          message = 'Meet URL をコピーしました: https://meet.google.com/fallback-url',
+          message = 'Meet URL copied: https://meet.google.com/fallback-url',
           level = vim.log.levels.INFO,
         },
       }, notifications)
@@ -511,7 +511,7 @@ describe('ui.detail', function()
 
     assert.are.equal(0, clipboard_calls)
     assert.are.same({
-      { message = 'この予定には Meet URL がありません', level = vim.log.levels.WARN },
+      { message = 'This event has no Meet URL', level = vim.log.levels.WARN },
     }, notifications)
   end)
 
@@ -524,7 +524,7 @@ describe('ui.detail', function()
 
     assert.are.equal(0, clipboard_calls)
     assert.are.same({
-      { message = 'この予定には Meet URL がありません', level = vim.log.levels.WARN },
+      { message = 'This event has no Meet URL', level = vim.log.levels.WARN },
     }, notifications)
   end)
 
@@ -542,7 +542,7 @@ describe('ui.detail', function()
     assert.are.equal(0, clipboard_calls)
     assert.are.same({
       {
-        message = 'クリップボードにコピーできませんでした: https://meet.google.com/abc-defg-hij',
+        message = 'Could not copy to clipboard: https://meet.google.com/abc-defg-hij',
         level = vim.log.levels.ERROR,
       },
     }, notifications)
@@ -560,7 +560,7 @@ describe('ui.detail', function()
 
     assert.are.same({
       {
-        message = 'クリップボードにコピーできませんでした: https://meet.google.com/abc-defg-hij',
+        message = 'Could not copy to clipboard: https://meet.google.com/abc-defg-hij',
         level = vim.log.levels.ERROR,
       },
     }, notifications)

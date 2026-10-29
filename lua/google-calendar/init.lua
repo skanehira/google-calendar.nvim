@@ -21,7 +21,7 @@ function M.open(args)
   else
     target_year, target_month = calendar.parse_month(args)
     if target_year == nil then
-      config.get().notify('月の指定は YYYY-MM 形式で入力してください', vim.log.levels.ERROR)
+      config.get().notify('Month must be specified in YYYY-MM format', vim.log.levels.ERROR)
       return false
     end
   end

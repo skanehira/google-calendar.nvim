@@ -104,21 +104,18 @@ local function validate_week_start(notify, value)
     return value
   end
 
-  warn(
-    notify,
-    "week_start は 'sunday' または 'monday' を指定してください。既定値の 'sunday' を使います"
-  )
+  warn(notify, "week_start must be 'sunday' or 'monday'. Using the default 'sunday'.")
   return defaults.week_start
 end
 
 local function validate_max_events_per_cell(notify, value)
   if type(value) ~= 'number' or value < 1 then
-    warn(notify, 'max_events_per_cell は 1〜10 で指定してください。既定値の 3 を使います')
+    warn(notify, 'max_events_per_cell must be between 1 and 10. Using the default 3.')
     return defaults.max_events_per_cell
   end
 
   if value > 10 then
-    warn(notify, 'max_events_per_cell は 1〜10 で指定してください。10 を使います')
+    warn(notify, 'max_events_per_cell must be between 1 and 10. Using 10.')
     return 10
   end
 
@@ -132,22 +129,19 @@ local function merge_keymaps(notify, overrides)
   end
 
   if type(overrides) ~= 'table' then
-    warn(notify, 'keymaps はテーブルで指定してください')
+    warn(notify, 'keymaps must be a table')
     return merged
   end
 
   for screen, actions in pairs(overrides) do
     if merged[screen] == nil then
-      warn(notify, string.format("未知の画面名 '%s' を無視しました", screen))
+      warn(notify, string.format("Ignoring unknown screen '%s'", screen))
     elseif type(actions) ~= 'table' then
-      warn(notify, string.format("画面 '%s' の keymaps はテーブルで指定してください", screen))
+      warn(notify, string.format("keymaps for screen '%s' must be a table", screen))
     else
       for action, key in pairs(actions) do
         if merged[screen][action] == nil then
-          warn(
-            notify,
-            string.format("未知のアクション名 '%s' (画面 '%s') を無視しました", action, screen)
-          )
+          warn(notify, string.format("Ignoring unknown action '%s' (screen '%s')", action, screen))
         else
           merged[screen][action] = key
         end

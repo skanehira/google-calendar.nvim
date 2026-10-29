@@ -1,5 +1,6 @@
 ---@diagnostic disable: undefined-field
 local config = require('google-calendar.config')
+local event = require('google-calendar.event')
 local notify = require('google-calendar.notify')
 
 local notifications
@@ -36,7 +37,7 @@ describe('notify', function()
 
     assert.are.same({
       {
-        message = 'gws が見つかりません。README のセットアップ手順に従って gws をインストールしてください。',
+        message = 'gws was not found. Install gws by following the setup instructions in README.md.',
         level = vim.log.levels.ERROR,
       },
     }, notifications)
@@ -50,7 +51,7 @@ describe('notify', function()
 
     assert.are.same({
       {
-        message = 'gws の認証が切れています。gws auth login を実行してください。',
+        message = 'gws authentication has expired. Run gws auth login.',
         level = vim.log.levels.ERROR,
       },
     }, notifications)
@@ -66,7 +67,7 @@ describe('notify', function()
 
     assert.are.same({
       {
-        message = 'Google Calendar API エラー: Backend Error',
+        message = 'Google Calendar API error: Backend Error',
         level = vim.log.levels.ERROR,
       },
     }, notifications)
@@ -77,7 +78,7 @@ describe('notify', function()
 
     assert.are.same({
       {
-        message = 'Google Calendar API エラー: 不明なエラー',
+        message = 'Google Calendar API error: Unknown error',
         level = vim.log.levels.ERROR,
       },
     }, notifications)
@@ -93,7 +94,7 @@ describe('notify', function()
 
     assert.are.same({
       {
-        message = '予定が既に削除されています。',
+        message = 'The event has already been deleted.',
         level = vim.log.levels.ERROR,
       },
     }, notifications)
@@ -106,7 +107,7 @@ describe('notify', function()
 
       assert.are.same({
         {
-          message = 'Google Calendar に接続できません。ネットワークを確認し、r で再試行してください。',
+          message = 'Cannot connect to Google Calendar. Check your network and retry with r.',
           level = vim.log.levels.ERROR,
         },
       }, notifications)
@@ -118,7 +119,7 @@ describe('notify', function()
 
     assert.are.same({
       {
-        message = 'gws の出力を解釈できませんでした',
+        message = 'Could not parse the output from gws',
         level = vim.log.levels.ERROR,
       },
       {
@@ -135,7 +136,7 @@ describe('notify', function()
     notify.error(err)
 
     assert.are.same({
-      'Google Calendar に接続できません。ネットワークを確認し、r で再試行してください。',
+      'Cannot connect to Google Calendar. Check your network and retry with r.',
     }, messages())
   end)
 
@@ -145,9 +146,9 @@ describe('notify', function()
     notify.error({ kind = 'network', message = 'timeout' })
 
     assert.are.same({
-      'Google Calendar に接続できません。ネットワークを確認し、r で再試行してください。',
-      'gws の認証が切れています。gws auth login を実行してください。',
-      'Google Calendar に接続できません。ネットワークを確認し、r で再試行してください。',
+      'Cannot connect to Google Calendar. Check your network and retry with r.',
+      'gws authentication has expired. Run gws auth login.',
+      'Cannot connect to Google Calendar. Check your network and retry with r.',
     }, messages())
   end)
 
@@ -159,8 +160,8 @@ describe('notify', function()
     notify.error(err)
 
     assert.are.same({
-      'Google Calendar に接続できません。ネットワークを確認し、r で再試行してください。',
-      'Google Calendar に接続できません。ネットワークを確認し、r で再試行してください。',
+      'Cannot connect to Google Calendar. Check your network and retry with r.',
+      'Cannot connect to Google Calendar. Check your network and retry with r.',
     }, messages())
   end)
 
@@ -172,11 +173,11 @@ describe('notify', function()
 
     assert.are.same({
       {
-        message = 'Google Calendar API エラー: xxxxxxxxxxx…',
+        message = event.truncate('Google Calendar API error: ' .. detail, vim.o.columns),
         level = vim.log.levels.ERROR,
       },
       {
-        message = 'Google Calendar API エラー: ' .. detail,
+        message = 'Google Calendar API error: ' .. detail,
         level = vim.log.levels.DEBUG,
       },
     }, notifications)
@@ -187,7 +188,7 @@ describe('notify', function()
 
     assert.are.same({
       {
-        message = 'Google Calendar API エラー: first line second line',
+        message = 'Google Calendar API error: first line second line',
         level = vim.log.levels.ERROR,
       },
     }, notifications)

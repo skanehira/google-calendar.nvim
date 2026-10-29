@@ -151,11 +151,11 @@ describe('config', function()
     end)
     assert.are.same({
       {
-        msg = "google-calendar.nvim: 未知のアクション名 'unknown_action' (画面 'month') を無視しました",
+        msg = "google-calendar.nvim: Ignoring unknown action 'unknown_action' (screen 'month')",
         level = vim.log.levels.WARN,
       },
       {
-        msg = "google-calendar.nvim: 未知の画面名 'unknown_screen' を無視しました",
+        msg = "google-calendar.nvim: Ignoring unknown screen 'unknown_screen'",
         level = vim.log.levels.WARN,
       },
     }, messages)
@@ -240,7 +240,7 @@ describe('config', function()
     assert.are.equal('sunday', config.get().week_start)
     assert.are.same({
       {
-        msg = "google-calendar.nvim: week_start は 'sunday' または 'monday' を指定してください。既定値の 'sunday' を使います",
+        msg = "google-calendar.nvim: week_start must be 'sunday' or 'monday'. Using the default 'sunday'.",
         level = vim.log.levels.WARN,
       },
     }, messages)
@@ -258,7 +258,7 @@ describe('config', function()
     assert.are.equal(3, config.get().max_events_per_cell)
     assert.are.same({
       {
-        msg = 'google-calendar.nvim: max_events_per_cell は 1〜10 で指定してください。既定値の 3 を使います',
+        msg = 'google-calendar.nvim: max_events_per_cell must be between 1 and 10. Using the default 3.',
         level = vim.log.levels.WARN,
       },
     }, messages)
@@ -276,7 +276,7 @@ describe('config', function()
     assert.are.equal(10, config.get().max_events_per_cell)
     assert.are.same({
       {
-        msg = 'google-calendar.nvim: max_events_per_cell は 1〜10 で指定してください。10 を使います',
+        msg = 'google-calendar.nvim: max_events_per_cell must be between 1 and 10. Using 10.',
         level = vim.log.levels.WARN,
       },
     }, messages)

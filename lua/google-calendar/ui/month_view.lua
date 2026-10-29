@@ -285,7 +285,7 @@ local function render()
   local layout = M.compute_layout(vim.o.columns, vim.o.lines, cfg)
   local cell_w = layout.cell_w
   if cell_w < 7 then
-    cfg.notify('ウィンドウが狭すぎます', vim.log.levels.ERROR)
+    cfg.notify('Window is too narrow', vim.log.levels.ERROR)
     window.close('month')
     return
   end
@@ -542,7 +542,7 @@ function M.open()
   if win == nil or not vim.api.nvim_win_is_valid(win) then
     local layout = M.compute_layout(vim.o.columns, vim.o.lines, cfg)
     if layout.cell_w < 7 then
-      cfg.notify('ウィンドウが狭すぎます', vim.log.levels.ERROR)
+      cfg.notify('Window is too narrow', vim.log.levels.ERROR)
       return false
     end
 

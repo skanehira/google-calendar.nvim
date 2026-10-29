@@ -101,7 +101,7 @@ local function delete()
 
       if err == nil then
         finish()
-        config.get().notify('予定を削除しました', vim.log.levels.INFO)
+        config.get().notify('Event deleted', vim.log.levels.INFO)
         return
       end
 

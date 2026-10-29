@@ -272,7 +272,7 @@ GOOGLE_WORKSPACE_CLI_CONFIG_DIR="$PWD/.local/gws-config" gws calendar calendarLi
 | --- | --- | --- |
 | `:GoogleCalendar` | なし | 当月の月表示を開く。既に開いている場合はメモリキャッシュを使ってフォーカスする（再取得は `r` / `R`） |
 | `:GoogleCalendar <YYYY-MM>` | `2026-11` 形式 | 指定した月の月表示を開く |
-| `:GoogleCalendar <YYYY-MM>` | 不正な形式 | `月の指定は YYYY-MM 形式で入力してください` と通知し、開かない |
+| `:GoogleCalendar <YYYY-MM>` | 不正な形式 | `Month must be specified in YYYY-MM format` と通知し、開かない |
 
 `nargs = '?'`、`complete` は `YYYY-MM` の候補を返す。コマンドは `plugin/google-calendar.lua` で登録する。
 
@@ -390,7 +390,7 @@ require('google-calendar').setup({
 - `gws` の失敗は次の 4 種に分類し、それぞれの通知文言を `notify.lua` に置く
   - **未インストール**: `vim.fn.executable(gws_cmd) == 0`、または `pcall(vim.system, ...)` の失敗（ENOENT）。README のセットアップ手順への案内を含める
   - **未認証**: 終了コード 2 かつ stdout の `error.reason == 'authError'`。`gws auth login` の実行を促す
-  - **API エラー**: 上記以外の非 0。`error.message` を含める。404 は「予定が既に削除されている」として再取得する
+  - **API エラー**: 上記以外の非 0。`error.message` を含める。404 は `The event has already been deleted.` として再取得する
   - **ネットワーク**: `vim.system` のタイムアウト / 接続失敗。再試行（`r`）を案内する
 - 通知は `vim.notify(msg, vim.log.levels.ERROR)` を既定とし、成功時は `INFO` で 1 行だけ出す
 - エラー時も Neovim をブロックしない（すべて非同期）
@@ -398,7 +398,7 @@ require('google-calendar').setup({
 ### 非同期とローディング
 
 - `gws` 呼び出し中は `state.loading = true`。月表示のヘッダーに `読み込み中...` を表示し、キー操作を無視する
-- フォームの保存中は `:w` を無効化し、フッターに `保存中...` を表示する
+- フォームの保存中は `:w` を無効化し、フッターに `Saving...` を表示する
 - 削除の確認中は `y` を無効化し、確認 float に `削除中...` を表示する
 - 二重送信を防ぐため、同じ画面で同時に 1 リクエストだけを実行する
 

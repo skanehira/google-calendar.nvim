@@ -95,6 +95,25 @@ describe('event', function()
       end
     )
 
+    it('時刻付きの複数日予定は開始日から終了日まで各日に載せる', function()
+      local events = {
+        build_event(
+          'timed-multiday',
+          nil,
+          { dateTime = '2026-10-27T12:00:00+09:00' },
+          { dateTime = '2026-10-29T13:00:00+09:00' }
+        ),
+      }
+
+      local by_date = event.events_by_date(events, '2026-10-01', '2026-10-31', '+0900')
+
+      assert.are.same({
+        ['2026-10-27'] = { 'timed-multiday' },
+        ['2026-10-28'] = { 'timed-multiday' },
+        ['2026-10-29'] = { 'timed-multiday' },
+      }, ids_by_date(by_date))
+    end)
+
     it('取得範囲の外にある終日予定の日を切り捨てる', function()
       local events = {
         build_event('clipped', nil, { date = '2026-10-30' }, { date = '2026-11-02' }),

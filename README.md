@@ -263,7 +263,7 @@ Override any group with `setup({ highlights = { ... } })`. Set a group to `false
 
 - Events from every calendar in `calendars` are fetched and merged into the month view. The first calendar is used for new events; updates and deletes use the event's own calendar ID.
 - The selected day is shown with an orange, bold double-line frame around the cell (`GoogleCalendarSelectedBorder`) and an orange date number (`GoogleCalendarSelected`). The cell background is not filled; event bars and dots keep their calendar colors. The month window title also shows `選択: MM-DD`.
-- Month cells use Google Calendar-style event chips: all-day and multi-day events are colored bars with white text, and single-day timed events are a colored `●` / `○` dot followed by the start time and title. Calendar colors are assigned automatically from the order of `calendars` (11 colors, wrapping).
+- Month cells use Google Calendar-style event chips: all-day and multi-day events are colored bars with white text, and single-day timed events are a colored `●` / `○` dot followed by the start time and title. Multi-day bars continue across adjacent day cells and week rows instead of restarting in each cell. Calendar colors are assigned automatically from the order of `calendars` (11 colors, wrapping).
 - Month grid separators use the same `GoogleCalendarBorder` highlight for both horizontal and vertical lines.
 - Month data is cached in memory. The cache is cleared when the month window closes, when you press `r` or `R`, and after creating, updating, or deleting an event.
 - While loading, the month header shows `読み込み中...` but navigation, refresh, opening the agenda/form/help, and closing remain available. Only the latest fetch result is rendered.

@@ -274,6 +274,7 @@ function M.is_all_day(item)
   return item.start ~= nil and item.start.date ~= nil
 end
 
+---@return string|nil
 function M.start_date(item, local_offset)
   if M.is_all_day(item) then
     return item.start.date
@@ -292,6 +293,7 @@ function M.start_time(item, local_offset)
   return time
 end
 
+---@return string|nil
 function M.end_date(item, local_offset)
   if M.is_all_day(item) then
     return item['end'] and item['end'].date
@@ -481,10 +483,27 @@ function M.events_by_date(events, first_date, last_date, local_offset)
         date = calendar.add_days(date, 1)
       end
     else
-      local date = M.start_date(item, local_offset)
-      if date ~= nil and date >= first_date and date <= last_date then
-        by_date[date] = by_date[date] or {}
-        table.insert(by_date[date], item)
+      local start_date = M.start_date(item, local_offset)
+      if start_date ~= nil then
+        local end_date = M.end_date(item, local_offset)
+        if type(end_date) ~= 'string' then
+          end_date = start_date
+        end
+        if end_date < start_date then
+          end_date = start_date
+        end
+        if end_date > start_date and M.end_time(item, local_offset) == '00:00' then
+          end_date = calendar.add_days(end_date, -1)
+        end
+
+        local date = start_date
+        while date <= end_date do
+          if date >= first_date and date <= last_date then
+            by_date[date] = by_date[date] or {}
+            table.insert(by_date[date], item)
+          end
+          date = calendar.add_days(date, 1)
+        end
       end
     end
   end

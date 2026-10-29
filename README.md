@@ -188,10 +188,10 @@ require('google-calendar').setup({
 To keep calendar IDs out of your dotfiles, put them in:
 
 ```text
-stdpath('config')/google-calendar.nvim/config.json
+stdpath('data')/google-calendar.nvim/config.json
 ```
 
-For a default Neovim setup this is `~/.config/nvim/google-calendar.nvim/config.json`.
+For a default Neovim setup this is `~/.local/share/nvim/google-calendar.nvim/config.json`. This directory is normally outside a Neovim dotfiles repository.
 
 ```json
 {

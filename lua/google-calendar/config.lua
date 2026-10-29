@@ -133,7 +133,7 @@ local function config_file_path(opts)
   if type(env_path) == 'string' and env_path ~= '' then
     return env_path
   end
-  return vim.fn.stdpath('config') .. '/google-calendar.nvim/config.json'
+  return vim.fn.stdpath('data') .. '/google-calendar.nvim/config.json'
 end
 
 local function load_calendars(notify, path)

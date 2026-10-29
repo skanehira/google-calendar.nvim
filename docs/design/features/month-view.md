@@ -27,7 +27,7 @@ Google カレンダーの月表示を Neovim の float window に描画する。
 
 **複数カレンダー**:
 
-- カレンダー ID は `stdpath('config')/google-calendar.nvim/config.json` から読み込む。ファイルがなければ `primary` を使う
+- カレンダー ID は `stdpath('data')/google-calendar.nvim/config.json` から読み込む。ファイルがなければ `primary` を使う
 - `config.calendars` の全カレンダーを取得し、予定を 1 つの月表示に統合する
 - 予定モデルの `calendar_id` を保持し、詳細のカレンダー表示、更新、削除に使う
 - 新規作成は `config.calendars[1]` に対して行う

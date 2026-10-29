@@ -373,7 +373,7 @@ require('google-calendar').setup({
 カレンダー ID を dotfiles に書かないため、次のファイルから読み込む。
 
 ```text
-stdpath('config')/google-calendar.nvim/config.json
+stdpath('data')/google-calendar.nvim/config.json
 ```
 
 ```json

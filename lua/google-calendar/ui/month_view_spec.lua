@@ -440,6 +440,48 @@ describe('ui.month_view', function()
     assert.is_true(has_chunk(rows[8], ' +1', 'GoogleCalendarEvent'))
   end)
 
+  it('選択セルの次の日から始まる複数日バーに選択枠の色が混ざらない', function()
+    gws_handler = function(_, cb)
+      cb(
+        event.normalize_list({
+          {
+            id = 'evt-next-day-span',
+            summary = '協業の話',
+            start = { date = '2026-10-29' },
+            ['end'] = { date = '2026-10-31' },
+          },
+        }, { calendar_id = 'primary' }),
+        nil
+      )
+    end
+
+    run_command('2026-10')
+    wait_loading()
+
+    local rows = assert(virt_lines(5))
+    local frame_count = 0
+    local found_bar = false
+    for _, event_row in ipairs(rows) do
+      local row_has_bar = false
+      local row_frame_count = 0
+      for _, chunk in ipairs(event_row) do
+        if chunk[2] == 'GoogleCalendarSelectedBorder' then
+          row_frame_count = row_frame_count + 1
+        end
+        if chunk[1]:find('協業の話', 1, true) ~= nil then
+          row_has_bar = true
+        end
+      end
+      if row_has_bar then
+        found_bar = true
+        frame_count = row_frame_count
+      end
+    end
+
+    assert.is_true(found_bar)
+    assert.are.equal(2, frame_count)
+  end)
+
   it('複数日予定のバーが隣の日のセルを跨ぐ', function()
     gws_handler = function(_, cb)
       cb(

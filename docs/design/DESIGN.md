@@ -208,10 +208,10 @@ nvim --headless -u tests/minimal_init.lua \
 
 実測値:
 
-- `make test`: 272 tests passed / 0 failed / 0 errors、exit 0
+- `make test`: 273 tests passed / 0 failed / 0 errors、exit 0
 - `make test-file FILE=lua/google-calendar/config_spec.lua`: 17 tests passed、exit 0
 - `make test-file FILE=lua/google-calendar/gws_spec.lua`: 17 tests passed、exit 0
-- `XDG_STATE_HOME="$PWD/.tmp-state" make test`: 272 tests passed、exit 0
+- `XDG_STATE_HOME="$PWD/.tmp-state" make test`: 273 tests passed、exit 0
 - `make test TEST_DIR=<空ディレクトリ>`: exit 2、`spec が 0 件です` を出力（0 件のまま成功しない）
 
 `TEST_DIR` は既定 `lua/`。spec は実装ファイルの隣 (`lua/**/*_spec.lua`) に置く。テストハーネスの spec も `lua/google-calendar/test_harness_spec.lua` に置き、`make test` の走査対象に含める。E2E の spec は `tests/e2e/` に置き、`make test-e2e` で実行する。

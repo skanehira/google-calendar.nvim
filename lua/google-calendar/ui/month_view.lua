@@ -320,7 +320,7 @@ local function build_event_rows(week, events_by_date, max_events, cell_w, rows, 
         local total_width = (run_end - column + 1) * cell_w + (run_end - column)
         local frame_offsets = {}
         for index = column, run_end - 1 do
-          if selected_index ~= nil and (index == selected_index or index == selected_index + 1) then
+          if selected_index ~= nil and (index == selected_index - 1 or index == selected_index) then
             table.insert(frame_offsets, (index - column + 1) * cell_w + (index - column))
           end
         end

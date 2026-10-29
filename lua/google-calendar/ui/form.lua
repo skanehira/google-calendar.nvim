@@ -20,7 +20,7 @@ local ICON_CLOCK = '◷'
 local ICON_GUESTS = '◉'
 local ICON_MEET = '▶'
 local ICON_LOCATION = '⌖'
-local ICON_NOTES = '☰'
+local ICON_NOTES = '≡'
 
 local ROWS = {
   { key = 'summary', line = 1, kind = 'summary' },

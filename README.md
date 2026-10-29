@@ -117,7 +117,7 @@ require('google-calendar').setup({
   -- Month view size as a ratio of the usable area (excluding the border).
   -- 1.0 fills the available space.
   width = 1.0,
-  height = 1.0,
+  height = 0.7,
 
   -- Agenda and detail sizes as ratios of the usable area.
   agenda = { width = 0.5, height = 0.7 },
@@ -210,7 +210,7 @@ For a default Neovim setup this is `~/.local/share/nvim/google-calendar.nvim/con
 
 ### Window sizes
 
-`width` and `height` are ratios of the usable area, excluding the float border. The month view defaults to `1.0 x 1.0` so it can show the configured 6 events per cell; it distributes leftover height across the event rows of each week and keeps the same size while loading and after data arrives. If the selected week's rows do not fit, the view scrolls so they are visible. The agenda defaults to a tall `0.5 x 0.7` window; the detail window defaults to `0.5 x 0.5`.
+`width` and `height` are ratios of the usable area, excluding the float border. The month view defaults to `1.0 x 0.7` so it stays compact while showing the configured 6 events per cell; it distributes leftover height across the event rows of each week and keeps the same size while loading and after data arrives. If the selected week's rows do not fit, the view scrolls so they are visible. The agenda defaults to a tall `0.5 x 0.7` window; the detail window defaults to `0.5 x 0.5`.
 
 ### Keymap overrides
 

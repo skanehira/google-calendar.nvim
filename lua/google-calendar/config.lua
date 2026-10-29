@@ -69,7 +69,7 @@ local defaults = {
   week_start = 'sunday',
   max_events_per_cell = 6,
   width = 1.0,
-  height = 1.0,
+  height = 0.7,
   agenda = { width = 0.5, height = 0.7 },
   detail = { width = 0.5, height = 0.5 },
   date_format = '%Y-%m-%d %H:%M',

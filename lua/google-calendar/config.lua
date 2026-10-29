@@ -122,6 +122,59 @@ local function validate_max_events_per_cell(notify, value)
   return value
 end
 
+local function config_file_path(opts)
+  if opts.config_file == false then
+    return nil
+  end
+  if type(opts.config_file) == 'string' and opts.config_file ~= '' then
+    return opts.config_file
+  end
+  local env_path = vim.env.GOOGLE_CALENDAR_CONFIG
+  if type(env_path) == 'string' and env_path ~= '' then
+    return env_path
+  end
+  return vim.fn.stdpath('config') .. '/google-calendar.nvim/config.json'
+end
+
+local function load_calendars(notify, path)
+  if path == nil then
+    return nil
+  end
+  path = vim.fn.expand(path)
+  if vim.fn.filereadable(path) == 0 then
+    return nil
+  end
+
+  local ok, lines = pcall(vim.fn.readfile, path)
+  if not ok then
+    warn(notify, 'Could not read config file: ' .. path)
+    return nil
+  end
+
+  local decoded_ok, decoded = pcall(vim.json.decode, table.concat(lines, '\n'))
+  if not decoded_ok or type(decoded) ~= 'table' then
+    warn(notify, 'Config file must be valid JSON: ' .. path)
+    return nil
+  end
+
+  local calendars = decoded.calendars
+  if calendars == nil then
+    return nil
+  end
+  if type(calendars) ~= 'table' or #calendars == 0 then
+    warn(notify, 'calendars in ' .. path .. ' must be a non-empty array of strings')
+    return nil
+  end
+  for _, calendar_id in ipairs(calendars) do
+    if type(calendar_id) ~= 'string' or calendar_id == '' then
+      warn(notify, 'calendars in ' .. path .. ' must be a non-empty array of strings')
+      return nil
+    end
+  end
+
+  return vim.deepcopy(calendars)
+end
+
 local function merge_keymaps(notify, overrides)
   local merged = vim.deepcopy(defaults.keymaps)
   if overrides == nil then
@@ -179,8 +232,15 @@ function M.setup(opts)
   local current = vim.deepcopy(defaults)
   current.notify = notify
 
+  local file_calendars = nil
+  if opts.calendars == nil then
+    file_calendars = load_calendars(notify, config_file_path(opts))
+  end
+
   if opts.calendars ~= nil then
     current.calendars = vim.deepcopy(opts.calendars)
+  elseif file_calendars ~= nil then
+    current.calendars = file_calendars
   end
   if opts.width ~= nil then
     current.width = opts.width

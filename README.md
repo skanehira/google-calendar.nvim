@@ -210,7 +210,7 @@ For a default Neovim setup this is `~/.local/share/nvim/google-calendar.nvim/con
 
 ### Window sizes
 
-`width` and `height` are ratios of the usable area, excluding the float border. The month view defaults to `1.0 x 0.7` so it stays compact while showing the configured 6 events per cell; it distributes leftover height across the event rows of each week and keeps the same size while loading and after data arrives. If the selected week's rows do not fit, the view scrolls so they are visible. The agenda defaults to a tall `0.5 x 0.7` window; the detail window defaults to `0.5 x 0.5`.
+`width` and `height` are ratios of the usable area, excluding the float border. The month view defaults to `1.0 x 0.7` so it stays compact while showing the configured 6 events per cell; it distributes leftover height across the event rows of each week and keeps the same size while loading and after data arrives. If the selected week's rows do not fit, the view scrolls so they and the selected frame's bottom line are visible. The agenda defaults to a tall `0.5 x 0.7` window; the detail window defaults to `0.5 x 0.5`.
 
 ### Keymap overrides
 
@@ -262,7 +262,7 @@ Override any group with `setup({ highlights = { ... } })`. Set a group to `false
 ## Behavior notes
 
 - `primary` plus every additional calendar in `calendars` is fetched and merged into the month view. New events are created in `primary`; updates and deletes use the event's own calendar ID.
-- The selected day is shown with an orange, bold double-line frame around the cell (`GoogleCalendarSelectedBorder`) and an orange date number (`GoogleCalendarSelected`). The cell background is not filled; event bars and dots keep their calendar colors. The month window title also shows `選択: MM-DD`.
+- The selected day is shown with an orange, bold double-line frame around the cell (`GoogleCalendarSelectedBorder`) and an orange date number (`GoogleCalendarSelected`). The frame's bottom line stays visible when the selected week is scrolled into view, including the final week. The cell background is not filled; event bars and dots keep their calendar colors. The month window title also shows `選択: MM-DD`.
 - Month cells use Google Calendar-style event chips: all-day and multi-day events are colored bars with white text, and single-day timed events are a colored `●` / `○` dot followed by the start time and title. Multi-day bars continue across adjacent day cells and week rows instead of restarting in each cell. Their titles are truncated to the width of the whole bar, not to a single cell. Calendar colors are assigned automatically in the order `primary`, then the entries in `calendars` (11 colors, wrapping).
 - The weekday header is rendered as a fixed `winbar`, so it stays visible while the month grid scrolls.
 - Month grid separators use the same `GoogleCalendarBorder` highlight for both horizontal and vertical lines.

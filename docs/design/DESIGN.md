@@ -208,10 +208,10 @@ nvim --headless -u tests/minimal_init.lua \
 
 実測値:
 
-- `make test`: 278 tests passed / 0 failed / 0 errors、exit 0
+- `make test`: 279 tests passed / 0 failed / 0 errors、exit 0
 - `make test-file FILE=lua/google-calendar/config_spec.lua`: 17 tests passed、exit 0
 - `make test-file FILE=lua/google-calendar/gws_spec.lua`: 17 tests passed、exit 0
-- `XDG_STATE_HOME="$PWD/.tmp-state" make test`: 278 tests passed、exit 0
+- `XDG_STATE_HOME="$PWD/.tmp-state" make test`: 279 tests passed、exit 0
 - `make test TEST_DIR=<空ディレクトリ>`: exit 2、`spec が 0 件です` を出力（0 件のまま成功しない）
 
 `TEST_DIR` は既定 `lua/`。spec は実装ファイルの隣 (`lua/**/*_spec.lua`) に置く。テストハーネスの spec も `lua/google-calendar/test_harness_spec.lua` に置き、`make test` の走査対象に含める。E2E の spec は `tests/e2e/` に置き、`make test-e2e` で実行する。
@@ -502,7 +502,7 @@ stdpath('data')/google-calendar.nvim/config.json
 - 予定の登録・更新は Google カレンダーの作成ダイアログ風のメインウィンドウと、タイトル・日時・場所・説明・ゲスト用の個別エディタウィンドウを組み合わせて表示する。説明エディタはメインウィンドウと同じサイズで開く。アイコンは表示幅2文字に揃え、説明文を同じ列から開始する
 - 日別アジェンダは予定ごとにカレンダー色の `●` / `○` ドット、開始時刻、タイトルを 1 行で表示する。場所は表示しない。仮・終日以外の空き予定は `○` にする
 - 選択中の日付はセル全体の背景ではなく、オレンジ・bold の二重線フレーム（`GoogleCalendarSelectedBorder`）とオレンジの日付（`GoogleCalendarSelected`）で示す。予定バー・ドットはカレンダー色を保つ（今日の `GoogleCalendarToday` と重なっても選択が分かるようにする）。ウィンドウタイトルの `選択: MM-DD` でも示す
-- 月表示の曜日ヘッダーは winbar として固定し、月グリッドをスクロールしても表示し続ける。
+- 月表示の曜日ヘッダーは winbar として固定し、月グリッドをスクロールしても表示し続ける。選択週をスクロールするときは、選択枠の下線も見えるように 1 行余裕を持たせる。最終週には次の週がないため、選択枠の下線を予定行の末尾に追加する。
 - 月表示の予定は Google カレンダー風に、終日・複数日予定はカレンダー色のバー（白文字）、単日の時刻付き予定はカレンダー色の `●` / `○` ドット＋開始時刻＋タイトルで表示する。複数日予定のバーは隣接する日セルと週行を跨いで連続し、セル境界の `│` を背景で覆う。バーのタイトルはバー全体の幅に合わせて切り詰める。色は `primary` を先頭に、続いて `calendars` の順で 11 色を自動割り当てし、12 件目以降は先頭に戻る
 - 月グリッドは `│` の縦線に加えて、各週の上に `─` / `┼` の横線を引いてセルを区切る
 - insert モードの `<Esc>` は insert を抜けるだけにし、normal モードでキャンセルする（Vim の慣習に合わせる）

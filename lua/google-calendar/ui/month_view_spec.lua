@@ -1263,6 +1263,17 @@ describe('ui.month_view', function()
       end
     end
   end)
+  it('最終週を選択しても選択枠の下線を予定行の末尾に表示する', function()
+    local grid = calendar.month_grid(2026, 10, 'sunday')
+    local rows_per_week = { 4, 4, 4, 4, 4, 4 }
+    local view = month_view.build_view(grid, {}, config.get(), calendar.today(), '2026-11-02', 12, rows_per_week)
+
+    local rows = view.weeks[6].event_rows
+    assert.are.equal(5, #rows)
+    assert.is_true(has_chunk(rows[5], '┗', 'GoogleCalendarSelectedBorder'))
+    assert.is_true(has_chunk(rows[5], '┛', 'GoogleCalendarSelectedBorder'))
+  end)
+
   it('height が小さいときも選択中の週が見えるようにスクロールする', function()
     vim.o.columns = 120
     vim.o.lines = 40
@@ -1280,5 +1291,11 @@ describe('ui.month_view', function()
     assert.are.equal(26, vim.api.nvim_win_get_config(win).height)
     assert.are.equal('2026-10-28', state.selected_date)
     assert.are.equal(5, vim.api.nvim_win_get_cursor(win)[1])
+    assert.are.equal(
+      17,
+      vim.api.nvim_win_call(win, function()
+        return vim.fn.winline()
+      end)
+    )
   end)
 end)

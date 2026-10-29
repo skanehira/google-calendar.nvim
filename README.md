@@ -245,6 +245,7 @@ The create and update form uses a Google Calendar-style composer with separate e
 - The main composer shows the title, date/time, guests, Google Meet, location, description, and calendar.
 - `<CR>` on the title, date/time, guests, location, or description row opens a dedicated editor window.
 - The description editor uses the same size as the main composer so multiline descriptions have room to breathe.
+- Icons are padded to two display cells, so each row's description text starts in the same column.
 - `<CR>` or `<Space>` on the Google Meet row toggles Meet.
 - `<Space>` on the date/time row toggles between a timed event and an all-day event.
 - The guests row opens a dedicated guest editor. Enter one email address per line; duplicates are removed and invalid addresses are reported.

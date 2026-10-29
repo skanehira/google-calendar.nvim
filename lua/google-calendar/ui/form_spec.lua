@@ -212,11 +212,26 @@ describe('ui.form', function()
     assert.are.equal('◉ ゲストを追加', lines[5])
     assert.are.equal('▶ Google Meet のビデオ会議を追加  [off]', lines[6])
     assert.are.equal('⌖ 場所を追加', lines[7])
-    assert.are.equal('☰ 説明または Google ドライブの添付ファイルを追加', lines[8])
+    assert.is_true(lines[8]:match('^☰ *説明または Google ドライブの添付ファイルを追加$') ~= nil)
     assert.are.equal('▣ primary', lines[9])
     assert.are.equal('', lines[10])
     assert.is_true(lines[11]:match('^その他のオプション') ~= nil)
     assert.are.equal(1, vim.api.nvim_win_get_cursor(win)[1])
+  end)
+
+  local function text_start_column(line)
+    local icon = vim.fn.strcharpart(line, 0, 1)
+    local rest = line:sub(#icon + 1)
+    local spaces = rest:match('^ *') or ''
+    return vim.fn.strdisplaywidth(icon) + #spaces
+  end
+
+  it('アイコンと説明文の列を揃える', function()
+    form.open_create()
+    local lines = form_lines()
+    for _, line_number in ipairs({ 4, 5, 6, 7, 8, 9 }) do
+      assert.are.equal(2, text_start_column(lines[line_number]))
+    end
   end)
 
   it('<Tab> / <S-Tab> で行を移動する', function()
@@ -266,7 +281,7 @@ describe('ui.form', function()
     edit_description('議題1\n議題2')
 
     assert.are.equal('⌖ 会議室A', form_lines()[7])
-    assert.are.equal('☰ 議題1', form_lines()[8])
+    assert.is_true(form_lines()[8]:match('^☰ *議題1$') ~= nil)
   end)
 
   it('説明エディタはメインのコンポーザーと同じサイズで開く', function()
@@ -384,7 +399,7 @@ describe('ui.form', function()
     assert.are.equal('定例', lines[1])
     assert.are.equal('◷ 10月28日 (水曜日)・09:00〜10:00  [終日]', lines[4])
     assert.are.equal('⌖ 会議室A', lines[7])
-    assert.are.equal('☰ 議題', lines[8])
+    assert.is_true(lines[8]:match('^☰ *議題$') ~= nil)
     assert.are.equal('▶ Google Meet のビデオ会議を追加  [固定]', lines[6])
   end)
 

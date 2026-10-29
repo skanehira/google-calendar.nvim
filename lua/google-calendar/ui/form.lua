@@ -147,11 +147,17 @@ local function footer_text()
   return table.concat(parts, '  ')
 end
 
+local function icon_prefix(icon)
+  local pad = math.max(0, 2 - vim.fn.strdisplaywidth(icon))
+  return icon .. string.rep(' ', pad)
+end
+
 local function add_icon_line(add, icon, text, text_group)
-  local line = icon .. ' ' .. text
+  local prefix = icon_prefix(icon)
+  local line = prefix .. text
   local spans = { { 0, #icon, 'GoogleCalendarFormIcon' } }
   if text ~= '' and text_group ~= nil then
-    table.insert(spans, { #icon + 1, #line, text_group })
+    table.insert(spans, { #prefix, #line, text_group })
   end
   add(line, spans)
 end
@@ -181,7 +187,7 @@ local function render()
 
   local when = format_when(form.values)
   local button = form.values.all_day and '[時間を追加]' or '[終日]'
-  local date_text = ICON_CLOCK .. ' ' .. event.truncate(when, math.max(1, width - #button - 3))
+  local date_text = icon_prefix(ICON_CLOCK) .. event.truncate(when, math.max(1, width - #button - 3))
   add(date_text .. '  ' .. button, {
     { 0, #ICON_CLOCK, 'GoogleCalendarFormIcon' },
     { #date_text + 2, #date_text + 2 + #button, 'GoogleCalendarFormButton' },

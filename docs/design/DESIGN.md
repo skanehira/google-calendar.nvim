@@ -208,10 +208,10 @@ nvim --headless -u tests/minimal_init.lua \
 
 実測値:
 
-- `make test`: 255 tests passed / 0 failed / 0 errors、exit 0
+- `make test`: 256 tests passed / 0 failed / 0 errors、exit 0
 - `make test-file FILE=lua/google-calendar/config_spec.lua`: 17 tests passed、exit 0
 - `make test-file FILE=lua/google-calendar/gws_spec.lua`: 17 tests passed、exit 0
-- `XDG_STATE_HOME="$PWD/.tmp-state" make test`: 255 tests passed、exit 0
+- `XDG_STATE_HOME="$PWD/.tmp-state" make test`: 256 tests passed、exit 0
 - `make test TEST_DIR=<空ディレクトリ>`: exit 2、`spec が 0 件です` を出力（0 件のまま成功しない）
 
 `TEST_DIR` は既定 `lua/`。spec は実装ファイルの隣 (`lua/**/*_spec.lua`) に置く。テストハーネスの spec も `lua/google-calendar/test_harness_spec.lua` に置き、`make test` の走査対象に含める。E2E の spec は `tests/e2e/` に置き、`make test-e2e` で実行する。
@@ -470,7 +470,7 @@ require('google-calendar').setup({
 
 - 月表示は画面の利用可能領域に対する `width` / `height`（既定 0.7）でサイズを決める。各週は最低 `max_events_per_cell + 1` 行を確保し、余った高さを空の予定行に配分する。取得中と取得完了でサイズを変えない。アジェンダは `agenda` の `width` / `height`（既定 0.5 / 0.7）で縦長にし、詳細は `detail` の `width` / `height`（既定 0.5）でサイズを決める。フォーム・ヘルプ・確認は内容に合わせる
 - 予定詳細は Google カレンダーの予定カード風に、アイコン付きのセクション（タイトル・日時・場所・ゲスト・説明・カレンダー）で表示する。ゲストの参加状況は `✓` / `○` / `?` / `✕` で示し、主催者には `主催者` を付ける。ゲストが 5 人を超える場合は折り畳んだ状態で開き、`g` で展開・折り畳みを切り替える
-- 予定の登録・更新は Google カレンダーの作成ダイアログ風のメインウィンドウと、タイトル・日時・場所・説明・ゲスト用の個別エディタウィンドウを組み合わせて表示する。説明エディタはメインウィンドウと同じサイズで開く
+- 予定の登録・更新は Google カレンダーの作成ダイアログ風のメインウィンドウと、タイトル・日時・場所・説明・ゲスト用の個別エディタウィンドウを組み合わせて表示する。説明エディタはメインウィンドウと同じサイズで開く。アイコンは表示幅2文字に揃え、説明文を同じ列から開始する
 - 日別アジェンダは予定ごとに色付きの `●` / `○` ドット、開始時刻、タイトルを 1 行で表示する。場所は表示しない。仮・終日以外の空き予定は `○` にする
 - 選択中の日付は、日付行と予定行を含むセル全体を `GoogleCalendarSelected` の目立つ背景で示す（今日の `GoogleCalendarToday` と重なっても選択が分かるようにする）。ウィンドウタイトルの `選択: MM-DD` でも示す
 - 月グリッドは `│` の縦線に加えて、各週の上に `─` / `┼` の横線を引いてセルを区切る

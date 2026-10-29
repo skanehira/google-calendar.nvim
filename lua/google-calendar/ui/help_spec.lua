@@ -57,7 +57,7 @@ describe('ui.help', function()
       '<Tab>/<S-Tab>:移動',
       '<CR>:編集',
       '<Space>:切替',
-      '<F2>:保存',
+      ':w:保存',
       '<Esc>/q:取消',
       '?:ヘルプ',
     }, help.lines('form'))

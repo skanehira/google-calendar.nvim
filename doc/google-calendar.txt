@@ -125,20 +125,20 @@ Create / update form ~
   <Tab> / <S-Tab>    Move to the next / previous composer row
   <CR>               Open the editor for the selected row, or toggle Meet
   <Space>            Toggle all-day or Meet
-  <F2>               Save
+  :w                 Save (write command)
   <Esc> / q          Cancel. <Esc> leaves insert mode first; q works in
                      normal mode only.
   ?                  Open form help
 
 Form editor ~
   <CR>               Edit the selected date/time field
-  <F2>               Apply the editor value and close it
+  :w                 Apply the editor value and close it
   <Esc> / q          Close the editor without applying
 
 Help ~
   q / <Esc>          Close help
 
-The default save key is <F2>. <C-s> is not used because it conflicts with the
+The default save command is :w. <C-s> is not used because it conflicts with the
 herdr prefix.
 
 ==============================================================================
@@ -211,7 +211,7 @@ Options and defaults:
         prev_field = '<S-Tab>',
         edit = '<CR>',
         toggle = '<Space>',
-        save = '<F2>',
+        save = ':w',
         cancel = '<Esc>',
         close = 'q',
         help = '?',
@@ -316,7 +316,7 @@ Create / update composer ~
     same column.
   - <Space> on the date/time row toggles between a timed event and an all-day
     event. <CR> or <Space> on the Meet row toggles Meet.
-  - Save from the main composer with <F2>. Editor windows apply with <F2> and
+  - Save from the main composer with :w. Editor windows apply with :w and
     close with <Esc>.
 
 ==============================================================================

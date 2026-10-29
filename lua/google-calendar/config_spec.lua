@@ -32,7 +32,7 @@ local default_keymaps = {
     prev_field = '<S-Tab>',
     edit = '<CR>',
     toggle = '<Space>',
-    save = '<F2>',
+    save = ':w',
     cancel = '<Esc>',
     close = 'q',
     help = '?',
@@ -119,10 +119,10 @@ describe('config', function()
     assert.are.equal('Q', config.resolve('month', 'close'))
   end)
 
-  it('DoD: setup({ keymaps = { form = { save = "<F2>" }, month = { close = "Q" } } }) を反映する', function()
-    config.setup({ keymaps = { form = { save = '<F2>' }, month = { close = 'Q' } } })
+  it('DoD: setup({ keymaps = { form = { save = ":w" }, month = { close = "Q" } } }) を反映する', function()
+    config.setup({ keymaps = { form = { save = ':w' }, month = { close = 'Q' } } })
 
-    assert.are.equal('<F2>', config.resolve('form', 'save'))
+    assert.are.equal(':w', config.resolve('form', 'save'))
     assert.are.equal('Q', config.resolve('month', 'close'))
   end)
 

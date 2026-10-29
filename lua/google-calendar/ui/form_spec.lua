@@ -49,6 +49,15 @@ local function feed(keys)
   vim.api.nvim_feedkeys(vim.api.nvim_replace_termcodes(keys, true, false, true), 'x', false)
 end
 
+local function feed_save()
+  local key = config.resolve('form', 'save') or ':w'
+  if key == ':w' then
+    feed(':w<CR>')
+  else
+    feed(key)
+  end
+end
+
 local function form_lines()
   local win = state.windows.form
   assert.is_true(win ~= nil and vim.api.nvim_win_is_valid(win))
@@ -81,7 +90,7 @@ end
 local function edit_summary(value)
   open_editor(1)
   set_editor({ value })
-  feed(config.resolve('form', 'save') or '<F2>')
+  feed_save()
 end
 
 local function edit_datetime(start_value, end_value, all_day)
@@ -91,23 +100,23 @@ local function edit_datetime(start_value, end_value, all_day)
     '終了: ' .. end_value,
     '終日: ' .. (all_day and 'on' or 'off'),
   })
-  feed(config.resolve('form', 'save') or '<F2>')
+  feed_save()
 end
 
 local function edit_location(value)
   open_editor(7)
   set_editor({ value })
-  feed(config.resolve('form', 'save') or '<F2>')
+  feed_save()
 end
 
 local function edit_description(value)
   open_editor(8)
   set_editor(vim.split(value, '\n', { plain = true }))
-  feed(config.resolve('form', 'save') or '<F2>')
+  feed_save()
 end
 
 local function save()
-  feed('<F2>')
+  feed_save()
 end
 
 local function wait_closed()
@@ -312,13 +321,13 @@ describe('ui.form', function()
     assert.are.same({ '' }, editor_lines())
 
     set_editor({ 'alice@example.com', 'bob@example.com' })
-    feed('<F2>')
+    feed_save()
 
     assert.are.equal('◉ 2人のゲスト', form_lines()[5])
     assert.is_nil(state.windows.form_editor)
   end)
 
-  it('入力して <F2> で予定を作成する', function()
+  it('入力して :w で予定を作成する', function()
     form.open_create({
       on_created = function(item)
         created = item
@@ -330,7 +339,7 @@ describe('ui.form', function()
     select_line(5)
     feed('<CR>')
     set_editor({ 'alice@example.com', 'bob@example.com' })
-    feed('<F2>')
+    feed_save()
     select_line(6)
     feed('<Space>')
     save()
@@ -403,7 +412,7 @@ describe('ui.form', function()
     assert.are.equal('▶ Google Meet のビデオ会議を追加  [固定]', lines[6])
   end)
 
-  it('更新フォームで値を変えずに <F2> を押すと、gws を呼ばず閉じる', function()
+  it('更新フォームで値を変えずに :w を押すと、gws を呼ばず閉じる', function()
     local item = {
       id = 'evt-1',
       summary = '定例',
@@ -458,7 +467,7 @@ describe('ui.form', function()
     feed('<CR>')
     assert.are.same({ 'alice@example.com' }, editor_lines())
     set_editor({ 'alice@example.com', 'bob@example.com' })
-    feed('<F2>')
+    feed_save()
     save()
 
     wait_closed()

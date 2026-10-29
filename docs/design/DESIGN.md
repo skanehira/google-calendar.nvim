@@ -247,7 +247,7 @@ make test-e2e
 
 `scripts/e2e.sh` は `tests/fixtures/fake-gws.py` への `gws` シンボリックリンクを一時 `PATH` の先頭に置き、`FAKE_GWS_STATE` / `XDG_STATE_HOME` / `FAKE_GWS_CWD_LOG` / `FAKE_GWS_CALL_LOG` を一時ディレクトリに設定して `tests/e2e` を plenary で実行する。実カレンダーは変更しない。
 
-実測値: `make test-e2e` は 11 tests passed / 0 failed / 0 errors、exit 0。スモークテストは偽 gws が PATH の先頭にあること、空の `events list`、`+insert` 後の `list` への反映、`:GoogleCalendar` の登録、`setup()` の既定値を確認する。`tests/e2e/crud_spec.lua` は偽 gws を使い、月表示を開いて登録・更新・削除を通しで検証し、`+N`、認証エラー、作成失敗、`<F2>` 連打、各操作後の状態ファイルとバッファ内容の一致を確認する。
+実測値: `make test-e2e` は 11 tests passed / 0 failed / 0 errors、exit 0。スモークテストは偽 gws が PATH の先頭にあること、空の `events list`、`+insert` 後の `list` への反映、`:GoogleCalendar` の登録、`setup()` の既定値を確認する。`tests/e2e/crud_spec.lua` は偽 gws を使い、月表示を開いて登録・更新・削除を通しで検証し、`+N`、認証エラー、作成失敗、`:w` 連打、各操作後の状態ファイルとバッファ内容の一致を確認する。
 
 **実 API の手動確認**（任意）:
 
@@ -302,15 +302,15 @@ GOOGLE_WORKSPACE_CLI_CONFIG_DIR="$PWD/.local/gws-config" gws calendar calendarLi
 | フォーム | `<Tab>` / `<S-Tab>` | 次の行 / 前の行へ移動する |
 | フォーム | `<CR>` | 選択行のエディタを開く。Meet 行ではトグル |
 | フォーム | `<Space>` | 終日・Meet のトグルを切り替える |
-| フォーム | `<F2>` | 保存する（`<C-s>` は herdr の prefix と衝突するため使わない） |
+| フォーム | `:w` | 保存する（`<C-s>` は herdr の prefix と衝突するため使わない） |
 | フォーム | `<Esc>` / `q` | キャンセルする（入力は破棄）。`<Esc>` は insert モードでは insert を抜けるだけで、normal モードでキャンセルする。`q` は normal モードのみ |
 | フォーム | `?` | フォームのヘルプを開く |
 | フォームエディタ | `<CR>` | 日時フィールドの編集を開始する |
-| フォームエディタ | `<F2>` | エディタの値を適用して閉じる |
+| フォームエディタ | `:w` | エディタの値を適用して閉じる |
 | フォームエディタ | `<Esc>` / `q` | 適用せずにエディタを閉じる |
 | ヘルプ | `q` / `<Esc>` | ヘルプを閉じる |
 
-キーマップは `setup({ keymaps = { ... } })` で画面ごとに上書きできる。`false` を指定するとそのキーを無効にする。すべての画面のキーは `config.keymaps.<screen>.<action>` から解決し、実装に直書きしない。ヘルプを閉じる `q` / `<Esc>` は `help.close` / `help.esc_close`、アジェンダ・詳細を閉じる `q` / `<Esc>` は `agenda.esc_close` / `detail.esc_close`、月表示を閉じる `q` / `<Esc>` は `month.close` / `month.esc_close` で別々に変更・無効化できる。フォームの `<Esc>` / `q` も `form.cancel` / `form.close` で別々に変更・無効化できる（`q` は normal モードのみ。`form.cancel` は insert モードでは insert を抜けるだけ、normal モードでキャンセルする）。保存の既定キーは `<F2>`（`<C-s>` は herdr の prefix と衝突するため使わない）。
+キーマップは `setup({ keymaps = { ... } })` で画面ごとに上書きできる。`false` を指定するとそのキーを無効にする。すべての画面のキーは `config.keymaps.<screen>.<action>` から解決し、実装に直書きしない。ヘルプを閉じる `q` / `<Esc>` は `help.close` / `help.esc_close`、アジェンダ・詳細を閉じる `q` / `<Esc>` は `agenda.esc_close` / `detail.esc_close`、月表示を閉じる `q` / `<Esc>` は `month.close` / `month.esc_close` で別々に変更・無効化できる。フォームの `<Esc>` / `q` も `form.cancel` / `form.close` で別々に変更・無効化できる（`q` は normal モードのみ。`form.cancel` は insert モードでは insert を抜けるだけ、normal モードでキャンセルする）。保存の既定コマンドは `:w`（`<C-s>` は herdr の prefix と衝突するため使わない）。
 
 **設定（`setup()`）**:
 
@@ -357,7 +357,7 @@ require('google-calendar').setup({
     },
     form = {
       next_field = '<Tab>', prev_field = '<S-Tab>', edit = '<CR>',
-      toggle = '<Space>', save = '<F2>', cancel = '<Esc>', close = 'q', help = '?',
+      toggle = '<Space>', save = ':w', cancel = '<Esc>', close = 'q', help = '?',
     },
     confirm = { yes = 'y', no = 'n', close = 'q', esc_close = '<Esc>' },
     help = { close = 'q', esc_close = '<Esc>' },
@@ -397,7 +397,7 @@ require('google-calendar').setup({
 ### 非同期とローディング
 
 - `gws` 呼び出し中は `state.loading = true`。月表示のヘッダーに `読み込み中...` を表示し、キー操作を無視する
-- フォームの保存中は `<F2>` を無効化し、フッターに `保存中...` を表示する
+- フォームの保存中は `:w` を無効化し、フッターに `保存中...` を表示する
 - 削除の確認中は `y` を無効化し、確認 float に `削除中...` を表示する
 - 二重送信を防ぐため、同じ画面で同時に 1 リクエストだけを実行する
 
@@ -426,7 +426,7 @@ require('google-calendar').setup({
 - `setup({ keymaps = ... })` は既定値と深くマージする。`false` を指定したキーは無効化する
 - 未知の画面名・アクション名は `vim.notify` で警告し、無視する
 - ヘルプは解決後のキーを表示する
-- 保存の既定キーは `<F2>`。`<C-s>` は herdr の prefix と衝突するため使わない。ユーザーは `keymaps.form.save` で変更できる（例: `<A-s>`, `gs`）
+- 保存の既定コマンドは `:w`。`<C-s>` は herdr の prefix と衝突するため使わない。ユーザーは `keymaps.form.save` で変更できる（例: `<A-s>`, `gs`）
 
 ### ハイライト
 

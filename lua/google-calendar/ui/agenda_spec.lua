@@ -11,9 +11,12 @@ local original_columns
 local original_lines
 local original_local_datetime
 local original_open_detail
+local original_delete
 local original_help
 
 local opened_detail
+local opened_delete
+local delete_opts
 local opened_help
 
 local function fake_local_datetime(value)
@@ -57,6 +60,8 @@ describe('ui.agenda', function()
     state.reset()
     config.setup({})
     opened_detail = nil
+    opened_delete = nil
+    delete_opts = nil
     opened_help = nil
 
     original_columns = vim.o.columns
@@ -68,9 +73,14 @@ describe('ui.agenda', function()
     rawset(event, 'local_datetime', fake_local_datetime)
 
     original_open_detail = agenda.openers.open_detail
+    original_delete = agenda.openers.delete
     original_help = agenda.openers.help
     agenda.openers.open_detail = function(item)
       opened_detail = item
+    end
+    agenda.openers.delete = function(item, opts)
+      opened_delete = item
+      delete_opts = opts
     end
     agenda.openers.help = function(screen)
       opened_help = screen
@@ -85,6 +95,7 @@ describe('ui.agenda', function()
 
     rawset(event, 'local_datetime', original_local_datetime)
     agenda.openers.open_detail = original_open_detail
+    agenda.openers.delete = original_delete
     agenda.openers.help = original_help
     vim.o.columns = original_columns
     vim.o.lines = original_lines
@@ -204,6 +215,38 @@ describe('ui.agenda', function()
 
     feed('<CR>')
     assert.are.equal('e2', opened_detail.id)
+  end)
+
+  it('d で選択中の予定の削除確認を開き、削除後に一覧を更新する', function()
+    local changed = false
+    set_events({
+      timed_event('e1', '朝会', '2026-10-28T09:00:00+09:00', '2026-10-28T09:30:00+09:00'),
+      timed_event('e2', '定例', '2026-10-28T10:00:00+09:00', '2026-10-28T11:00:00+09:00'),
+      timed_event('e3', 'ランチ', '2026-10-28T12:00:00+09:00', '2026-10-28T13:00:00+09:00'),
+    })
+
+    local win = agenda.open({
+      on_changed = function()
+        changed = true
+      end,
+    })
+
+    feed('j')
+    feed('j')
+    feed('d')
+
+    assert.are.equal('e3', opened_delete.id)
+    assert.is_not_nil(delete_opts)
+    assert.is_not_nil(delete_opts.on_finished)
+
+    delete_opts.on_finished()
+
+    assert.are.same({
+      '● 09:00 朝会',
+      '● 10:00 定例',
+    }, buffer_lines())
+    assert.are.same({ 2, 0 }, vim.api.nvim_win_get_cursor(win))
+    assert.is_true(changed)
   end)
 
   it('q でアジェンダを閉じ、元の月表示へフォーカスが戻る', function()

@@ -404,6 +404,39 @@ describe('e2e crud', function()
     assert.are.same({ cache_dir }, read_lines(cwd_log))
   end)
 
+  it('日別アジェンダで d を押すと確認を開き、y で削除して一覧を更新する', function()
+    open_month('2026-10')
+    write_state({
+      timed_raw('evt-a', '予定A', '2026-10-28', '09:00', '10:00'),
+      timed_raw('evt-b', '予定B', '2026-10-28', '10:00', '11:00'),
+    })
+    state.selected_date = '2026-10-28'
+    feed('r')
+    wait_month_loaded()
+
+    feed('<CR>')
+    assert.are.same({ '● 09:00 予定A', '● 10:00 予定B' }, window_lines('agenda'))
+
+    feed('d')
+    assert.is_true(vim.api.nvim_win_is_valid(state.windows.confirm))
+    assert.are.same({
+      '予定「予定A」を削除しますか? (y/n)',
+      'y:削除  n:キャンセル',
+    }, window_lines('confirm'))
+
+    feed('y')
+    assert.is_true(vim.wait(10000, function()
+      return state.windows.confirm == nil and state.windows.agenda ~= nil and not state.loading
+    end, 10))
+
+    assert.are.same({ '● 10:00 予定B' }, window_lines('agenda'))
+    assert.are.equal(1, #state_items())
+    assert.are.same({
+      { message = '予定を削除しました', level = vim.log.levels.INFO },
+    }, notifications)
+    assert.is_false(has_chunk('予定A', 'GoogleCalendarSelected'))
+  end)
+
   it('予定 4 件以上の日は +N を表示し、月末と月初をまたいで表示する', function()
     write_state({
       timed_raw('evt-1', '予定1', '2026-10-31', '09:00', '10:00'),

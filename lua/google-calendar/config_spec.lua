@@ -17,7 +17,7 @@ local default_keymaps = {
     close = 'q',
     esc_close = '<Esc>',
   },
-  agenda = { next = 'j', prev = 'k', open = '<CR>', help = '?', close = 'q', esc_close = '<Esc>' },
+  agenda = { next = 'j', prev = 'k', open = '<CR>', delete = 'd', help = '?', close = 'q', esc_close = '<Esc>' },
   detail = {
     edit = 'e',
     delete = 'd',

@@ -106,6 +106,7 @@ Month view ~
 Day agenda ~
   j / k              Select an event
   <CR>               Open the selected event
+  d                  Delete the selected event
   ?                  Open agenda help
   q / <Esc>          Return to the month view
 

@@ -1180,7 +1180,7 @@ describe('ui.month_view', function()
       max_events_per_cell = 3,
     })
     assert.are.equal(90, small.win_width)
-    assert.are.equal(30, small.win_height)
+    assert.are.equal(37, small.win_height)
 
     local default = month_view.compute_layout(120, 40, {
       width = 0.7,
@@ -1188,7 +1188,7 @@ describe('ui.month_view', function()
       max_events_per_cell = 3,
     })
     assert.are.equal(76, default.win_width)
-    assert.are.equal(26, default.win_height)
+    assert.are.equal(37, default.win_height)
   end)
 
   it('取得中と取得完了でウィンドウの高さが変わらない', function()
@@ -1272,6 +1272,50 @@ describe('ui.month_view', function()
     assert.are.equal(5, #rows)
     assert.is_true(has_chunk(rows[5], '┗', 'GoogleCalendarSelectedBorder'))
     assert.is_true(has_chunk(rows[5], '┛', 'GoogleCalendarSelectedBorder'))
+  end)
+
+  it('十分な高さがあるときは 6 週分が収まる高さを確保する', function()
+    vim.o.columns = 120
+    vim.o.lines = 80
+    plugin.setup({
+      notify = notify,
+      width = 1.0,
+      height = 0.7,
+      gws_cmd = repo_root .. '/tests/fixtures/fake-gws.py',
+    })
+
+    local layout = month_view.compute_layout(vim.o.columns, vim.o.lines, config.get())
+
+    assert.are.equal(55, layout.win_height)
+    assert.are.same({ 7, 7, 7, 7, 7, 7 }, layout.rows_per_week)
+  end)
+
+  it('全 6 週が収まるときは j でスクロールしない', function()
+    vim.o.columns = 120
+    vim.o.lines = 80
+    plugin.setup({
+      notify = notify,
+      width = 1.0,
+      height = 0.7,
+      gws_cmd = repo_root .. '/tests/fixtures/fake-gws.py',
+    })
+
+    run_command()
+    wait_loading()
+
+    local win = state.windows.month
+    local top_line = vim.api.nvim_win_call(win, function()
+      return vim.fn.line('w0')
+    end)
+
+    feed('j')
+
+    assert.are.equal(
+      top_line,
+      vim.api.nvim_win_call(win, function()
+        return vim.fn.line('w0')
+      end)
+    )
   end)
 
   it('height が小さいときも選択中の週が見えるようにスクロールする', function()

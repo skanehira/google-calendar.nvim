@@ -88,6 +88,6 @@ describe('e2e smoke', function()
     plugin.setup()
 
     config = require('google-calendar.config').get()
-    assert.are.equal('<F2>', config.keymaps.form.save)
+    assert.are.equal(':w', config.keymaps.form.save)
   end)
 end)

@@ -220,7 +220,7 @@ local function edit_summary(value)
   feed('<CR>')
   assert.is_true(vim.api.nvim_win_is_valid(state.windows.form_editor))
   set_form_editor({ value })
-  feed('<F2>')
+  feed(':w<CR>')
 end
 
 local function edit_datetime(start_value, end_value)
@@ -233,7 +233,7 @@ local function edit_datetime(start_value, end_value)
     '終了: ' .. end_value,
     '終日: off',
   })
-  feed('<F2>')
+  feed(':w<CR>')
 end
 
 local function wait_month_loaded()
@@ -314,9 +314,9 @@ describe('e2e crud', function()
     vim.api.nvim_win_set_cursor(state.windows.form, { 5, 0 })
     feed('<CR>')
     set_form_editor({ 'guest@example.com' })
-    feed('<F2>')
+    feed(':w<CR>')
     assert.are.equal('◉ 1人のゲスト', form_lines()[5])
-    feed('<F2>')
+    feed(':w<CR>')
     assert.is_true(vim.wait(10000, function()
       return state.windows.form == nil and not state.loading
     end, 10))
@@ -347,7 +347,7 @@ describe('e2e crud', function()
     assert.is_true(vim.api.nvim_win_is_valid(state.windows.form))
     assert.are.equal('登録1', form_lines()[1])
     edit_summary('更新2')
-    feed('<F2>')
+    feed(':w<CR>')
     assert.is_true(vim.wait(10000, function()
       return state.windows.form == nil and state.windows.detail == nil and not state.loading
     end, 10))
@@ -452,7 +452,7 @@ describe('e2e crud', function()
     edit_summary('失敗する予定')
     vim.env.FAKE_GWS_ERROR_FIXTURE = api_fixture
 
-    feed('<F2>')
+    feed(':w<CR>')
     assert.is_true(vim.wait(10000, function()
       local win = state.windows.form
       if win == nil or not vim.api.nvim_win_is_valid(win) then
@@ -471,13 +471,13 @@ describe('e2e crud', function()
     }, notifications)
   end)
 
-  it('<F2> の連打で偽 gws の呼び出しは 1 回だけである', function()
+  it(':w の連打で偽 gws の呼び出しは 1 回だけである', function()
     open_month('2026-10')
     feed('a')
     edit_summary('連打')
     os.remove(call_log)
 
-    feed('<F2><F2>')
+    feed(':w<CR>:w<CR>')
     assert.is_true(vim.wait(10000, function()
       return state.windows.form == nil and not state.loading
     end, 10))

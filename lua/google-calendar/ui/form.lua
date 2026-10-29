@@ -309,6 +309,14 @@ local function editor_width()
   return math.max(1, math.min(60, vim.o.columns - 8))
 end
 
+local function set_write_command(buf, handler)
+  vim.bo[buf].buftype = 'acwrite'
+  vim.api.nvim_create_autocmd('BufWriteCmd', {
+    buffer = buf,
+    callback = handler,
+  })
+end
+
 local function set_editor_lines(lines)
   vim.bo[editor.buf].modifiable = true
   vim.api.nvim_buf_set_lines(editor.buf, 0, -1, false, lines)
@@ -417,11 +425,14 @@ local function set_editor_keymaps(buf)
     map('n', 'toggle', editor_toggle_all_day)
   end
 
-  map('n', 'save', save_editor)
-  map('i', 'save', function()
-    vim.cmd('stopinsert')
-    save_editor()
-  end)
+  local save_key = config.resolve('form', 'save')
+  if save_key ~= nil and save_key ~= ':w' then
+    vim.keymap.set('n', save_key, save_editor, { buffer = buf, nowait = true, silent = true })
+    vim.keymap.set('i', save_key, function()
+      vim.cmd('stopinsert')
+      save_editor()
+    end, { buffer = buf, nowait = true, silent = true })
+  end
   map('n', 'cancel', close_editor)
   map('i', 'cancel', function()
     vim.cmd('stopinsert')
@@ -450,6 +461,8 @@ local function open_editor(kind, title, lines, height, width)
   editor.kind = kind
   editor.selected = 1
 
+  vim.api.nvim_buf_set_name(buf, 'google-calendar://form-editor/' .. kind)
+  set_write_command(buf, save_editor)
   set_editor_lines(lines)
   set_editor_keymaps(buf)
   vim.wo[win].wrap = false
@@ -919,10 +932,13 @@ local function set_keymaps(buf)
 
   map('n', 'edit', open_selected)
   map('n', 'toggle', toggle_selected)
-  map({ 'n', 'i' }, 'save', function()
-    vim.cmd('stopinsert')
-    save()
-  end)
+  local save_key = config.resolve('form', 'save')
+  if save_key ~= nil and save_key ~= ':w' then
+    vim.keymap.set({ 'n', 'i' }, save_key, function()
+      vim.cmd('stopinsert')
+      save()
+    end, { buffer = buf, nowait = true, silent = true })
+  end
   map('n', 'cancel', cancel)
   map('n', 'close', cancel)
   map('n', 'help', open_help)
@@ -947,6 +963,8 @@ local function open_window(title)
   vim.wo[win].cursorline = true
   form.width = width
 
+  vim.api.nvim_buf_set_name(buf, 'google-calendar://form')
+  set_write_command(buf, save)
   set_keymaps(buf)
 
   return win, buf

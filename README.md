@@ -88,11 +88,11 @@ Use `r` or `R` in the month view to refetch the displayed month.
 | Form | `<Tab>` / `<S-Tab>` | Move to the next / previous composer row |
 | Form | `<CR>` | Open the editor for the selected row, or toggle Meet |
 | Form | `<Space>` | Toggle all-day or Meet |
-| Form | `<F2>` | Save |
+| Form | `:w` | Save |
 | Form | `<Esc>` / `q` | Cancel. `<Esc>` leaves insert mode first; `q` works in normal mode only. |
 | Form | `?` | Open help |
 | Form editor | `<CR>` | Edit the selected date/time field |
-| Form editor | `<F2>` | Apply the editor value and close it |
+| Form editor | `:w` | Apply the editor value and close it |
 | Form editor | `<Esc>` / `q` | Close the editor without applying |
 | Help | `q` / `<Esc>` | Close help |
 
@@ -166,7 +166,7 @@ require('google-calendar').setup({
       prev_field = '<S-Tab>',
       edit = '<CR>',
       toggle = '<Space>',
-      save = '<F2>',
+      save = ':w',
       cancel = '<Esc>',
       close = 'q',
       help = '?',
@@ -249,7 +249,7 @@ The create and update form uses a Google Calendar-style composer with separate e
 - `<CR>` or `<Space>` on the Google Meet row toggles Meet.
 - `<Space>` on the date/time row toggles between a timed event and an all-day event.
 - The guests row opens a dedicated guest editor. Enter one email address per line; duplicates are removed and invalid addresses are reported.
-- Save from the main composer with `<F2>`. Editor windows apply with `<F2>` and close with `<Esc>`.
+- Save from the main composer with `:w`. Editor windows apply with `:w` and close with `<Esc>`.
 
 ## Help
 

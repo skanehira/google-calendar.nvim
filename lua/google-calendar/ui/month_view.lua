@@ -524,6 +524,11 @@ function M.build_view(grid, events_by_date, cfg, today, selected_date, cell_w, r
     horizontals[week_index] = horizontal_chunks(kind ~= nil and selected_frame or nil, cell_w, kind or 'top')
   end
 
+  -- 最終週には次の週の日付行がないため、選択枠の下線を予定行の末尾に追加する
+  if selected_frame ~= nil and selected_frame.week == #weeks then
+    table.insert(weeks[#weeks].event_rows, horizontal_chunks(selected_frame, cell_w, 'bottom'))
+  end
+
   return {
     header = table.concat(header_cells, '│'),
     header_winbar = table.concat(header_winbar_parts),
@@ -635,7 +640,9 @@ function M.render(win, view)
 
   local win_height = vim.api.nvim_win_get_height(win) - 1
   local event_rows = #view.weeks[selected_week_index].event_rows
-  local desired_winline = math.max(1, win_height - event_rows)
+  -- 次の週がある場合は、選択枠の下線 (次の週の上の横線) も見えるように 1 行余裕を持たせる
+  local bottom_margin = selected_week_index < #view.weeks and 1 or 0
+  local desired_winline = math.max(1, win_height - event_rows - bottom_margin)
   local current_winline = vim.api.nvim_win_call(win, function()
     return vim.fn.winline()
   end)

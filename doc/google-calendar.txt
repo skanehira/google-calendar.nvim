@@ -315,7 +315,8 @@ Month view ~
     and deletes use the event's own calendar ID.
   - The selected day is shown with an orange, bold double-line frame around
     the cell (`GoogleCalendarSelectedBorder`) and an orange date number
-    (`GoogleCalendarSelected`). The cell background is not filled; event bars
+    (`GoogleCalendarSelected`). The frame's bottom line stays visible when the
+    selected week is scrolled into view, including the final week. The cell background is not filled; event bars
     and dots keep their calendar colors. The month window title also shows
     `選択: MM-DD`.
   - Month cells use Google Calendar-style event chips: all-day and multi-day

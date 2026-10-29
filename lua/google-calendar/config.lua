@@ -3,7 +3,8 @@ local M = {}
 local default_highlights = {
   GoogleCalendarHeader = { fg = '#7aa2f7', bold = true },
   GoogleCalendarToday = { fg = '#e0af68', bold = true },
-  GoogleCalendarSelected = { bg = '#7aa2f7', fg = '#1a1b26', bold = true },
+  GoogleCalendarSelected = { fg = '#ff9e64', bold = true },
+  GoogleCalendarSelectedBorder = { fg = '#ff9e64', bold = true },
   GoogleCalendarSunday = { fg = '#f7768e' },
   GoogleCalendarSaturday = { fg = '#7dcfff' },
   GoogleCalendarOtherMonth = { fg = '#565f89' },

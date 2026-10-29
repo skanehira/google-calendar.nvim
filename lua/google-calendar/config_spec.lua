@@ -95,6 +95,7 @@ local default_highlight_groups = {
   'GoogleCalendarOtherMonth',
   'GoogleCalendarSaturday',
   'GoogleCalendarSelected',
+  'GoogleCalendarSelectedBorder',
   'GoogleCalendarSunday',
   'GoogleCalendarToday',
 }
@@ -369,8 +370,8 @@ describe('config', function()
     config.apply_highlights()
 
     local selected = vim.api.nvim_get_hl(0, { name = 'GoogleCalendarSelected', link = false })
-    assert.are.equal('#7aa2f7', string.format('#%06x', selected.bg))
-    assert.are.equal('#1a1b26', string.format('#%06x', selected.fg))
+    assert.is_nil(selected.bg)
+    assert.are.equal('#ff9e64', string.format('#%06x', selected.fg))
     assert.is_true(selected.bold)
   end)
   it('setup() が agenda / detail のサイズを上書きする', function()

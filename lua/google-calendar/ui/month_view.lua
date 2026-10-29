@@ -32,7 +32,7 @@ local function cell_highlights(cell, today, selected_date)
     table.insert(highlights, { hl = 'GoogleCalendarToday', priority = 20 })
   end
   if cell.date == selected_date then
-    table.insert(highlights, { hl = 'GoogleCalendarSelected', priority = 30, full_cell = true })
+    table.insert(highlights, { hl = 'GoogleCalendarSelected', priority = 30 })
   end
 
   return highlights
@@ -103,7 +103,7 @@ local function blank_chunks(cell_w)
   return { { string.rep(' ', cell_w) } }
 end
 
-local function build_event_rows(week, events_by_date, max_events, cell_w, selected_date, rows)
+local function build_event_rows(week, events_by_date, max_events, cell_w, rows, selected_index)
   local lists = {}
   for index, cell in ipairs(week) do
     lists[index] = events_by_date[cell.date] or {}
@@ -117,7 +117,13 @@ local function build_event_rows(week, events_by_date, max_events, cell_w, select
     local chunks = {}
     for index = 1, 7 do
       if index > 1 then
-        table.insert(chunks, { '│', 'GoogleCalendarBorder' })
+        local separator = '│'
+        local separator_group = 'GoogleCalendarBorder'
+        if selected_index ~= nil and (index == selected_index or index == selected_index + 1) then
+          separator = '┃'
+          separator_group = 'GoogleCalendarSelectedBorder'
+        end
+        table.insert(chunks, { separator, separator_group })
       end
 
       local list = lists[index]
@@ -128,15 +134,6 @@ local function build_event_rows(week, events_by_date, max_events, cell_w, select
         cell_chunks = overflow_chunks(#list - max_events, cell_w)
       else
         cell_chunks = blank_chunks(cell_w)
-      end
-
-      -- 選択中の日は空き部分をハイライトし、予定の色は保持する
-      if week[index].date == selected_date then
-        for _, chunk in ipairs(cell_chunks) do
-          if chunk[1]:match('^%s*$') ~= nil or chunk[1]:match('^%s%+') ~= nil then
-            chunk[2] = 'GoogleCalendarSelected'
-          end
-        end
       end
 
       for _, chunk in ipairs(cell_chunks) do
@@ -188,6 +185,37 @@ function M.compute_layout(columns, lines, cfg)
   }
 end
 
+local function replace_at(text, position, character, byte_length)
+  return text:sub(1, position - 1) .. character .. text:sub(position + (byte_length or 1))
+end
+
+local function horizontal_chunks(frame, cell_w, kind)
+  local chunks = {}
+  for index = 1, 7 do
+    if index > 1 then
+      local separator = '┼'
+      local group = 'GoogleCalendarBorder'
+      if frame ~= nil then
+        if index == frame.index then
+          separator = kind == 'top' and '┏' or '┗'
+          group = 'GoogleCalendarSelectedBorder'
+        elseif index == frame.index + 1 then
+          separator = kind == 'top' and '┓' or '┛'
+          group = 'GoogleCalendarSelectedBorder'
+        end
+      end
+      table.insert(chunks, { separator, group })
+    end
+
+    if frame ~= nil and index == frame.index then
+      table.insert(chunks, { string.rep('━', cell_w), 'GoogleCalendarSelectedBorder' })
+    else
+      table.insert(chunks, { string.rep('─', cell_w), 'GoogleCalendarBorder' })
+    end
+  end
+  return chunks
+end
+
 function M.build_view(grid, events_by_date, cfg, today, selected_date, cell_w, rows_per_week)
   local header_cells = {}
   for index, label in ipairs(calendar.weekday_labels(cfg.week_start)) do
@@ -195,9 +223,11 @@ function M.build_view(grid, events_by_date, cfg, today, selected_date, cell_w, r
   end
 
   local weeks = {}
+  local selected_frame = nil
   for week_index, week in ipairs(grid.weeks) do
     local date_cells = {}
     local cells = {}
+    local selected_index = nil
     for index, cell in ipairs(week) do
       local day_text = tostring(cell.day)
       date_cells[index] = string.rep(' ', cell_w - #day_text) .. day_text
@@ -212,18 +242,54 @@ function M.build_view(grid, events_by_date, cfg, today, selected_date, cell_w, r
         cell_end_col = cell_start + cell_w,
         highlights = cell_highlights(cell, today, selected_date),
       }
+      if cell.date == selected_date then
+        selected_index = index
+      end
+    end
+
+    local date_parts = {}
+    local separator_positions = {}
+    local byte_position = 1
+    for index, text in ipairs(date_cells) do
+      if index > 1 then
+        separator_positions[index] = byte_position
+        table.insert(date_parts, '│')
+        byte_position = byte_position + #'│'
+      end
+      table.insert(date_parts, text)
+      byte_position = byte_position + #text
+    end
+    local date_line = table.concat(date_parts)
+    local vertical_positions = {}
+    if selected_index ~= nil then
+      local left = separator_positions[selected_index]
+      local right = separator_positions[selected_index + 1]
+      if left ~= nil then
+        date_line = replace_at(date_line, left, '┃', #'│')
+        table.insert(vertical_positions, left)
+      end
+      if right ~= nil then
+        date_line = replace_at(date_line, right, '┃', #'│')
+        table.insert(vertical_positions, right)
+      end
+      selected_frame = {
+        week = week_index,
+        index = selected_index,
+        cell_w = cell_w,
+      }
     end
 
     weeks[week_index] = {
-      date_line = table.concat(date_cells, '│'),
+      date_line = date_line,
       cells = cells,
+      vertical_positions = vertical_positions,
       event_rows = build_event_rows(
         week,
         events_by_date,
         cfg.max_events_per_cell,
         cell_w,
-        selected_date,
-        rows_per_week and rows_per_week[week_index] or nil
+        rows_per_week and rows_per_week[week_index] or nil,
+        selected_index
       ),
     }
   end
@@ -232,11 +298,27 @@ function M.build_view(grid, events_by_date, cfg, today, selected_date, cell_w, r
   for index = 1, 7 do
     horizontal_cells[index] = string.rep('─', cell_w)
   end
+  local horizontal = table.concat(horizontal_cells, '┼')
+
+  local horizontals = {}
+  for week_index = 1, #weeks do
+    local kind = nil
+    if selected_frame ~= nil then
+      if week_index == selected_frame.week then
+        kind = 'top'
+      elseif week_index == selected_frame.week + 1 then
+        kind = 'bottom'
+      end
+    end
+    horizontals[week_index] = horizontal_chunks(kind ~= nil and selected_frame or nil, cell_w, kind or 'top')
+  end
 
   return {
     header = table.concat(header_cells, '│'),
-    horizontal = table.concat(horizontal_cells, '┼'),
+    horizontal = horizontal,
+    horizontals = horizontals,
     weeks = weeks,
+    selected_frame = selected_frame,
   }
 end
 
@@ -288,6 +370,13 @@ function M.render(win, view)
   for week_index, week in ipairs(view.weeks) do
     local line = week_index
     highlight_vertical_lines(buf, ns, line, week.date_line)
+    for _, position in ipairs(week.vertical_positions or {}) do
+      vim.api.nvim_buf_set_extmark(buf, ns, line, position - 1, {
+        end_col = position + 2,
+        hl_group = 'GoogleCalendarSelectedBorder',
+        priority = 40,
+      })
+    end
     for _, cell in ipairs(week.cells) do
       for _, highlight in ipairs(cell.highlights) do
         local start_col = highlight.full_cell and cell.cell_col or cell.col
@@ -307,7 +396,7 @@ function M.render(win, view)
       })
     end
     vim.api.nvim_buf_set_extmark(buf, ns, line, 0, {
-      virt_lines = { { { view.horizontal, 'GoogleCalendarBorder' } } },
+      virt_lines = { view.horizontals[week_index] or { { view.horizontal, 'GoogleCalendarBorder' } } },
       virt_lines_above = true,
     })
   end
@@ -332,9 +421,6 @@ function M.render(win, view)
     end
   end
   vim.api.nvim_win_set_cursor(win, { selected_line, 0 })
-  vim.api.nvim_win_call(win, function()
-    vim.cmd('normal! zz')
-  end)
 end
 
 local function render()
@@ -487,10 +573,6 @@ local function fetch(initial, selected_event_id)
 end
 
 local function move_days(delta)
-  if state.loading then
-    return
-  end
-
   local date = calendar.add_days(state.selected_date, delta)
   local year, month = calendar.date_parts(date)
   state.selected_date = date
@@ -506,10 +588,6 @@ local function move_days(delta)
 end
 
 local function shift_month(delta)
-  if state.loading then
-    return
-  end
-
   local year, month = calendar.add_months(state.year, state.month, delta)
   local _, _, day = calendar.date_parts(state.selected_date)
   state.year, state.month = year, month
@@ -520,10 +598,6 @@ local function shift_month(delta)
 end
 
 local function go_today()
-  if state.loading then
-    return
-  end
-
   local today = calendar.today()
   local year, month = calendar.date_parts(today)
   state.year, state.month = year, month
@@ -561,35 +635,19 @@ function M.refresh()
 end
 
 local function close()
-  if state.loading then
-    return
-  end
-
   state.month_cache = {}
   window.close('month')
 end
 
 local function open_agenda()
-  if state.loading then
-    return
-  end
-
   require('google-calendar.ui.agenda').open({ on_changed = refresh })
 end
 
 local function open_create()
-  if state.loading then
-    return
-  end
-
   require('google-calendar.ui.form').open_create({ on_created = M.refresh })
 end
 
 local function open_help()
-  if state.loading then
-    return
-  end
-
   require('google-calendar.ui.help').open('month')
 end
 

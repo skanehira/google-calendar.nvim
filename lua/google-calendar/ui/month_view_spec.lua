@@ -166,13 +166,28 @@ local function has_chunk(line, text, group)
   return false
 end
 
-local function row(...)
-  local cells = { ... }
+local function row_with_frame(cells, selected_index)
   local padded = {}
   for _, cell in ipairs(cells) do
     table.insert(padded, cell .. string.rep(' ', 12 - vim.fn.strdisplaywidth(cell)))
   end
-  return table.concat(padded, '│')
+
+  local parts = {}
+  for index, cell in ipairs(padded) do
+    if index > 1 then
+      local separator = '│'
+      if selected_index ~= nil and (index == selected_index or index == selected_index + 1) then
+        separator = '┃'
+      end
+      table.insert(parts, separator)
+    end
+    table.insert(parts, cell)
+  end
+  return table.concat(parts)
+end
+
+local function row(...)
+  return row_with_frame({ ... }, nil)
 end
 
 local OCTOBER_FIRST_WEEK =
@@ -248,7 +263,7 @@ describe('ui.month_view', function()
         '           4│           5│           6│           7│           8│           9│          10',
         '          11│          12│          13│          14│          15│          16│          17',
         '          18│          19│          20│          21│          22│          23│          24',
-        '          25│          26│          27│          28│          29│          30│          31',
+        '          25│          26│          27┃          28┃          29│          30│          31',
         '           1│           2│           3│           4│           5│           6│           7',
       }, buffer_lines())
       assert.are.equal(2026, state.year)
@@ -315,7 +330,7 @@ describe('ui.month_view', function()
     assert.are.equal('2026-10-28', state.selected_date)
     assert.are.equal(' Google Calendar — 2026年10月 — 選択: 10-28 ', window_title())
     assert.is_true(has_highlight('GoogleCalendarToday', 5, 55))
-    assert.is_true(has_highlight('GoogleCalendarSelected', 5, 45))
+    assert.is_true(has_highlight('GoogleCalendarSelected', 5, 55))
   end)
 
   it('縦線を横線と同じ GoogleCalendarBorder でハイライトする', function()
@@ -505,15 +520,18 @@ describe('ui.month_view', function()
 
       local rows = assert(virt_lines(5))
       assert.are.equal(4, #rows)
-      assert.are.equal(row('', '', ' ● 12:00 定…', ' ● 12:00 会…', '', '', ''), chunks_text(rows[1]))
-      assert.are.equal(row('', '', '', ' ● 13:00 会…', '', '', ''), chunks_text(rows[2]))
-      assert.are.equal(row('', '', '', ' ● 14:00 会…', '', '', ''), chunks_text(rows[3]))
-      assert.are.equal(row('', '', '', ' +2', '', '', ''), chunks_text(rows[4]))
+      assert.are.equal(
+        row_with_frame({ '', '', ' ● 12:00 定…', ' ● 12:00 会…', '', '', '' }, 4),
+        chunks_text(rows[1])
+      )
+      assert.are.equal(row_with_frame({ '', '', '', ' ● 13:00 会…', '', '', '' }, 4), chunks_text(rows[2]))
+      assert.are.equal(row_with_frame({ '', '', '', ' ● 14:00 会…', '', '', '' }, 4), chunks_text(rows[3]))
+      assert.are.equal(row_with_frame({ '', '', '', ' +2', '', '', '' }, 4), chunks_text(rows[4]))
       assert.are.equal(4, #assert(virt_lines(1)))
       assert.is_true(has_chunk(rows[1], '●', 'GoogleCalendarCalendarColor1'))
       assert.is_true(has_chunk(rows[1], ' 12:00 ', 'GoogleCalendarEvent'))
       assert.is_true(has_chunk(rows[1], '定…', 'GoogleCalendarEvent'))
-      assert.is_true(has_chunk(rows[4], ' +2', 'GoogleCalendarSelected'))
+      assert.is_true(has_chunk(rows[4], ' +2', 'GoogleCalendarEvent'))
     end
   )
 
@@ -527,9 +545,9 @@ describe('ui.month_view', function()
 
     local rows = assert(virt_lines(5))
     assert.are.equal(4, #rows)
-    assert.are.equal(row('', '', ' ● 12:00 定…', '', '', '', ''), chunks_text(rows[1]))
+    assert.are.equal(row_with_frame({ '', '', ' ● 12:00 定…', '', '', '', '' }, 4), chunks_text(rows[1]))
     for index = 2, 4 do
-      assert.are.equal(row('', '', '', '', '', '', ''), chunks_text(rows[index]))
+      assert.are.equal(row_with_frame({ '', '', '', '', '', '', '' }, 4), chunks_text(rows[index]))
     end
     assert.are.equal(4, #assert(virt_lines(1)))
     assert.are.equal(4, #assert(virt_lines(2)))
@@ -546,8 +564,10 @@ describe('ui.month_view', function()
     for _, mark in ipairs(month_marks()) do
       if mark[4].virt_lines ~= nil and mark[4].virt_lines_above ~= true then
         assert.are.equal(4, #mark[4].virt_lines)
+        local expected = mark[2] == 5 and row_with_frame({ '', '', '', '', '', '', '' }, 4)
+          or row('', '', '', '', '', '', '')
         for _, event_row in ipairs(mark[4].virt_lines) do
-          assert.are.equal(row('', '', '', '', '', '', ''), chunks_text(event_row))
+          assert.are.equal(expected, chunks_text(event_row))
         end
       end
     end
@@ -659,7 +679,7 @@ describe('ui.month_view', function()
     assert.are.equal(2, #gws_calls)
   end)
 
-  it('取得中はキー操作を無視し、ヘッダーに読み込み中を表示する', function()
+  it('取得中でも移動・close ができ、読み込み中表示を維持する', function()
     gws_handler = function(_, cb)
       table.insert(pending_callbacks, cb)
     end
@@ -670,17 +690,15 @@ describe('ui.month_view', function()
     assert.are.equal(' Google Calendar — 2026年10月 — 選択: 10-28 — 読み込み中... ', window_title())
 
     feed('l')
-    assert.are.equal('2026-10-28', state.selected_date)
-
-    feed('q')
+    assert.are.equal('2026-10-29', state.selected_date)
     assert.is_true(vim.api.nvim_win_is_valid(state.windows.month))
 
-    pending_callbacks[1]({}, nil)
-    wait_loading()
-    assert.are.equal(' Google Calendar — 2026年10月 — 選択: 10-28 ', window_title())
+    feed('q')
+    assert.is_nil(state.windows.month)
 
-    feed('l')
-    assert.are.equal('2026-10-29', state.selected_date)
+    pending_callbacks[1]({}, nil)
+    vim.wait(100)
+    assert.is_false(state.loading)
   end)
 
   it('セル幅が 7 未満になる場合は通知して開かない', function()
@@ -758,7 +776,7 @@ describe('ui.month_view', function()
     assert.is_true(has_highlight('GoogleCalendarSunday', 2, 11))
     assert.is_true(has_highlight('GoogleCalendarSaturday', 1, 101))
     assert.is_true(has_highlight('GoogleCalendarOtherMonth', 1, 10))
-    assert.is_true(has_highlight('GoogleCalendarSelected', 5, 45))
+    assert.is_true(has_highlight('GoogleCalendarSelected', 5, 55))
 
     local rows = assert(virt_lines(5))
     assert.is_true(has_chunk(rows[1], '定…', 'GoogleCalendarEvent'))
@@ -780,30 +798,25 @@ describe('ui.month_view', function()
     wait_loading()
 
     local rows = assert(virt_lines(5))
-    assert.is_true(has_chunk(rows[4], ' +2', 'GoogleCalendarSelected'))
+    assert.is_true(has_chunk(rows[4], ' +2', 'GoogleCalendarEvent'))
   end)
 
-  it('取得中は移動・再取得・opener・close の全キーを無視する', function()
+  it('取得中でも移動と close ができる', function()
     gws_handler = function(_, cb)
       table.insert(pending_callbacks, cb)
     end
     run_command()
 
     assert.is_true(state.loading)
-    for _, key in ipairs({ 'h', 'l', 'j', 'k', 'H', 'L', 't', 'r', 'a', '?', '<CR>', '<Esc>', 'q' }) do
-      feed(key)
-    end
-
-    assert.are.equal(2026, state.year)
-    assert.are.equal(10, state.month)
-    assert.are.equal('2026-10-28', state.selected_date)
-    assert.are.same({}, openers)
-    assert.is_true(vim.api.nvim_win_is_valid(state.windows.month))
+    feed('l')
+    assert.are.equal('2026-10-29', state.selected_date)
+    feed('q')
+    assert.is_nil(state.windows.month)
 
     pending_callbacks[1]({}, nil)
-    wait_loading()
+    vim.wait(100)
+    assert.is_false(state.loading)
   end)
-
   it('H/L で月末をクランプする', function()
     run_command('2026-01')
     wait_loading()
@@ -999,7 +1012,11 @@ describe('ui.month_view', function()
     local count = 0
     for _, mark in ipairs(month_marks()) do
       if mark[4].virt_lines_above == true then
-        local line = mark[4].virt_lines[1][1][1]
+        local parts = {}
+        for _, chunk in ipairs(mark[4].virt_lines[1]) do
+          table.insert(parts, chunk[1])
+        end
+        local line = table.concat(parts)
         assert.are.equal(header_width, vim.fn.strdisplaywidth(line))
         assert.is_not_nil(line:find('┼', 1, true))
         count = count + 1
@@ -1066,7 +1083,7 @@ describe('ui.month_view', function()
     assert.are.equal(expected, vim.api.nvim_win_get_config(win).height)
   end)
 
-  it('選択セルを全幅で目立つ背景にする', function()
+  it('選択セルをオレンジの二重線フレームで囲む', function()
     gws_handler = function(_, cb)
       cb({ timed_event('e1', '定例', '2026-10-28T09:00:00+09:00') }, nil)
     end
@@ -1074,23 +1091,27 @@ describe('ui.month_view', function()
     run_command()
     wait_loading()
 
-    local highlight = vim.api.nvim_get_hl(0, { name = 'GoogleCalendarSelected', link = false })
-    assert.are.equal(tonumber('7aa2f7', 16), highlight.bg)
-    assert.is_true(highlight.bold)
+    local selected = vim.api.nvim_get_hl(0, { name = 'GoogleCalendarSelected', link = false })
+    assert.are.equal(tonumber('ff9e64', 16), selected.fg)
+    assert.is_nil(selected.bg)
+    assert.is_true(selected.bold)
 
-    local selected
+    local border = vim.api.nvim_get_hl(0, { name = 'GoogleCalendarSelectedBorder', link = false })
+    assert.are.equal(tonumber('ff9e64', 16), border.fg)
+    assert.is_true(border.bold)
+
+    local frame_mark
     for _, mark in ipairs(month_marks()) do
-      if mark[4].hl_group == 'GoogleCalendarSelected' then
-        selected = mark
+      if mark[4].hl_group == 'GoogleCalendarSelectedBorder' then
+        frame_mark = mark
       end
     end
-    assert.is_not_nil(selected)
+    assert.is_not_nil(frame_mark)
 
-    local win_config = vim.api.nvim_win_get_config(state.windows.month)
-    local cell_w = math.floor((win_config.width - 6) / 7)
-    assert.are.equal(cell_w, selected[4].end_col - selected[3])
+    local rows = assert(virt_lines(5))
+    assert.is_true(has_chunk(rows[1], '┃', 'GoogleCalendarSelectedBorder'))
   end)
-  it('選択中のセルの日付行と予定行を全体ハイライトする', function()
+  it('選択中のセルの周囲だけをオレンジのフレームで強調する', function()
     gws_handler = function(_, cb)
       cb({
         timed_event('e1', '定例', '2026-10-28T09:00:00+09:00'),
@@ -1102,39 +1123,15 @@ describe('ui.month_view', function()
     wait_loading()
 
     assert.are.equal(
-      '          25│          26│          27│          28│          29│          30│          31',
+      '          25│          26│          27┃          28┃          29│          30│          31',
       buffer_lines()[6]
     )
 
     local rows = assert(virt_lines(5))
-    assert.is_true(#rows > 0)
-
-    local function cell_chunks(chunks)
-      local cells = {}
-      local current = {}
-      for _, chunk in ipairs(chunks) do
-        if chunk[1] == '│' then
-          table.insert(cells, current)
-          current = {}
-        else
-          table.insert(current, chunk)
-        end
-      end
-      table.insert(cells, current)
-      return cells
-    end
+    assert.is_true(has_chunk(rows[1], '┃', 'GoogleCalendarSelectedBorder'))
 
     for _, event_row in ipairs(rows) do
-      local cells = cell_chunks(event_row)
-      -- 2026-10-28 は水曜 (日曜始まりで 4 番目)
-      local selected_chunks = 0
-      for _, chunk in ipairs(cells[4]) do
-        if chunk[2] == 'GoogleCalendarSelected' then
-          selected_chunks = selected_chunks + 1
-        end
-      end
-      assert.is_true(selected_chunks > 0)
-      for _, chunk in ipairs(cells[5]) do
+      for _, chunk in ipairs(event_row) do
         assert.are_not.equal('GoogleCalendarSelected', chunk[2])
       end
     end

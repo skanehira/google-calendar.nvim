@@ -48,7 +48,7 @@ describe('init', function()
 
       assert.are.same({
         {
-          message = 'gws が見つかりません。README のセットアップ手順に従って gws をインストールしてください。',
+          message = 'gws was not found. Install gws by following the setup instructions in README.md.',
           level = vim.log.levels.ERROR,
         },
       }, notifications)

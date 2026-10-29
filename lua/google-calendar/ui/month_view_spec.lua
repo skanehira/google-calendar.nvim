@@ -415,7 +415,7 @@ describe('ui.month_view', function()
     wait_loading()
 
     assert.are.equal(1, #notifications)
-    assert.are.equal('Google Calendar API エラー: Backend Error', notifications[1].message)
+    assert.are.equal('Google Calendar API error: Backend Error', notifications[1].message)
     assert.are.equal(vim.log.levels.ERROR, notifications[1].level)
     assert.is_true(vim.api.nvim_win_is_valid(state.windows.month))
     assert.are.equal('2026-10-28', state.selected_date)
@@ -427,7 +427,7 @@ describe('ui.month_view', function()
     run_command('2026-13')
 
     assert.are.equal(1, #notifications)
-    assert.are.equal('月の指定は YYYY-MM 形式で入力してください', notifications[1].message)
+    assert.are.equal('Month must be specified in YYYY-MM format', notifications[1].message)
     assert.are.equal(vim.log.levels.ERROR, notifications[1].level)
     assert.is_nil(state.windows.month)
     assert.are.equal(0, #gws_calls)
@@ -435,7 +435,7 @@ describe('ui.month_view', function()
     run_command('2026-1')
 
     assert.are.equal(2, #notifications)
-    assert.are.equal('月の指定は YYYY-MM 形式で入力してください', notifications[2].message)
+    assert.are.equal('Month must be specified in YYYY-MM format', notifications[2].message)
     assert.is_nil(state.windows.month)
   end)
 
@@ -454,10 +454,7 @@ describe('ui.month_view', function()
     wait_loading()
 
     assert.are.equal(1, #notifications)
-    assert.are.equal(
-      'gws の認証が切れています。gws auth login を実行してください。',
-      notifications[1].message
-    )
+    assert.are.equal('gws authentication has expired. Run gws auth login.', notifications[1].message)
     assert.are.equal(vim.log.levels.ERROR, notifications[1].level)
     assert.is_nil(state.windows.month)
     assert.are.equal(0, #state.stack)
@@ -535,7 +532,7 @@ describe('ui.month_view', function()
     run_command()
 
     assert.are.equal(1, #notifications)
-    assert.are.equal('ウィンドウが狭すぎます', notifications[1].message)
+    assert.are.equal('Window is too narrow', notifications[1].message)
     assert.are.equal(vim.log.levels.ERROR, notifications[1].level)
     assert.is_nil(state.windows.month)
     assert.are.equal(0, #gws_calls)
@@ -778,7 +775,7 @@ describe('ui.month_view', function()
     assert.are.equal(4, #gws_calls)
     assert.are.equal(2, #notifications)
     assert.are.equal(
-      'Google Calendar に接続できません。ネットワークを確認し、r で再試行してください。',
+      'Cannot connect to Google Calendar. Check your network and retry with r.',
       notifications[1].message
     )
     assert.are.equal(notifications[1].message, notifications[2].message)

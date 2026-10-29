@@ -13,11 +13,11 @@
 
 | 種別 | 判定 | 通知文言（案） | 後続の動作 |
 | --- | --- | --- | --- |
-| 未インストール | `vim.fn.executable(gws_cmd) == 0`、または `pcall(vim.system, ...)` の失敗（ENOENT） | `gws が見つかりません。README のセットアップ手順に従って gws をインストールしてください。` | 月表示を開かない |
-| 未認証 | 終了コード 2 かつ stdout の `error.reason == 'authError'` | `gws の認証が切れています。gws auth login を実行してください。` | 月表示を開かない。既存の表示があれば維持する |
-| API エラー | 上記以外の非 0 で `error` を持つ | `Google Calendar API エラー: <error.message>` | 既存の表示を維持する |
-| ネットワーク | `vim.system` のタイムアウト / 接続失敗 | `Google Calendar に接続できません。ネットワークを確認し、r で再試行してください。`（`R` でも再試行できる） | 既存の表示を維持する |
-| 404 | 終了コード非 0 で `error.code == 404` | `予定が既に削除されています。` | 月表示を再取得する |
+| 未インストール | `vim.fn.executable(gws_cmd) == 0`、または `pcall(vim.system, ...)` の失敗（ENOENT） | `gws was not found. Install gws by following the setup instructions in README.md.` | 月表示を開かない |
+| 未認証 | 終了コード 2 かつ stdout の `error.reason == 'authError'` | `gws authentication has expired. Run gws auth login.` | 月表示を開かない。既存の表示があれば維持する |
+| API エラー | 上記以外の非 0 で `error` を持つ | `Google Calendar API error: <error.message>` | 既存の表示を維持する |
+| ネットワーク | `vim.system` のタイムアウト / 接続失敗 | `Cannot connect to Google Calendar. Check your network and retry with r.`（`R` でも再試行できる） | 既存の表示を維持する |
+| 404 | 終了コード非 0 で `error.code == 404` | `The event has already been deleted.` | 月表示を再取得する |
 
 **表示**:
 
@@ -44,7 +44,7 @@
 
 ## エッジケースの決定
 
-- **空・最小データ**: stdout が空、または JSON として解釈できない場合は「gws の出力を解釈できませんでした」と通知し、生の stderr を `DEBUG` で残す
+- **空・最小データ**: stdout が空、または JSON として解釈できない場合は「Could not parse the output from gws」と通知し、生の stderr を `DEBUG` で残す
 - **上限・境界値**: API エラーの `error.message` が長い場合は画面幅（`columns`）に切り詰め、全文は `DEBUG` で `:messages` に残す。固定文言（未インストール・未認証・ネットワーク・出力不正）は切り詰めない
 - **エラー時に利用者へ見えるもの**: 未インストール・未認証は対処（インストール / `gws auth login`）を含める。API エラーは `error.message` を含める。ネットワークエラーは再試行のキー（`r` / `R`）を案内する
 - **並行操作・二重実行**: 同じエラーが連続した場合は 1 回だけ通知する。確認中に別のエラーが起きても、最後のエラーだけを表示する

@@ -321,7 +321,7 @@ describe('e2e crud', function()
       return state.windows.form == nil and not state.loading
     end, 10))
 
-    assert.are.same({ { message = '予定を作成しました', level = vim.log.levels.INFO } }, notifications)
+    assert.are.same({ { message = 'Event created', level = vim.log.levels.INFO } }, notifications)
     local items = state_items()
     assert.are.equal(1, #items)
     assert.are.equal('登録1', items[1].summary)
@@ -353,8 +353,8 @@ describe('e2e crud', function()
     end, 10))
 
     assert.are.same({
-      { message = '予定を作成しました', level = vim.log.levels.INFO },
-      { message = '予定を更新しました', level = vim.log.levels.INFO },
+      { message = 'Event created', level = vim.log.levels.INFO },
+      { message = 'Event updated', level = vim.log.levels.INFO },
     }, notifications)
     items = state_items()
     assert.are.equal(1, #items)
@@ -397,9 +397,9 @@ describe('e2e crud', function()
     end
     assert.is_false(has_chunk('更新2', 'GoogleCalendarSelected'))
     assert.are.same({
-      { message = '予定を作成しました', level = vim.log.levels.INFO },
-      { message = '予定を更新しました', level = vim.log.levels.INFO },
-      { message = '予定を削除しました', level = vim.log.levels.INFO },
+      { message = 'Event created', level = vim.log.levels.INFO },
+      { message = 'Event updated', level = vim.log.levels.INFO },
+      { message = 'Event deleted', level = vim.log.levels.INFO },
     }, notifications)
     assert.are.same({ cache_dir }, read_lines(cwd_log))
   end)
@@ -432,7 +432,7 @@ describe('e2e crud', function()
     assert.are.same({ '● 10:00 予定B' }, window_lines('agenda'))
     assert.are.equal(1, #state_items())
     assert.are.same({
-      { message = '予定を削除しました', level = vim.log.levels.INFO },
+      { message = 'Event deleted', level = vim.log.levels.INFO },
     }, notifications)
     assert.is_false(has_chunk('予定A', 'GoogleCalendarSelected'))
   end)
@@ -470,7 +470,7 @@ describe('e2e crud', function()
     assert.are.equal(0, #state.stack)
     assert.are.same({
       {
-        message = 'gws の認証が切れています。gws auth login を実行してください。',
+        message = 'gws authentication has expired. Run gws auth login.',
         level = vim.log.levels.ERROR,
       },
     }, notifications)
@@ -492,15 +492,15 @@ describe('e2e crud', function()
         return false
       end
       local footer = vim.api.nvim_buf_get_lines(vim.api.nvim_win_get_buf(win), 10, 11, false)[1]
-      return footer ~= nil and footer:match('^エラー:') ~= nil
+      return footer ~= nil and footer:match('^Error:') ~= nil
     end, 10))
 
     assert.is_true(vim.api.nvim_win_is_valid(state.windows.form))
     assert.are.equal('失敗する予定', form_lines()[1])
-    assert.are.equal('エラー: 予定を作成できませんでした: Not Found', form_lines()[11])
+    assert.are.equal('Error: Could not create the event: Not Found', form_lines()[11])
     assert.are.equal(0, #state_items())
     assert.are.same({
-      { message = '予定を作成できませんでした: Not Found', level = vim.log.levels.ERROR },
+      { message = 'Could not create the event: Not Found', level = vim.log.levels.ERROR },
     }, notifications)
   end)
 

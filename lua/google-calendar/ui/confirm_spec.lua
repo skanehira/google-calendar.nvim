@@ -311,7 +311,7 @@ describe('ui.confirm', function()
       assert.are.same({ 'calendar', 'events', 'list' }, { calls[3].argv[1], calls[3].argv[2], calls[3].argv[3] })
 
       assert.are.same({
-        { message = '予定を削除しました', level = vim.log.levels.INFO },
+        { message = 'Event deleted', level = vim.log.levels.INFO },
       }, notifications)
 
       local ids = {}
@@ -351,7 +351,7 @@ describe('ui.confirm', function()
     assert.is_false(vim.api.nvim_win_is_valid(win))
     assert.are.equal(1, #delete_calls())
     assert.are.same({
-      { message = '予定を削除しました', level = vim.log.levels.INFO },
+      { message = 'Event deleted', level = vim.log.levels.INFO },
     }, notifications)
   end)
 
@@ -382,7 +382,7 @@ describe('ui.confirm', function()
     assert.is_false(vim.api.nvim_win_is_valid(win))
     assert.are.equal(1, #read_lines(call_log))
     assert.are.same({
-      { message = '予定を削除しました', level = vim.log.levels.INFO },
+      { message = 'Event deleted', level = vim.log.levels.INFO },
     }, notifications)
   end)
 
@@ -415,7 +415,7 @@ describe('ui.confirm', function()
         'y:削除  n:キャンセル',
       }, confirm_lines())
       assert.are.same({
-        { message = 'Google Calendar API エラー: Internal Server Error', level = vim.log.levels.ERROR },
+        { message = 'Google Calendar API error: Internal Server Error', level = vim.log.levels.ERROR },
       }, notifications)
       assert.are.equal(1, #delete_calls())
       assert.are.equal(2, #gws_calls())
@@ -431,8 +431,8 @@ describe('ui.confirm', function()
       assert.are.equal(2, #delete_calls())
       assert.is_nil(state.events_by_date['2026-10-27'])
       assert.are.same({
-        { message = 'Google Calendar API エラー: Internal Server Error', level = vim.log.levels.ERROR },
-        { message = '予定を削除しました', level = vim.log.levels.INFO },
+        { message = 'Google Calendar API error: Internal Server Error', level = vim.log.levels.ERROR },
+        { message = 'Event deleted', level = vim.log.levels.INFO },
       }, notifications)
     end
   )
@@ -454,7 +454,7 @@ describe('ui.confirm', function()
       end)
 
       assert.are.same({
-        { message = '予定が既に削除されています。', level = vim.log.levels.ERROR },
+        { message = 'The event has already been deleted.', level = vim.log.levels.ERROR },
       }, notifications)
       local calls = gws_calls()
       assert.are.equal(3, #calls)

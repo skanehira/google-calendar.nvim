@@ -128,7 +128,7 @@ end
 local function wait_error()
   assert.is_true(vim.wait(1000, function()
     local lines = form_lines()
-    return lines[11] ~= nil and lines[11]:match('^エラー:') ~= nil
+    return lines[11] ~= nil and lines[11]:match('^Error:') ~= nil
   end, 10))
 end
 
@@ -352,7 +352,7 @@ describe('ui.form', function()
     assert.is_true(created_call.meet)
     assert.are.same({ 'alice@example.com', 'bob@example.com' }, created_call.attendees)
     assert.are.equal('created-1', created.id)
-    assert.are.same({ { message = '予定を作成しました', level = vim.log.levels.INFO } }, notifications)
+    assert.are.same({ { message = 'Event created', level = vim.log.levels.INFO } }, notifications)
   end)
 
   it('タイトルが空の場合はエラーを表示し、gws を呼ばない', function()
@@ -361,7 +361,7 @@ describe('ui.form', function()
 
     wait_error()
     assert.is_nil(created_call)
-    assert.is_true(form_lines()[11]:match('タイトルを入力してください') ~= nil)
+    assert.is_true(form_lines()[11]:match('Title is required') ~= nil)
   end)
 
   it('開始日時の形式が不正な場合はエラーを表示し、gws を呼ばない', function()
@@ -372,7 +372,7 @@ describe('ui.form', function()
 
     wait_error()
     assert.is_nil(created_call)
-    assert.is_true(form_lines()[11]:match('開始日時は YYYY%-MM%-DD HH:MM 形式') ~= nil)
+    assert.is_true(form_lines()[11]:match('Start date/time must be in YYYY%-MM%-DD HH:MM format') ~= nil)
   end)
 
   it('<Esc> でフォームを閉じ、予定を作成しない', function()
@@ -445,7 +445,7 @@ describe('ui.form', function()
     wait_closed()
     assert.are.equal('evt-1', get_call)
     assert.are.equal('更新後', updated_call.summary)
-    assert.are.same({ { message = '予定を更新しました', level = vim.log.levels.INFO } }, notifications)
+    assert.are.same({ { message = 'Event updated', level = vim.log.levels.INFO } }, notifications)
   end)
 
   it('更新フォームでゲストを追加すると attendees を更新する', function()
@@ -491,7 +491,7 @@ describe('ui.form', function()
     save()
 
     assert.are.equal(0, #notifications)
-    assert.is_true(form_lines()[11]:match('^保存中%.%.%.') ~= nil)
+    assert.is_true(form_lines()[11]:match('^Saving%.%.%.') ~= nil)
     callback(
       { id = 'created-1', summary = 'テスト', start = { date = '2026-10-28' }, ['end'] = { date = '2026-10-29' } },
       nil
@@ -521,7 +521,7 @@ describe('ui.form', function()
 
     wait_error()
     assert.is_nil(created_call)
-    assert.is_true(form_lines()[11]:match('終了は開始より後にしてください') ~= nil)
+    assert.is_true(form_lines()[11]:match('End must be after the start') ~= nil)
   end)
 
   it('場所が 1024 文字を超える場合はエラーを表示する', function()
@@ -532,7 +532,7 @@ describe('ui.form', function()
 
     wait_error()
     assert.is_nil(created_call)
-    assert.is_true(form_lines()[11]:match('場所は 1024 文字以内') ~= nil)
+    assert.is_true(form_lines()[11]:match('Location must be 1024 characters or fewer') ~= nil)
   end)
 
   it('説明が 8192 文字を超える場合はエラーを表示する', function()
@@ -543,7 +543,7 @@ describe('ui.form', function()
 
     wait_error()
     assert.is_nil(created_call)
-    assert.is_true(form_lines()[11]:match('説明は 8192 文字以内') ~= nil)
+    assert.is_true(form_lines()[11]:match('Description must be 8192 characters or fewer') ~= nil)
   end)
 
   it('? でフォームのヘルプを開き、閉じるとフォームに戻る', function()

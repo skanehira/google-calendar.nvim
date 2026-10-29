@@ -164,9 +164,7 @@ function M.list_events(opts, callback)
         local notify = config.get().notify
         if notify ~= nil then
           notify(
-            'google-calendar.nvim: 予定の取得が '
-              .. MAX_PAGES
-              .. ' ページを超えたため打ち切りました',
+            'google-calendar.nvim: Stopped fetching events after more than ' .. MAX_PAGES .. ' pages.',
             vim.log.levels.WARN
           )
         end

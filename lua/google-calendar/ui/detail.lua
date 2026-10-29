@@ -318,13 +318,13 @@ local function notify(message, level)
 end
 
 local function notify_copy_failure(url)
-  notify('クリップボードにコピーできませんでした: ' .. url, vim.log.levels.ERROR)
+  notify('Could not copy to clipboard: ' .. url, vim.log.levels.ERROR)
 end
 
 function M.copy_meet(item)
   local url = event.meet_url(item)
   if url == nil then
-    notify('この予定には Meet URL がありません', vim.log.levels.WARN)
+    notify('This event has no Meet URL', vim.log.levels.WARN)
     return
   end
 
@@ -338,7 +338,7 @@ function M.copy_meet(item)
     return
   end
 
-  notify('Meet URL をコピーしました: ' .. url, vim.log.levels.INFO)
+  notify('Meet URL copied: ' .. url, vim.log.levels.INFO)
 end
 
 local function open_edit()

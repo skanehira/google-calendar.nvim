@@ -8,9 +8,7 @@ vim.opt.shadafile = 'NONE'
 
 vim.cmd('runtime plugin/plenary.vim')
 if vim.fn.exists(':PlenaryBustedDirectory') == 0 then
-  io.stderr:write(
-    'plenary.nvim が見つかりません。PLENARY_PATH を設定してください: ' .. plenary_path .. '\n'
-  )
+  io.stderr:write('plenary.nvim was not found. Set PLENARY_PATH: ' .. plenary_path .. '\n')
   vim.cmd('cquit 1')
 end
 

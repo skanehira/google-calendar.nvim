@@ -4,11 +4,11 @@ local event = require('google-calendar.event')
 local M = {}
 
 local MESSAGES = {
-  not_found = 'gws が見つかりません。README のセットアップ手順に従って gws をインストールしてください。',
-  auth = 'gws の認証が切れています。gws auth login を実行してください。',
-  network = 'Google Calendar に接続できません。ネットワークを確認し、r で再試行してください。',
-  invalid_output = 'gws の出力を解釈できませんでした',
-  deleted = '予定が既に削除されています。',
+  not_found = 'gws was not found. Install gws by following the setup instructions in README.md.',
+  auth = 'gws authentication has expired. Run gws auth login.',
+  network = 'Cannot connect to Google Calendar. Check your network and retry with r.',
+  invalid_output = 'Could not parse the output from gws',
+  deleted = 'The event has already been deleted.',
 }
 
 local last_message = nil
@@ -16,9 +16,9 @@ local last_message = nil
 local function api_message(err)
   local detail = err.message
   if type(detail) ~= 'string' or detail == '' then
-    detail = '不明なエラー'
+    detail = 'Unknown error'
   end
-  return 'Google Calendar API エラー: ' .. detail
+  return 'Google Calendar API error: ' .. detail
 end
 
 local function message_for(err)
@@ -29,7 +29,7 @@ local function message_for(err)
     return api_message(err)
   end
 
-  return MESSAGES[err.kind] or 'Google Calendar の操作に失敗しました'
+  return MESSAGES[err.kind] or 'Google Calendar operation failed'
 end
 
 function M.message(err)

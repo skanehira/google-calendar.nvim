@@ -13,9 +13,9 @@
 
 | 操作 | 振る舞い |
 | --- | --- |
-| 詳細で `y` | Meet URL を `+` レジスタへコピーし、`Meet URL をコピーしました: <URL>` と通知する |
-| 詳細で `y`（Meet URL なし） | `この予定には Meet URL がありません` と通知する |
-| 詳細で `y`（クリップボード不可） | `クリップボードにコピーできませんでした: <URL>` と通知する |
+| 詳細で `y` | Meet URL を `+` レジスタへコピーし、`Meet URL copied: <URL>` と通知する |
+| 詳細で `y`（Meet URL なし） | `This event has no Meet URL` と通知する |
+| 詳細で `y`（クリップボード不可） | `Could not copy to clipboard: <URL>` と通知する |
 
 **URL の取得**:
 

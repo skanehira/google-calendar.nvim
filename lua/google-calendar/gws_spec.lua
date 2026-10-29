@@ -281,7 +281,7 @@ describe('gws adapter', function()
     end
     assert.are.same({
       {
-        msg = 'google-calendar.nvim: 予定の取得が 10 ページを超えたため打ち切りました',
+        msg = 'google-calendar.nvim: Stopped fetching events after more than 10 pages.',
         level = vim.log.levels.WARN,
       },
     }, messages)

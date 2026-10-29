@@ -122,7 +122,7 @@ end
 
 local function virt_lines(row_index)
   for _, mark in ipairs(month_marks()) do
-    if mark[2] == row_index and mark[4].virt_lines ~= nil then
+    if mark[2] == row_index - 1 and mark[4].virt_lines ~= nil then
       return mark[4].virt_lines
     end
   end

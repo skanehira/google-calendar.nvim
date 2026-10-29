@@ -130,7 +130,10 @@ local function form_lines()
 end
 
 local function month_lines()
-  return window_lines('month')
+  local lines = window_lines('month')
+  local winbar = vim.wo[state.windows.month].winbar or ''
+  table.insert(lines, 1, (winbar:gsub('%%#[^#]*#', '')))
+  return lines
 end
 
 local function month_virt_lines()
@@ -148,7 +151,7 @@ local function month_virt_lines()
   local marks = vim.api.nvim_buf_get_extmarks(vim.api.nvim_win_get_buf(win), ns, 0, -1, { details = true })
   for _, mark in ipairs(marks) do
     if mark[4].virt_lines ~= nil and mark[4].virt_lines_above ~= true then
-      rows[mark[2]] = mark[4].virt_lines
+      rows[mark[2] + 1] = mark[4].virt_lines
     end
   end
   return rows

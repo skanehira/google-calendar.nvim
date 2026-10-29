@@ -425,6 +425,13 @@ function M.build_view(grid, events_by_date, cfg, today, selected_date, cell_w, r
   for index, label in ipairs(calendar.weekday_labels(cfg.week_start)) do
     header_cells[index] = center(label, cell_w)
   end
+  local header_winbar_parts = { '%#GoogleCalendarHeader#' }
+  for index, text in ipairs(header_cells) do
+    if index > 1 then
+      table.insert(header_winbar_parts, '%#GoogleCalendarBorder#│%#GoogleCalendarHeader#')
+    end
+    table.insert(header_winbar_parts, text)
+  end
 
   local weeks = {}
   local selected_frame = nil
@@ -519,6 +526,7 @@ function M.build_view(grid, events_by_date, cfg, today, selected_date, cell_w, r
 
   return {
     header = table.concat(header_cells, '│'),
+    header_winbar = table.concat(header_winbar_parts),
     horizontal = horizontal,
     horizontals = horizontals,
     weeks = weeks,
@@ -557,7 +565,9 @@ function M.render(win, view)
   local buf = vim.api.nvim_win_get_buf(win)
   local ns = vim.api.nvim_create_namespace(namespace_name)
 
-  local lines = { view.header }
+  vim.wo[win].winbar = view.header_winbar
+
+  local lines = {}
   for _, week in ipairs(view.weeks) do
     table.insert(lines, week.date_line)
   end
@@ -565,14 +575,9 @@ function M.render(win, view)
   vim.bo[buf].modifiable = true
   vim.api.nvim_buf_set_lines(buf, 0, -1, false, lines)
   vim.api.nvim_buf_clear_namespace(buf, ns, 0, -1)
-  vim.api.nvim_buf_set_extmark(buf, ns, 0, 0, {
-    end_col = #view.header,
-    hl_group = 'GoogleCalendarHeader',
-  })
-  highlight_vertical_lines(buf, ns, 0, view.header)
 
   for week_index, week in ipairs(view.weeks) do
-    local line = week_index
+    local line = week_index - 1
     highlight_vertical_lines(buf, ns, line, week.date_line)
     for _, position in ipairs(week.vertical_positions or {}) do
       vim.api.nvim_buf_set_extmark(buf, ns, line, position - 1, {
@@ -617,7 +622,7 @@ function M.render(win, view)
   for week_index, week in ipairs(view.weeks) do
     for _, cell in ipairs(week.cells) do
       if cell.date == state.selected_date then
-        selected_line = week_index + 1
+        selected_line = week_index
         selected_week_index = week_index
         break
       end
@@ -628,7 +633,7 @@ function M.render(win, view)
   end
   vim.api.nvim_win_set_cursor(win, { selected_line, 0 })
 
-  local win_height = vim.api.nvim_win_get_height(win)
+  local win_height = vim.api.nvim_win_get_height(win) - 1
   local event_rows = #view.weeks[selected_week_index].event_rows
   local desired_winline = math.max(1, win_height - event_rows)
   local current_winline = vim.api.nvim_win_call(win, function()

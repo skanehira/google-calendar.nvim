@@ -233,7 +233,8 @@ The default highlight groups are:
 | --- | --- |
 | `GoogleCalendarHeader` | Month title and weekday header |
 | `GoogleCalendarToday` | Today's date |
-| `GoogleCalendarSelected` | Selected day and cell |
+| `GoogleCalendarSelected` | Selected day number |
+| `GoogleCalendarSelectedBorder` | Selected cell frame |
 | `GoogleCalendarSunday` | Sunday dates |
 | `GoogleCalendarSaturday` | Saturday dates |
 | `GoogleCalendarOtherMonth` | Dates from adjacent months |
@@ -261,10 +262,11 @@ Override any group with `setup({ highlights = { ... } })`. Set a group to `false
 ## Behavior notes
 
 - Events from every calendar in `calendars` are fetched and merged into the month view. The first calendar is used for new events; updates and deletes use the event's own calendar ID.
-- The selected day is shown with the `GoogleCalendarSelected` background across the cell and in the month window title. Event bars and dots keep their calendar colors.
+- The selected day is shown with an orange, bold double-line frame around the cell (`GoogleCalendarSelectedBorder`) and an orange date number (`GoogleCalendarSelected`). The cell background is not filled; event bars and dots keep their calendar colors. The month window title also shows `選択: MM-DD`.
 - Month cells use Google Calendar-style event chips: all-day and multi-day events are colored bars with white text, and single-day timed events are a colored `●` / `○` dot followed by the start time and title. Calendar colors are assigned automatically from the order of `calendars` (11 colors, wrapping).
 - Month grid separators use the same `GoogleCalendarBorder` highlight for both horizontal and vertical lines.
 - Month data is cached in memory. The cache is cleared when the month window closes, when you press `r` or `R`, and after creating, updating, or deleting an event.
+- While loading, the month header shows `読み込み中...` but navigation, refresh, opening the agenda/form/help, and closing remain available. Only the latest fetch result is rendered.
 - Agenda rows use a colored `●` or `○` dot, the start time, and the title. The dot uses the event's calendar color. Events with `status == 'tentative'` or `transparency == 'transparent'` use the hollow `○` dot. All-day events use the all-day label.
 - The detail view uses a Google Calendar-style card. Guests are collapsed by default when there are more than five attendees; press `g` to expand or collapse them. The cursor stays in place when toggling.
 - Event descriptions wrap to the window width and are never truncated.

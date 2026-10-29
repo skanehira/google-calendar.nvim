@@ -136,17 +136,28 @@ local function chunks_text(chunks)
   return table.concat(parts)
 end
 
-local function row(...)
-  local cells = { ... }
+local function row_with_frame(cells, selected_index)
   local padded = {}
   for _, cell in ipairs(cells) do
     table.insert(padded, cell .. string.rep(' ', 12 - vim.fn.strdisplaywidth(cell)))
   end
-  return table.concat(padded, '│')
+
+  local parts = {}
+  for index, cell in ipairs(padded) do
+    if index > 1 then
+      local separator = '│'
+      if selected_index ~= nil and (index == selected_index or index == selected_index + 1) then
+        separator = '┃'
+      end
+      table.insert(parts, separator)
+    end
+    table.insert(parts, cell)
+  end
+  return table.concat(parts)
 end
 
-local WEEK_5_WITH_EVENT = row('', '', ' ● 09:00 定…', ' 終日', ' ● 13:00 Me…', '', '')
-local WEEK_5_AFTER_DELETE = row('', '', '', ' 終日', ' ● 13:00 Me…', '', '')
+local WEEK_5_WITH_EVENT = row_with_frame({ '', '', ' ● 09:00 定…', ' 終日', ' ● 13:00 Me…', '', '' }, 3)
+local WEEK_5_AFTER_DELETE = row_with_frame({ '', '', '', ' 終日', ' ● 13:00 Me…', '', '' }, 3)
 
 local function full_event()
   return {

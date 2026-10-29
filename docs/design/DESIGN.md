@@ -29,7 +29,7 @@
 | 複数カレンダーの横断表示・表示/非表示の切り替え | MVP は primary カレンダー 1 つに絞る。将来拡張 |
 | 予定のキーワード絞り込み | 月表示の一覧性を優先する |
 | 週表示・日表示 | MVP は月表示のみ |
-| 参加者の追加・招待メール送信 | 通知の宛先制御と文面の設計が必要 |
+| 招待メールの文面カスタマイズ | gws の既定の招待に任せる |
 | 繰り返し予定のルール編集 | RRULE の入力 UI と例外日の扱いが複雑。表示は `singleEvents=true` で各 occurrence を扱う |
 | 予定ごとの色変更 | カレンダー色の利用で足りる |
 | 複数 Google アカウントの切り替え | gws の認証は 1 アカウント前提 |
@@ -208,10 +208,10 @@ nvim --headless -u tests/minimal_init.lua \
 
 実測値:
 
-- `make test`: 253 tests passed / 0 failed / 0 errors、exit 0
+- `make test`: 254 tests passed / 0 failed / 0 errors、exit 0
 - `make test-file FILE=lua/google-calendar/config_spec.lua`: 17 tests passed、exit 0
 - `make test-file FILE=lua/google-calendar/gws_spec.lua`: 17 tests passed、exit 0
-- `XDG_STATE_HOME="$PWD/.tmp-state" make test`: 253 tests passed、exit 0
+- `XDG_STATE_HOME="$PWD/.tmp-state" make test`: 254 tests passed、exit 0
 - `make test TEST_DIR=<空ディレクトリ>`: exit 2、`spec が 0 件です` を出力（0 件のまま成功しない）
 
 `TEST_DIR` は既定 `lua/`。spec は実装ファイルの隣 (`lua/**/*_spec.lua`) に置く。テストハーネスの spec も `lua/google-calendar/test_harness_spec.lua` に置き、`make test` の走査対象に含める。E2E の spec は `tests/e2e/` に置き、`make test-e2e` で実行する。
@@ -453,7 +453,6 @@ require('google-calendar').setup({
 | `GoogleCalendarFormTitle` | フォームのタイトル |
 | `GoogleCalendarFormMuted` | フォームのプレースホルダー・補助情報 |
 | `GoogleCalendarFormIcon` | フォームのセクションアイコン |
-| `GoogleCalendarFormTabActive` | フォームのアクティブタブ |
 | `GoogleCalendarFormButton` | フォームの保存などのボタン |
 | `GoogleCalendarFormSeparator` | フォームのタイトル下の区切り線 |
 | `GoogleCalendarBorder` | float のボーダー |

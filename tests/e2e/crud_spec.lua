@@ -225,7 +225,7 @@ end
 
 local function edit_datetime(start_value, end_value)
   vim.api.nvim_set_current_win(state.windows.form)
-  vim.api.nvim_win_set_cursor(state.windows.form, { 5, 0 })
+  vim.api.nvim_win_set_cursor(state.windows.form, { 4, 0 })
   feed('<CR>')
   assert.is_true(vim.api.nvim_win_is_valid(state.windows.form_editor))
   set_form_editor({
@@ -310,6 +310,12 @@ describe('e2e crud', function()
     assert.are.equal('タイトルと日時を追加', form_lines()[1])
     edit_summary('登録1')
     edit_datetime(date .. ' 11:00', date .. ' 12:00')
+    vim.api.nvim_set_current_win(state.windows.form)
+    vim.api.nvim_win_set_cursor(state.windows.form, { 5, 0 })
+    feed('<CR>')
+    set_form_editor({ 'guest@example.com' })
+    feed('<F2>')
+    assert.are.equal('◉ 1人のゲスト', form_lines()[5])
     feed('<F2>')
     assert.is_true(vim.wait(10000, function()
       return state.windows.form == nil and not state.loading
@@ -452,13 +458,13 @@ describe('e2e crud', function()
       if win == nil or not vim.api.nvim_win_is_valid(win) then
         return false
       end
-      local footer = vim.api.nvim_buf_get_lines(vim.api.nvim_win_get_buf(win), 11, 12, false)[1]
+      local footer = vim.api.nvim_buf_get_lines(vim.api.nvim_win_get_buf(win), 10, 11, false)[1]
       return footer ~= nil and footer:match('^エラー:') ~= nil
     end, 10))
 
     assert.is_true(vim.api.nvim_win_is_valid(state.windows.form))
     assert.are.equal('失敗する予定', form_lines()[1])
-    assert.are.equal('エラー: 予定を作成できませんでした: Not Found', form_lines()[12])
+    assert.are.equal('エラー: 予定を作成できませんでした: Not Found', form_lines()[11])
     assert.are.equal(0, #state_items())
     assert.are.same({
       { message = '予定を作成できませんでした: Not Found', level = vim.log.levels.ERROR },

@@ -15,7 +15,7 @@
 | --- | --- |
 | 詳細で `e` | 現在の値が入力された更新フォームを開く |
 | `<Tab>` / `<S-Tab>` | メインウィンドウの次の行 / 前の行へ移動する |
-| `<CR>` | タイトル・日時・場所・説明のエディタを開く。Meet 行は読み取り専用 |
+| `<CR>` | タイトル・日時・場所・説明・ゲストのエディタを開く。Meet 行は読み取り専用 |
 | `<Space>` | 日時行では終日をトグルする（Meet は変更不可） |
 | `<F2>` | 入力を検証し、変更があれば `gws` で更新する |
 | `<Esc>` / `q` | フォームを閉じ、変更を破棄する（`<Esc>` は insert モードでは insert を抜けるだけで、normal モードでキャンセルする。`q` は normal モードのみ） |
@@ -35,6 +35,7 @@
 | 場所 | 予定の `location` |
 | 説明 | 予定の `description` |
 | Meet | 読み取り専用（既存の Meet URL を表示。変更・新規作成はしない） |
+| ゲスト | 既存の `attendees` のメールアドレス |
 
 説明エディタでは改行を含む複数行の説明を編集できる。変更しなければ `events get` で取得した説明をそのまま送る。
 
@@ -43,8 +44,9 @@
 1. フォームの値を検証する（[event-create.md](event-create.md) と同じ規則）
 2. 現在の予定を `gws calendar events get --params '{"calendarId":"primary","eventId":"<id>"}'` で取得する
 3. 取得した予定の編集可能フィールド（`summary` / `description` / `location` / `start` / `end` / `attendees` / `reminders` / `colorId` / `visibility` / `transparency` / `conferenceData`）を保持し、フォームの変更分で上書きする
-4. `gws calendar events update --params '{"calendarId":"primary","eventId":"<id>","conferenceDataVersion":1}' --json <body>` を実行する（`conferenceData` がある場合のみ `conferenceDataVersion=1`）
-5. 成功時はフォームと詳細を閉じ、月表示を再取得し、`予定を更新しました` と通知する
+4. ゲストを変更した場合は `attendees` を既存の参加情報（`responseStatus` など）を保ったまま差し替える
+5. `gws calendar events update --params '{"calendarId":"primary","eventId":"<id>","conferenceDataVersion":1}' --json <body>` を実行する（`conferenceData` がある場合のみ `conferenceDataVersion=1`）
+6. 成功時はフォームと詳細を閉じ、月表示を再取得し、`予定を更新しました` と通知する
 
 **変更がない場合**:
 

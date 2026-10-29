@@ -68,7 +68,6 @@ local default_highlight_groups = {
   'GoogleCalendarFormIcon',
   'GoogleCalendarFormMuted',
   'GoogleCalendarFormSeparator',
-  'GoogleCalendarFormTabActive',
   'GoogleCalendarFormTitle',
   'GoogleCalendarHeader',
   'GoogleCalendarOtherMonth',

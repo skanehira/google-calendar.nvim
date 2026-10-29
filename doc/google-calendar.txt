@@ -265,7 +265,6 @@ Default highlight groups:
   `GoogleCalendarFormTitle`       Composer title
   `GoogleCalendarFormMuted`       Composer placeholder and secondary text
   `GoogleCalendarFormIcon`        Composer section icons
-  `GoogleCalendarFormTabActive`   Active composer tab
   `GoogleCalendarFormButton`      Composer buttons such as Save
   `GoogleCalendarFormSeparator`   Composer title separator
   `GoogleCalendarBorder`          Float border
@@ -308,10 +307,10 @@ Event detail ~
 
 Create / update composer ~
   - The composer uses a Google Calendar-style layout with a main window and
-    dedicated editor windows for the title, date/time, location, and
-    description.
-  - The guests row and the task / out-of-office tabs are visual only; attendee
-    invitations, tasks, and out-of-office events are not supported in the MVP.
+    dedicated editor windows for the title, date/time, guests, location,
+    and description.
+  - The guests row opens a guest editor. Enter one email address per line;
+    duplicates are removed and invalid addresses are reported.
   - <Space> on the date/time row toggles between a timed event and an all-day
     event. <CR> or <Space> on the Meet row toggles Meet.
   - Save from the main composer with <F2>. Editor windows apply with <F2> and

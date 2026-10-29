@@ -210,7 +210,7 @@ For a default Neovim setup this is `~/.local/share/nvim/google-calendar.nvim/con
 
 ### Window sizes
 
-`width` and `height` are ratios of the usable area, excluding the float border. The month view defaults to `1.0 x 0.7` so it stays compact while showing the configured 6 events per cell; it distributes leftover height across the event rows of each week and keeps the same size while loading and after data arrives. If the selected week's rows do not fit, the view scrolls so they and the selected frame's bottom line are visible. The agenda defaults to a tall `0.5 x 0.7` window; the detail window defaults to `0.5 x 0.5`.
+`width` and `height` are ratios of the usable area, excluding the float border. The month view defaults to `1.0 x 0.7` so it stays compact while showing the configured 6 events per cell. If the screen has enough room, it grows to the height needed for all six weeks so the bottom week is not clipped; otherwise it scrolls. It distributes leftover height across the event rows of each week and keeps the same size while loading and after data arrives. If all six weeks fit, moving with `j` / `k` does not scroll the view; only the selected cell changes. If they do not fit, the view scrolls so the selected week's rows and frame bottom line are visible. The agenda defaults to a tall `0.5 x 0.7` window; the detail window defaults to `0.5 x 0.5`.
 
 ### Keymap overrides
 

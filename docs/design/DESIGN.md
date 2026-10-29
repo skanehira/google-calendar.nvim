@@ -208,10 +208,10 @@ nvim --headless -u tests/minimal_init.lua \
 
 実測値:
 
-- `make test`: 279 tests passed / 0 failed / 0 errors、exit 0
+- `make test`: 281 tests passed / 0 failed / 0 errors、exit 0
 - `make test-file FILE=lua/google-calendar/config_spec.lua`: 17 tests passed、exit 0
 - `make test-file FILE=lua/google-calendar/gws_spec.lua`: 17 tests passed、exit 0
-- `XDG_STATE_HOME="$PWD/.tmp-state" make test`: 279 tests passed、exit 0
+- `XDG_STATE_HOME="$PWD/.tmp-state" make test`: 281 tests passed、exit 0
 - `make test TEST_DIR=<空ディレクトリ>`: exit 2、`spec が 0 件です` を出力（0 件のまま成功しない）
 
 `TEST_DIR` は既定 `lua/`。spec は実装ファイルの隣 (`lua/**/*_spec.lua`) に置く。テストハーネスの spec も `lua/google-calendar/test_harness_spec.lua` に置き、`make test` の走査対象に含める。E2E の spec は `tests/e2e/` に置き、`make test-e2e` で実行する。
@@ -497,7 +497,7 @@ stdpath('data')/google-calendar.nvim/config.json
 
 - 月表示の縦線・横線は同じ `GoogleCalendarBorder` でハイライトする。
 - `primary` と設定 `calendars` の追加カレンダーから予定を取得して統合し、月表示・アジェンダ・詳細に表示する。`primary` は常に先頭に含まれ外せない。新規作成は `primary`、更新・削除は予定の `calendar_id` を使う。
-- 月表示は画面の利用可能領域に対する `width` / `height`（既定 1.0 / 0.7）でサイズを決める。各週は最低 `max_events_per_cell + 1` 行を確保し、余った高さを空の予定行に配分する。取得中と取得完了でサイズを変えない。アジェンダは `agenda` の `width` / `height`（既定 0.5 / 0.7）で縦長にし、詳細は `detail` の `width` / `height`（既定 0.5）でサイズを決める。フォーム・ヘルプ・確認は内容に合わせる
+- 月表示は画面の利用可能領域に対する `width` / `height`（既定 1.0 / 0.7）でサイズを決める。画面に収まる場合は 6 週分の内容が入る高さを最低限確保し、最下段の週が見切れないようにする。全 6 週が収まる場合は `j` / `k` でスクロールしない。各週は最低 `max_events_per_cell + 1` 行を確保し、余った高さを空の予定行に配分する。取得中と取得完了でサイズを変えない。アジェンダは `agenda` の `width` / `height`（既定 0.5 / 0.7）で縦長にし、詳細は `detail` の `width` / `height`（既定 0.5）でサイズを決める。フォーム・ヘルプ・確認は内容に合わせる
 - 予定詳細は Google カレンダーの予定カード風に、アイコン付きのセクション（タイトル・日時・場所・ゲスト・説明・カレンダー）で表示する。ゲストの参加状況は `✓` / `○` / `?` / `✕` で示し、主催者には `主催者` を付ける。ゲストが 5 人を超える場合は折り畳んだ状態で開き、`g` で展開・折り畳みを切り替える
 - 予定の登録・更新は Google カレンダーの作成ダイアログ風のメインウィンドウと、タイトル・日時・場所・説明・ゲスト用の個別エディタウィンドウを組み合わせて表示する。説明エディタはメインウィンドウと同じサイズで開く。アイコンは表示幅2文字に揃え、説明文を同じ列から開始する
 - 日別アジェンダは予定ごとにカレンダー色の `●` / `○` ドット、開始時刻、タイトルを 1 行で表示する。場所は表示しない。仮・終日以外の空き予定は `○` にする

@@ -350,7 +350,7 @@ local function build_event_rows(week, events_by_date, max_events, cell_w, rows, 
   return result
 end
 
-function M.compute_layout(columns, lines, cfg)
+function M.compute_layout(columns, lines, cfg, weeks)
   -- ボーダー 2 列/行を除いた利用可能領域に対する比率 (既定 1.0 = 画面いっぱい)
   local usable_width = math.max(1, columns - 2)
   local usable_height = math.max(1, lines - 2)
@@ -359,10 +359,15 @@ function M.compute_layout(columns, lines, cfg)
   -- 7 セル + 6 本の区切り線に合わせて幅を丸める
   local win_width = 7 * cell_w + 6
 
-  local weeks = 6
+  weeks = math.max(1, math.min(6, weeks or 6))
   local base_rows = cfg.max_events_per_cell + 1
   local base_content = 1 + weeks + weeks + weeks * base_rows
   local target_height = math.max(1, math.min(usable_height, math.floor(usable_height * cfg.height)))
+  -- 画面に収まる場合は、6 週分の内容が必ず入る高さを最低限確保する。
+  -- 比率だけだと 1 行足りず、最下段の週が見切れることがある。
+  if usable_height >= base_content then
+    target_height = math.max(target_height, base_content)
+  end
 
   -- 余った高さは各週の予定行 (空行) に均等に配分し、セルを画面いっぱいに広げる
   local rows_per_week = {}
@@ -618,7 +623,7 @@ function M.render(win, view)
   vim.bo[buf].modifiable = false
 
   -- 設定した画面サイズ (ウィンドウ高さ) に合わせる。内容が収まらない場合はスクロールする
-  local layout = M.compute_layout(vim.o.columns, vim.o.lines, config.get())
+  local layout = M.compute_layout(vim.o.columns, vim.o.lines, config.get(), #view.weeks)
   window.resize(win, layout.win_width, layout.win_height)
 
   -- 選択中の週の予定行がすべて見えるようにスクロール位置を合わせる
@@ -671,7 +676,8 @@ local function render()
   vim.api.nvim_win_set_config(win, { title = month_title(state.loading) })
 
   local cfg = config.get()
-  local layout = M.compute_layout(vim.o.columns, vim.o.lines, cfg)
+  local grid = calendar.month_grid(state.year, state.month, cfg.week_start)
+  local layout = M.compute_layout(vim.o.columns, vim.o.lines, cfg, #grid.weeks)
   local cell_w = layout.cell_w
   if cell_w < 7 then
     cfg.notify('Window is too narrow', vim.log.levels.ERROR)
@@ -679,7 +685,6 @@ local function render()
     return
   end
 
-  local grid = calendar.month_grid(state.year, state.month, cfg.week_start)
   local view =
     M.build_view(grid, state.events_by_date, cfg, calendar.today(), state.selected_date, cell_w, layout.rows_per_week)
   M.render(win, view)
@@ -942,7 +947,8 @@ function M.open()
   local initial = false
 
   if win == nil or not vim.api.nvim_win_is_valid(win) then
-    local layout = M.compute_layout(vim.o.columns, vim.o.lines, cfg)
+    local grid = calendar.month_grid(state.year, state.month, cfg.week_start)
+    local layout = M.compute_layout(vim.o.columns, vim.o.lines, cfg, #grid.weeks)
     if layout.cell_w < 7 then
       cfg.notify('Window is too narrow', vim.log.levels.ERROR)
       return false

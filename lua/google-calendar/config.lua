@@ -184,18 +184,32 @@ local function load_calendars(notify, path)
   if calendars == nil then
     return nil
   end
-  if type(calendars) ~= 'table' or #calendars == 0 then
-    warn(notify, 'calendars in ' .. path .. ' must be a non-empty array of strings')
+  if type(calendars) ~= 'table' then
+    warn(notify, 'calendars in ' .. path .. ' must be an array of strings')
     return nil
   end
   for _, calendar_id in ipairs(calendars) do
     if type(calendar_id) ~= 'string' or calendar_id == '' then
-      warn(notify, 'calendars in ' .. path .. ' must be a non-empty array of strings')
+      warn(notify, 'calendars in ' .. path .. ' must be an array of strings')
       return nil
     end
   end
 
   return vim.deepcopy(calendars)
+end
+
+local function normalize_calendars(calendars)
+  local result = { 'primary' }
+  local seen = { primary = true }
+  if type(calendars) == 'table' then
+    for _, calendar_id in ipairs(calendars) do
+      if type(calendar_id) == 'string' and calendar_id ~= '' and not seen[calendar_id] then
+        seen[calendar_id] = true
+        table.insert(result, calendar_id)
+      end
+    end
+  end
+  return result
 end
 
 local function merge_keymaps(notify, overrides)
@@ -261,9 +275,9 @@ function M.setup(opts)
   end
 
   if opts.calendars ~= nil then
-    current.calendars = vim.deepcopy(opts.calendars)
+    current.calendars = normalize_calendars(opts.calendars)
   elseif file_calendars ~= nil then
-    current.calendars = file_calendars
+    current.calendars = normalize_calendars(file_calendars)
   end
   if opts.width ~= nil then
     current.width = opts.width

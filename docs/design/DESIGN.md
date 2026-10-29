@@ -208,10 +208,10 @@ nvim --headless -u tests/minimal_init.lua \
 
 実測値:
 
-- `make test`: 273 tests passed / 0 failed / 0 errors、exit 0
+- `make test`: 277 tests passed / 0 failed / 0 errors、exit 0
 - `make test-file FILE=lua/google-calendar/config_spec.lua`: 17 tests passed、exit 0
 - `make test-file FILE=lua/google-calendar/gws_spec.lua`: 17 tests passed、exit 0
-- `XDG_STATE_HOME="$PWD/.tmp-state" make test`: 273 tests passed、exit 0
+- `XDG_STATE_HOME="$PWD/.tmp-state" make test`: 277 tests passed、exit 0
 - `make test TEST_DIR=<空ディレクトリ>`: exit 2、`spec が 0 件です` を出力（0 件のまま成功しない）
 
 `TEST_DIR` は既定 `lua/`。spec は実装ファイルの隣 (`lua/**/*_spec.lua`) に置く。テストハーネスの spec も `lua/google-calendar/test_harness_spec.lua` に置き、`make test` の走査対象に含める。E2E の spec は `tests/e2e/` に置き、`make test-e2e` で実行する。
@@ -317,8 +317,9 @@ GOOGLE_WORKSPACE_CLI_CONFIG_DIR="$PWD/.local/gws-config" gws calendar calendarLi
 
 ```lua
 require('google-calendar').setup({
-  -- 表示するカレンダー。通常は設定ファイルに書く（dotfiles に個人情報を置かない）
-  calendars = { 'primary' },
+  -- 追加で表示するカレンダー。primary は常に先頭に含まれ、外せない
+  -- 通常は設定ファイルに書く（dotfiles に個人情報を置かない）
+  calendars = { 'work@example.com' },
   -- 週の開始曜日。'sunday' または 'monday'
   week_start = 'sunday',
   -- 1 セルに表示する予定の最大件数（1〜10、既定 7）
@@ -379,13 +380,13 @@ stdpath('data')/google-calendar.nvim/config.json
 ```json
 {
   "calendars": [
-    "primary",
     "work@example.com"
   ]
 }
 ```
 
-- ファイルがなければ `primary` を使う
+- `primary` は常に表示され、外せない。自動的に先頭へ含めるため `calendars` に書く必要はない
+- ファイルがなければ `primary` のみを使う。`calendars` が空配列でも `primary` のみになる
 - 不正な JSON や不正な `calendars` の場合は警告し、`primary` にフォールバックする
 - `GOOGLE_CALENDAR_CONFIG` で別のパスを指定できる
 - `setup({ config_file = '/path/to/config.json' })` でもパスを上書きできる
@@ -467,8 +468,8 @@ stdpath('data')/google-calendar.nvim/config.json
 | `GoogleCalendarOtherMonth` | 前月・翌月の日付 |
 | `GoogleCalendarEvent` | 単日の時刻付き予定の文字（既定は属性なし） |
 | `GoogleCalendarEventTime` | 予定の時刻 |
-| `GoogleCalendarCalendarColor1`〜`GoogleCalendarCalendarColor11` | カレンダーごとの色付きドット（`calendars` の順に自動割り当て） |
-| `GoogleCalendarCalendarBg1`〜`GoogleCalendarCalendarBg11` | カレンダーごとの予定バー背景（`calendars` の順に自動割り当て） |
+| `GoogleCalendarCalendarColor1`〜`GoogleCalendarCalendarColor11` | カレンダーごとの色付きドット（`primary` 先頭、続いて `calendars` の順に自動割り当て） |
+| `GoogleCalendarCalendarBg1`〜`GoogleCalendarCalendarBg11` | カレンダーごとの予定バー背景（`primary` 先頭、続いて `calendars` の順に自動割り当て） |
 | `GoogleCalendarDetailTitle` | 詳細のタイトル |
 | `GoogleCalendarDetailIcon` | 詳細のセクションアイコン |
 | `GoogleCalendarDetailMuted` | 詳細の補助情報 |
@@ -495,13 +496,13 @@ stdpath('data')/google-calendar.nvim/config.json
 ### UI の原則
 
 - 月表示の縦線・横線は同じ `GoogleCalendarBorder` でハイライトする。
-- 設定 `calendars` の全カレンダーから予定を取得して統合し、月表示・アジェンダ・詳細に表示する。新規作成は先頭のカレンダー、更新・削除は予定の `calendar_id` を使う。
+- `primary` と設定 `calendars` の追加カレンダーから予定を取得して統合し、月表示・アジェンダ・詳細に表示する。`primary` は常に先頭に含まれ外せない。新規作成は `primary`、更新・削除は予定の `calendar_id` を使う。
 - 月表示は画面の利用可能領域に対する `width` / `height`（既定 0.7）でサイズを決める。各週は最低 `max_events_per_cell + 1` 行を確保し、余った高さを空の予定行に配分する。取得中と取得完了でサイズを変えない。アジェンダは `agenda` の `width` / `height`（既定 0.5 / 0.7）で縦長にし、詳細は `detail` の `width` / `height`（既定 0.5）でサイズを決める。フォーム・ヘルプ・確認は内容に合わせる
 - 予定詳細は Google カレンダーの予定カード風に、アイコン付きのセクション（タイトル・日時・場所・ゲスト・説明・カレンダー）で表示する。ゲストの参加状況は `✓` / `○` / `?` / `✕` で示し、主催者には `主催者` を付ける。ゲストが 5 人を超える場合は折り畳んだ状態で開き、`g` で展開・折り畳みを切り替える
 - 予定の登録・更新は Google カレンダーの作成ダイアログ風のメインウィンドウと、タイトル・日時・場所・説明・ゲスト用の個別エディタウィンドウを組み合わせて表示する。説明エディタはメインウィンドウと同じサイズで開く。アイコンは表示幅2文字に揃え、説明文を同じ列から開始する
 - 日別アジェンダは予定ごとにカレンダー色の `●` / `○` ドット、開始時刻、タイトルを 1 行で表示する。場所は表示しない。仮・終日以外の空き予定は `○` にする
 - 選択中の日付はセル全体の背景ではなく、オレンジ・bold の二重線フレーム（`GoogleCalendarSelectedBorder`）とオレンジの日付（`GoogleCalendarSelected`）で示す。予定バー・ドットはカレンダー色を保つ（今日の `GoogleCalendarToday` と重なっても選択が分かるようにする）。ウィンドウタイトルの `選択: MM-DD` でも示す
-- 月表示の予定は Google カレンダー風に、終日・複数日予定はカレンダー色のバー（白文字）、単日の時刻付き予定はカレンダー色の `●` / `○` ドット＋開始時刻＋タイトルで表示する。複数日予定のバーは隣接する日セルと週行を跨いで連続し、セル境界の `│` を背景で覆う。バーのタイトルはバー全体の幅に合わせて切り詰める。色は `calendars` の順に 11 色を自動割り当てし、12 件目以降は先頭に戻る
+- 月表示の予定は Google カレンダー風に、終日・複数日予定はカレンダー色のバー（白文字）、単日の時刻付き予定はカレンダー色の `●` / `○` ドット＋開始時刻＋タイトルで表示する。複数日予定のバーは隣接する日セルと週行を跨いで連続し、セル境界の `│` を背景で覆う。バーのタイトルはバー全体の幅に合わせて切り詰める。色は `primary` を先頭に、続いて `calendars` の順で 11 色を自動割り当てし、12 件目以降は先頭に戻る
 - 月グリッドは `│` の縦線に加えて、各週の上に `─` / `┼` の横線を引いてセルを区切る
 - insert モードの `<Esc>` は insert を抜けるだけにし、normal モードでキャンセルする（Vim の慣習に合わせる）
 - 画面を開いたら、実際のターミナルで代表データ（予定が多い日・長いタイトル・日本語）を使ってキー操作とスクリーンショットを確認する

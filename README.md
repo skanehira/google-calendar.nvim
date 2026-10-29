@@ -4,6 +4,10 @@ A Neovim plugin that brings Google Calendar into your editor. It renders a month
 
 Calendar operations are delegated to [`gws`](https://github.com/googleworkspace/cli); the plugin does not call the Google Calendar API directly.
 
+![Month view in WezTerm](docs/images/month-view.png)
+
+Month view in WezTerm. The weekday header stays fixed while the grid scrolls; all-day and multi-day events use colored bars, and each calendar gets its own color.
+
 ## Features
 
 - Month view with previous/next month navigation, today jump, a highlighted selected day, and Google Calendar-style event bars and dots

@@ -282,7 +282,7 @@ Override any group with `setup({ highlights = { ... } })`. Set a group to `false
 The create and update form uses a Google Calendar-style composer with separate editor windows:
 
 - The main composer shows the title, date/time, guests, Google Meet, location, description, and calendar.
-- `<CR>` on the title, date/time, guests, location, or description row opens a dedicated editor window.
+- `<CR>` on the title, date/time, guests, location, or description row opens a dedicated editor window. The title editor opens in insert mode, so you can type immediately.
 - The description editor uses the same size as the main composer so multiline descriptions have room to breathe.
 - Icons are padded to two display cells, so each row's description text starts in the same column.
 - `<CR>` or `<Space>` on the Google Meet row toggles Meet.

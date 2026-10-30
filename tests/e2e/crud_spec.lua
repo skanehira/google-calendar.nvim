@@ -223,6 +223,7 @@ local function edit_summary(value)
   feed('<CR>')
   assert.is_true(vim.api.nvim_win_is_valid(state.windows.form_editor))
   set_form_editor({ value })
+  vim.cmd('stopinsert')
   feed(':w<CR>')
 end
 

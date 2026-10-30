@@ -475,6 +475,14 @@ end
 
 local function open_summary_editor()
   open_editor('summary', ' タイトル ', { form.values.summary or '' }, 1)
+  -- キーマップ処理の終了後に挿入モードへ入る。直接 startinsert すると
+  -- マッピング終了時のモード復元でノーマルモードに戻ることがある。
+  vim.schedule(function()
+    if editor.kind == 'summary' and vim.api.nvim_win_is_valid(editor.win) then
+      vim.api.nvim_set_current_win(editor.win)
+      vim.cmd('startinsert!')
+    end
+  end)
 end
 
 local function open_location_editor()

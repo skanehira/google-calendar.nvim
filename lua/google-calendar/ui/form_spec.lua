@@ -56,6 +56,7 @@ local function feed(keys)
 end
 
 local function feed_save()
+  vim.cmd('stopinsert')
   local key = config.resolve('form', 'save') or ':w'
   if key == ':w' then
     feed(':w<CR>')

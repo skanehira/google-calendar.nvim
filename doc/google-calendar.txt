@@ -367,7 +367,8 @@ Event detail ~
 Create / update composer ~
   - The composer uses a Google Calendar-style layout with a main window and
     dedicated editor windows for the title, date/time, guests, location,
-    and description.
+    and description. The title editor opens in insert mode, so you can type
+    immediately.
   - The guests row opens a guest editor. Enter one email address per line;
     duplicates are removed and invalid addresses are reported.
   - The description editor opens at the same size as the main composer.

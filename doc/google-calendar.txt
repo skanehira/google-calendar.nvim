@@ -108,6 +108,7 @@ Month view ~
 Day agenda ~
   j / k              Select an event
   <CR>               Open the selected event
+  <C-o>              Open the selected event in Google Calendar
   d                  Delete the selected event
   ?                  Open agenda help
   q / <Esc>          Return to the month view
@@ -200,7 +201,7 @@ Options and defaults:
         close = 'q',
         esc_close = '<Esc>',
       },
-      agenda = { next = 'j', prev = 'k', open = '<CR>', help = '?', close = 'q', esc_close = '<Esc>' },
+      agenda = { next = 'j', prev = 'k', open = '<CR>', open_url = '<C-o>', delete = 'd', help = '?', close = 'q', esc_close = '<Esc>' },
       detail = {
         edit = 'e',
         delete = 'd',

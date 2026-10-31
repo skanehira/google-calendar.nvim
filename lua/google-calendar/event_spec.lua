@@ -219,6 +219,18 @@ describe('event', function()
   end)
 
   describe('meet_url', function()
+    it('htmlLink をカレンダー URL として保持する', function()
+      local model = event.normalize({
+        id = 'evt-url',
+        summary = '定例',
+        start = { date = '2026-10-28' },
+        ['end'] = { date = '2026-10-29' },
+        htmlLink = 'https://calendar.google.com/calendar/event?eid=abc123',
+      })
+
+      assert.are.equal('https://calendar.google.com/calendar/event?eid=abc123', event.html_link(model))
+    end)
+
     it('hangout_link を優先し、なければ conferenceData の video entryPoint を使う', function()
       assert.are.equal(
         'https://meet.google.com/primary-url',

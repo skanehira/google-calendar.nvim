@@ -208,10 +208,10 @@ nvim --headless -u tests/minimal_init.lua \
 
 実測値:
 
-- `make test`: 281 tests passed / 0 failed / 0 errors、exit 0
+- `make test`: 284 tests passed / 0 failed / 0 errors、exit 0
 - `make test-file FILE=lua/google-calendar/config_spec.lua`: 17 tests passed、exit 0
 - `make test-file FILE=lua/google-calendar/gws_spec.lua`: 17 tests passed、exit 0
-- `XDG_STATE_HOME="$PWD/.tmp-state" make test`: 281 tests passed、exit 0
+- `XDG_STATE_HOME="$PWD/.tmp-state" make test`: 284 tests passed、exit 0
 - `make test TEST_DIR=<空ディレクトリ>`: exit 2、`spec が 0 件です` を出力（0 件のまま成功しない）
 
 `TEST_DIR` は既定 `lua/`。spec は実装ファイルの隣 (`lua/**/*_spec.lua`) に置く。テストハーネスの spec も `lua/google-calendar/test_harness_spec.lua` に置き、`make test` の走査対象に含める。E2E の spec は `tests/e2e/` に置き、`make test-e2e` で実行する。
@@ -247,7 +247,7 @@ make test-e2e
 
 `scripts/e2e.sh` は `tests/fixtures/fake-gws.py` への `gws` シンボリックリンクを一時 `PATH` の先頭に置き、`FAKE_GWS_STATE` / `XDG_STATE_HOME` / `FAKE_GWS_CWD_LOG` / `FAKE_GWS_CALL_LOG` を一時ディレクトリに設定して `tests/e2e` を plenary で実行する。実カレンダーは変更しない。
 
-実測値: `make test-e2e` は 12 tests passed / 0 failed / 0 errors、exit 0。スモークテストは偽 gws が PATH の先頭にあること、空の `events list`、`+insert` 後の `list` への反映、`:GoogleCalendar` の登録、`setup()` の既定値を確認する。`tests/e2e/crud_spec.lua` は偽 gws を使い、月表示を開いて登録・更新・削除を通しで検証し、`+N`、認証エラー、作成失敗、`:w` 連打、各操作後の状態ファイルとバッファ内容の一致を確認する。
+実測値: `make test-e2e` は 13 tests passed / 0 failed / 0 errors、exit 0。スモークテストは偽 gws が PATH の先頭にあること、空の `events list`、`+insert` 後の `list` への反映、`:GoogleCalendar` の登録、`setup()` の既定値を確認する。`tests/e2e/crud_spec.lua` は偽 gws を使い、月表示を開いて登録・更新・削除を通しで検証し、`+N`、認証エラー、作成失敗、`:w` 連打、各操作後の状態ファイルとバッファ内容の一致を確認する。
 
 **実 API の手動確認**（任意）:
 
@@ -291,6 +291,7 @@ GOOGLE_WORKSPACE_CLI_CONFIG_DIR="$PWD/.local/gws-config" gws calendar calendarLi
 | 月表示 | `q` / `<Esc>` | 月表示を閉じる |
 | アジェンダ | `j` / `k` | 予定を選択 |
 | アジェンダ | `<CR>` | 予定詳細を開く |
+| アジェンダ | `<C-o>` | 選択中の予定を Google カレンダーで開く |
 | アジェンダ | `d` | 選択中の予定を削除する |
 | アジェンダ | `q` / `<Esc>` | 月表示に戻る |
 | 詳細 | `e` | 更新フォームを開く |
@@ -347,7 +348,7 @@ require('google-calendar').setup({
       prev_month = 'H', next_month = 'L', today = 't',
       agenda = '<CR>', create = 'a', refresh = 'r', help = '?', close = 'q', esc_close = '<Esc>',
     },
-    agenda = { next = 'j', prev = 'k', open = '<CR>', help = '?', close = 'q', esc_close = '<Esc>' },
+    agenda = { next = 'j', prev = 'k', open = '<CR>', open_url = '<C-o>', delete = 'd', help = '?', close = 'q', esc_close = '<Esc>' },
     detail = {
       edit = 'e',
       delete = 'd',
@@ -500,7 +501,7 @@ stdpath('data')/google-calendar.nvim/config.json
 - 月表示は画面の利用可能領域に対する `width` / `height`（既定 1.0 / 0.7）でサイズを決める。画面に収まる場合は 6 週分の内容が入る高さを最低限確保し、最下段の週が見切れないようにする。全 6 週が収まる場合は `j` / `k` でスクロールしない。各週は最低 `max_events_per_cell + 1` 行を確保し、余った高さを空の予定行に配分する。取得中と取得完了でサイズを変えない。アジェンダは `agenda` の `width` / `height`（既定 0.5 / 0.7）で縦長にし、詳細は `detail` の `width` / `height`（既定 0.5）でサイズを決める。フォーム・ヘルプ・確認は内容に合わせる
 - 予定詳細は Google カレンダーの予定カード風に、アイコン付きのセクション（タイトル・日時・場所・ゲスト・説明・カレンダー）で表示する。ゲストの参加状況は `✓` / `○` / `?` / `✕` で示し、主催者には `主催者` を付ける。ゲストが 5 人を超える場合は折り畳んだ状態で開き、`g` で展開・折り畳みを切り替える
 - 予定の登録・更新は Google カレンダーの作成ダイアログ風のメインウィンドウと、タイトル・日時・場所・説明・ゲスト用の個別エディタウィンドウを組み合わせて表示する。説明エディタはメインウィンドウと同じサイズで開く。アイコンは表示幅2文字に揃え、説明文を同じ列から開始する
-- 日別アジェンダは予定ごとにカレンダー色の `●` / `○` ドット、開始時刻、タイトルを 1 行で表示する。場所は表示しない。仮・終日以外の空き予定は `○` にする
+- 日別アジェンダは予定ごとにカレンダー色の `●` / `○` ドット、開始時刻、タイトルを 1 行で表示する。場所は表示しない。仮・終日以外の空き予定は `○` にする。選択中の予定で `<C-o>` を押すと `htmlLink` を Google カレンダーで開き、URL がない場合は通知する
 - 選択中の日付はセル全体の背景ではなく、オレンジ・bold の二重線フレーム（`GoogleCalendarSelectedBorder`）とオレンジの日付（`GoogleCalendarSelected`）で示す。予定バー・ドットはカレンダー色を保つ（今日の `GoogleCalendarToday` と重なっても選択が分かるようにする）。ウィンドウタイトルの `選択: MM-DD` でも示す
 - 月表示の曜日ヘッダーは winbar として固定し、月グリッドをスクロールしても表示し続ける。選択週をスクロールするときは、選択枠の下線も見えるように 1 行余裕を持たせる。最終週には次の週がないため、選択枠の下線を予定行の末尾に追加する。
 - 月表示の予定は Google カレンダー風に、終日・複数日予定はカレンダー色のバー（白文字）、単日の時刻付き予定はカレンダー色の `●` / `○` ドット＋開始時刻＋タイトルで表示する。複数日予定のバーは隣接する日セルと週行を跨いで連続し、セル境界の `│` を背景で覆う。バーのタイトルはバー全体の幅に合わせて切り詰める。色は `primary` を先頭に、続いて `calendars` の順で 11 色を自動割り当てし、12 件目以降は先頭に戻る

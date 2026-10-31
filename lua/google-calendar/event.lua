@@ -168,6 +168,10 @@ function M.meet_url(item)
   return url
 end
 
+function M.html_link(item)
+  return present(item.html_link) or present(item.htmlLink)
+end
+
 function M.normalize(raw, opts)
   opts = opts or {}
   local display_offset = parse_offset(os.date('%z')) or 0
@@ -179,6 +183,7 @@ function M.normalize(raw, opts)
     start = normalize_time(raw.start, display_offset),
     ['end'] = normalize_time(raw['end'], display_offset),
     hangout_link = M.extract_hangout_link(raw),
+    html_link = present(raw.htmlLink),
     calendar_id = present(opts.calendar_id),
     status = present(raw.status),
     organizer = present(raw.organizer),

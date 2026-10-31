@@ -11,13 +11,16 @@ local original_columns
 local original_lines
 local original_local_datetime
 local original_open_detail
+local original_open_url
 local original_delete
 local original_help
 
 local opened_detail
+local opened_url
 local opened_delete
 local delete_opts
 local opened_help
+local notifications
 
 local function fake_local_datetime(value)
   return value:sub(1, 10), value:sub(12, 16)
@@ -60,9 +63,11 @@ describe('ui.agenda', function()
     state.reset()
     config.setup({})
     opened_detail = nil
+    opened_url = nil
     opened_delete = nil
     delete_opts = nil
     opened_help = nil
+    notifications = {}
 
     original_columns = vim.o.columns
     original_lines = vim.o.lines
@@ -73,10 +78,14 @@ describe('ui.agenda', function()
     rawset(event, 'local_datetime', fake_local_datetime)
 
     original_open_detail = agenda.openers.open_detail
+    original_open_url = agenda.openers.open_url
     original_delete = agenda.openers.delete
     original_help = agenda.openers.help
     agenda.openers.open_detail = function(item)
       opened_detail = item
+    end
+    agenda.openers.open_url = function(url)
+      opened_url = url
     end
     agenda.openers.delete = function(item, opts)
       opened_delete = item
@@ -95,6 +104,7 @@ describe('ui.agenda', function()
 
     rawset(event, 'local_datetime', original_local_datetime)
     agenda.openers.open_detail = original_open_detail
+    agenda.openers.open_url = original_open_url
     agenda.openers.delete = original_delete
     agenda.openers.help = original_help
     vim.o.columns = original_columns
@@ -224,6 +234,34 @@ describe('ui.agenda', function()
 
     feed('<CR>')
     assert.are.equal('e2', opened_detail.id)
+  end)
+
+  it('選択中の予定のカレンダー URL を <C-o> で開く', function()
+    local item = timed_event('e1', '定例', '2026-10-28T09:00:00+09:00', '2026-10-28T10:00:00+09:00')
+    item.htmlLink = 'https://calendar.google.com/calendar/event?eid=abc123'
+    set_events({ item })
+
+    agenda.open()
+    feed('<C-o>')
+
+    assert.are.equal(item.htmlLink, opened_url)
+  end)
+
+  it('カレンダー URL がない場合は通知だけを出し、URL opener を呼ばない', function()
+    config.setup({
+      notify = function(message, level)
+        table.insert(notifications, { message = message, level = level })
+      end,
+    })
+    set_events({ timed_event('e1', '定例', '2026-10-28T09:00:00+09:00', '2026-10-28T10:00:00+09:00') })
+
+    agenda.open()
+    feed('<C-o>')
+
+    assert.is_nil(opened_url)
+    assert.are.same({
+      { message = 'Event URL is not available', level = vim.log.levels.WARN },
+    }, notifications)
   end)
 
   it('d で選択中の予定の削除確認を開き、削除後に一覧を更新する', function()

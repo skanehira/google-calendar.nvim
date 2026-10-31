@@ -92,7 +92,16 @@ local defaults = {
       close = 'q',
       esc_close = '<Esc>',
     },
-    agenda = { next = 'j', prev = 'k', open = '<CR>', delete = 'd', help = '?', close = 'q', esc_close = '<Esc>' },
+    agenda = {
+      next = 'j',
+      prev = 'k',
+      open = '<CR>',
+      open_url = '<C-o>',
+      delete = 'd',
+      help = '?',
+      close = 'q',
+      esc_close = '<Esc>',
+    },
     detail = {
       edit = 'e',
       delete = 'd',

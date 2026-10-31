@@ -22,6 +22,7 @@ local layouts = {
   agenda = {
     { { action = 'next', label = '選択' }, { action = 'prev', label = '選択' } },
     { { action = 'open', label = '詳細' } },
+    { { action = 'open_url', label = 'カレンダーで開く' } },
     { { action = 'delete', label = '削除' } },
     { { action = 'close', label = '戻る' }, { action = 'esc_close', label = '戻る' } },
   },

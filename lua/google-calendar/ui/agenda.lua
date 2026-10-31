@@ -23,6 +23,9 @@ M.openers = {
   help = function(screen)
     require('google-calendar.ui.help').open(screen)
   end,
+  open_url = function(url)
+    vim.ui.open(url)
+  end,
 }
 
 local selected_index = 1
@@ -191,6 +194,21 @@ local function delete()
   })
 end
 
+local function open_url()
+  local item = current_events()[selected_index]
+  if item == nil then
+    return
+  end
+
+  local url = event.html_link(item)
+  if url == nil or url == '' then
+    config.get().notify('Event URL is not available', vim.log.levels.WARN)
+    return
+  end
+
+  M.openers.open_url(url)
+end
+
 local function open_help()
   M.openers.help('agenda')
 end
@@ -207,6 +225,7 @@ local key_actions = {
     move(-1)
   end,
   open = open_detail,
+  open_url = open_url,
   delete = delete,
   help = open_help,
   close = close,

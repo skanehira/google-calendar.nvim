@@ -38,6 +38,7 @@ describe('ui.help', function()
     assert.are.same({
       'j/k:選択',
       '<CR>:詳細',
+      '<C-o>:カレンダーで開く',
       'd:削除',
       'q/<Esc>:戻る',
     }, help.lines('agenda'))
@@ -115,7 +116,15 @@ describe('ui.help', function()
   it('有効なキーが 1 つも無い画面では有効なキーがありませんと表示する', function()
     config.setup({
       keymaps = {
-        agenda = { next = false, prev = false, open = false, delete = false, close = false, esc_close = false },
+        agenda = {
+          next = false,
+          prev = false,
+          open = false,
+          open_url = false,
+          delete = false,
+          close = false,
+          esc_close = false,
+        },
       },
     })
 

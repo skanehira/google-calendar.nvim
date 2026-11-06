@@ -325,6 +325,12 @@ function M.is_multiday(item, local_offset)
     return end_date > calendar.add_days(start_date, 1)
   end
 
+  -- 23:00〜24:00 のように終了が翌日 00:00 の予定は当日の予定として扱う。
+  -- 翌日以降まで続く予定は従来どおり複数日として扱う。
+  if end_date == calendar.add_days(start_date, 1) and M.end_time(item, local_offset) == '24:00' then
+    return false
+  end
+
   return end_date > start_date
 end
 
@@ -335,6 +341,13 @@ function M.end_time(item, local_offset)
   end
 
   local _, time = M.local_datetime(finish.dateTime, local_offset)
+  if time == '00:00' then
+    local start_date = M.start_date(item, local_offset)
+    local end_date = M.end_date(item, local_offset)
+    if start_date ~= nil and end_date ~= nil and end_date > start_date then
+      return '24:00'
+    end
+  end
   return time
 end
 
@@ -500,7 +513,7 @@ function M.events_by_date(events, first_date, last_date, local_offset)
         if end_date < start_date then
           end_date = start_date
         end
-        if end_date > start_date and M.end_time(item, local_offset) == '00:00' then
+        if end_date > start_date and M.end_time(item, local_offset) == '24:00' then
           end_date = calendar.add_days(end_date, -1)
         end
 

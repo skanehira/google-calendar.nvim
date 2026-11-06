@@ -230,6 +230,20 @@ describe('ui.detail', function()
     }, buffer_lines())
   end)
 
+  it('23:00〜24:00 の予定を 24:00 終了として表示する', function()
+    local item = {
+      id = 'evt-midnight',
+      summary = 'AI案件相談',
+      start = { dateTime = '2026-11-06T23:00:00+09:00' },
+      ['end'] = { dateTime = '2026-11-07T00:00:00+09:00' },
+    }
+
+    detail.open(item)
+
+    assert.are.equal('▣ AI案件相談', buffer_lines()[1])
+    assert.are.equal('  11月6日 (金曜日)・23:00〜24:00', buffer_lines()[2])
+  end)
+
   it('値がない項目は行ごと省略し、終日予定は日付をそのまま表示する', function()
     local item = {
       id = 'evt-2',

@@ -49,6 +49,13 @@ describe('recurrence', function()
 
     local yearly = recurrence.parse({ 'RRULE:FREQ=YEARLY' })
     assert.are.equal('毎年 11月13日', recurrence.label(yearly, '2026-11-13'))
+
+    local yearly_date = recurrence.parse({ 'RRULE:FREQ=YEARLY;BYMONTH=12;BYMONTHDAY=24' })
+    assert.are.equal(12, yearly_date.bymonth)
+    assert.are.equal(24, yearly_date.bymonthday)
+    assert.are.equal('毎年 12月24日', recurrence.label(yearly_date, '2026-11-13'))
+    assert.are.equal('FREQ=YEARLY;BYMONTH=12;BYMONTHDAY=24', recurrence.key(yearly_date))
+    assert.are.same({ 'RRULE:FREQ=YEARLY;BYMONTH=12;BYMONTHDAY=24' }, recurrence.to_api(yearly_date))
   end)
 
   it('曜日テキストを RRULE の曜日コードへ変換する', function()
@@ -79,6 +86,23 @@ describe('recurrence', function()
       interval = 1,
       end_type = 'count',
       count = 10,
+    }, '2026-11-13'))
+    assert.is_false(recurrence.validate({
+      freq = 'MONTHLY',
+      interval = 1,
+      bymonthday = 32,
+    }, '2026-11-13'))
+    assert.is_false(recurrence.validate({
+      freq = 'YEARLY',
+      interval = 1,
+      bymonth = 2,
+      bymonthday = 30,
+    }, '2026-11-13'))
+    assert.is_true(recurrence.validate({
+      freq = 'YEARLY',
+      interval = 1,
+      bymonth = 2,
+      bymonthday = 29,
     }, '2026-11-13'))
   end)
 

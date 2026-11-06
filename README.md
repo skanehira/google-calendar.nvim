@@ -284,7 +284,7 @@ The create and update form uses a Google Calendar-style composer with separate e
 
 - The main composer shows the title, date/time, recurrence, guests, Google Meet, location, description, and calendar.
 - `<CR>` on the title, date/time, recurrence, guests, location, or description row opens a dedicated editor window. The title editor opens in insert mode, so you can type immediately.
-- The recurrence row opens a preset list (none, daily, weekly, monthly nth weekday, yearly, weekdays) or a custom editor. The custom editor takes an interval, opens selectors for the unit, weekdays, and end condition, and only shows the end date or occurrence count required by the selected end condition. Recurring events are sent to Google Calendar as an `RRULE`.
+- The recurrence row opens a preset list (none, daily, weekly, monthly nth weekday, yearly, weekdays) or a custom editor. The custom editor takes an interval and opens selectors for the unit, weekdays, date (monthly day or yearly month/day), and end condition. It only shows the end date or occurrence count required by the selected end condition. Recurring events are sent to Google Calendar as an `RRULE`.
 - The description editor uses the same size as the main composer so multiline descriptions have room to breathe.
 - Icons are padded to two display cells, so each row's description text starts in the same column.
 - `<CR>` or `<Space>` on the Google Meet row toggles Meet.

@@ -209,10 +209,10 @@ nvim --headless -u tests/minimal_init.lua \
 
 実測値:
 
-- `make test`: 308 tests passed / 0 failed / 0 errors、exit 0
+- `make test`: 310 tests passed / 0 failed / 0 errors、exit 0
 - `make test-file FILE=lua/google-calendar/config_spec.lua`: 17 tests passed、exit 0
 - `make test-file FILE=lua/google-calendar/gws_spec.lua`: 36 tests passed、exit 0
-- `XDG_STATE_HOME="$PWD/.tmp-state" make test`: 308 tests passed、exit 0
+- `XDG_STATE_HOME="$PWD/.tmp-state" make test`: 310 tests passed、exit 0
 - `make test TEST_DIR=<空ディレクトリ>`: exit 2、`spec が 0 件です` を出力（0 件のまま成功しない）
 
 `TEST_DIR` は既定 `lua/`。spec は実装ファイルの隣 (`lua/**/*_spec.lua`) に置く。テストハーネスの spec も `lua/google-calendar/test_harness_spec.lua` に置き、`make test` の走査対象に含める。E2E の spec は `tests/e2e/` に置き、`make test-e2e` で実行する。
@@ -557,7 +557,7 @@ stdpath('data')/google-calendar.nvim/config.json
 - `os.date('%z')` のローカルオフセットを使う変換式は、夏時間の境界では厳密でない。MVP は Asia/Tokyo を想定し、イベントのオフセットを優先する
 - `os.date('%z')` は `+0900` 形式（コロンなし）を返す。RFC3339 のオフセットは `+09:00` 形式なので、変換時は両方を受け付ける
 - サンドボックス環境では `gws` が `~/.config/gws` に書き込めない。開発時は `GOOGLE_WORKSPACE_CLI_CONFIG_DIR` をワークスペース内に向ける（PoC `gws-sandbox-config`）
-- 月表示の予定は `singleEvents=true` で取得する。繰り返し予定の occurrence を編集するときは `recurringEventId` から親予定を取得し、親のルールを編集する。プリセットとカスタム（間隔・単位・曜日・終了日/回数）に対応し、例外日は扱わない
+- 月表示の予定は `singleEvents=true` で取得する。繰り返し予定の occurrence を編集するときは `recurringEventId` から親予定を取得し、親のルールを編集する。プリセットとカスタム（間隔・単位・曜日・日付・終了日/回数）に対応し、例外日は扱わない
 - `PlenaryBustedDirectory` は spec が 0 件のディレクトリで終了コード 0 を返す。`tests/minimal_init.lua` で 0 件なら `cquit 1` にして、テストが 0 件のまま成功しないようにする
 - `PlenaryBustedDirectory` の子 Neovim は `--noplugin` で起動するため、`plugin/google-calendar.lua` のコマンドは spec 内で `runtime! plugin/google-calendar.lua` して明示的に読み込む。`nvim_create_user_command` に `force = true` を付けて再読み込みを安全にする
 - `PLENARY_TEST_TIMEOUT` は Plenary が環境変数に文字列として設定するが、`plenary.test_harness._find_files_to_run` の `Job:sync` は数値を期待する。nested Neovim の実行前に `tests/minimal_init.lua` で一時的に unset する

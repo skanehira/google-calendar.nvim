@@ -375,9 +375,9 @@ Create / update composer ~
     can type immediately.
   - The recurrence row opens a preset list (none, daily, weekly, monthly
     nth weekday, yearly, weekdays) or a custom editor. The custom editor takes
-    an interval and opens selectors for the unit, weekdays, and end condition.
-    The end date or occurrence count is shown only for the selected end
-    condition. Recurring events are sent as an RRULE.
+    an interval and opens selectors for the unit, weekdays, date (monthly day
+    or yearly month/day), and end condition. The end date or occurrence count
+    is shown only for the selected end condition. Recurring events are sent as an RRULE.
   - The guests row opens a guest editor. Enter one email address per line;
     duplicates are removed and invalid addresses are reported.
   - The description editor opens at the same size as the main composer.

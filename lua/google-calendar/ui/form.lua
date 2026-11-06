@@ -88,6 +88,10 @@ local custom_recurrence_rows
 local open_custom_unit_selector
 local open_custom_end_selector
 local open_custom_weekday_selector
+local open_custom_date_selector
+local open_custom_date_day_selector
+local custom_date_stage = nil
+local custom_date_month = nil
 local WEEKDAY_CODES = { 'SU', 'MO', 'TU', 'WE', 'TH', 'FR', 'SA' }
 local UNIT_PHRASES = { DAILY = '日ごと', WEEKLY = '週間ごと', MONTHLY = '月ごと', YEARLY = '年ごと' }
 local UNIT_BY_PHRASE = {}
@@ -427,17 +431,26 @@ local function save_editor()
 
     local draft = custom_recurrence_draft or {}
     if editor.kind == 'recurrence_unit' then
+      local previous_freq = draft.freq
       draft.freq = option.key
+      if draft.freq ~= previous_freq then
+        draft.byday = nil
+        draft.bymonth = nil
+        draft.bymonthday = nil
+      end
       if draft.freq == 'WEEKLY' then
         if draft.byday == nil or #draft.byday == 0 then
           draft.byday = { start_weekday_code() }
         end
+        draft.bymonth = nil
         draft.bymonthday = nil
       elseif draft.freq == 'MONTHLY' then
+        draft.bymonth = nil
         draft.bymonthday = draft.bymonthday or tonumber(custom_start_date():sub(9, 10))
         draft.byday = nil
       else
         draft.byday = nil
+        draft.bymonth = nil
         draft.bymonthday = nil
       end
     else
@@ -455,6 +468,29 @@ local function save_editor()
     custom_recurrence_draft = draft
     close_editor()
     open_custom_recurrence_editor(draft, editor.kind == 'recurrence_unit' and 'unit' or 'end')
+    return
+  elseif editor.kind == 'recurrence_date' then
+    local line = vim.api.nvim_win_get_cursor(editor.win)[1]
+    local option = custom_selector_options[line]
+    if option == nil then
+      return
+    end
+
+    local draft = custom_recurrence_draft or {}
+    if custom_date_stage == 'month' then
+      open_custom_date_day_selector(option.key)
+      return
+    end
+
+    if draft.freq == 'YEARLY' then
+      draft.bymonth = custom_date_month or draft.bymonth
+      draft.bymonthday = option.key
+    else
+      draft.bymonthday = option.key
+    end
+    custom_recurrence_draft = draft
+    close_editor()
+    open_custom_recurrence_editor(draft, draft.freq == 'YEARLY' and 'yearday' or 'monthday')
     return
   elseif editor.kind == 'recurrence_weekday' then
     local selected = {}
@@ -555,6 +591,8 @@ local function editor_edit_custom()
     open_custom_weekday_selector()
   elseif row.key == 'end' then
     open_custom_end_selector()
+  elseif row.key == 'monthday' or row.key == 'yearday' then
+    open_custom_date_selector()
   elseif row.key == 'interval' or row.key == 'until' or row.key == 'count' then
     vim.cmd('startinsert!')
   end
@@ -611,6 +649,18 @@ local function set_editor_keymaps(buf)
       vim.api.nvim_win_set_cursor(editor.win, { prev_line, 0 })
     end)
   elseif editor.kind == 'recurrence_unit' or editor.kind == 'recurrence_end' then
+    map('n', 'next_field', function()
+      local line = vim.api.nvim_win_get_cursor(editor.win)[1]
+      local next_line = math.min(#custom_selector_options, line + 1)
+      vim.api.nvim_win_set_cursor(editor.win, { next_line, 0 })
+    end)
+    map('n', 'prev_field', function()
+      local line = vim.api.nvim_win_get_cursor(editor.win)[1]
+      local prev_line = math.max(1, line - 1)
+      vim.api.nvim_win_set_cursor(editor.win, { prev_line, 0 })
+    end)
+    map('n', 'toggle', save_editor)
+  elseif editor.kind == 'recurrence_date' then
     map('n', 'next_field', function()
       local line = vim.api.nvim_win_get_cursor(editor.win)[1]
       local next_line = math.min(#custom_selector_options, line + 1)
@@ -750,12 +800,24 @@ local function normalize_custom_config(recurrence_config)
     if draft.byday == nil or #draft.byday == 0 then
       draft.byday = { start_weekday_code() }
     end
+    draft.bymonth = nil
     draft.bymonthday = nil
   elseif draft.freq == 'MONTHLY' then
+    draft.bymonth = nil
     draft.bymonthday = draft.bymonthday or tonumber(custom_start_date():sub(9, 10))
     draft.byday = nil
+  elseif draft.freq == 'YEARLY' then
+    draft.byday = nil
+    if draft.bymonth ~= nil and draft.bymonthday ~= nil then
+      draft.bymonth = tonumber(draft.bymonth)
+      draft.bymonthday = tonumber(draft.bymonthday)
+    else
+      draft.bymonth = nil
+      draft.bymonthday = nil
+    end
   else
     draft.byday = nil
+    draft.bymonth = nil
     draft.bymonthday = nil
   end
   return draft
@@ -774,9 +836,11 @@ custom_recurrence_rows = function(recurrence_config)
       text = '日付: ' .. (recurrence_config.bymonthday or tonumber(custom_start_date():sub(9, 10))),
     }
   elseif recurrence_config.freq == 'YEARLY' then
-    local _, month, day = calendar.parse_date(custom_start_date())
-    month = assert(month)
-    day = assert(day)
+    local _, start_month, start_day = calendar.parse_date(custom_start_date())
+    start_month = assert(start_month)
+    start_day = assert(start_day)
+    local month = recurrence_config.bymonth or start_month
+    local day = recurrence_config.bymonthday or start_day
     rows[#rows + 1] = { key = 'yearday', text = '日付: ' .. month .. '月' .. day .. '日' }
   end
   rows[#rows + 1] = { key = 'end', text = '終了: ' .. recurrence.end_label(recurrence_config.end_type) }
@@ -809,6 +873,8 @@ custom_config_from_lines = function(lines, fallback)
 
   local weekday_text = nil
   local monthday_text = nil
+  local year_month_text = nil
+  local year_day_text = nil
   local end_label = nil
   local until_date = nil
   local count = nil
@@ -820,6 +886,11 @@ custom_config_from_lines = function(lines, fallback)
     value = line:match('^日付:%s*(%d+)日?$')
     if value ~= nil then
       monthday_text = value
+    end
+    local month_text, day_text = line:match('^日付:%s*(%d+)月(%d+)日$')
+    if month_text ~= nil then
+      year_month_text = tonumber(month_text)
+      year_day_text = tonumber(day_text)
     end
     value = line:match('^終了:%s*(.*)$')
     if value ~= nil then
@@ -837,12 +908,32 @@ custom_config_from_lines = function(lines, fallback)
 
   if draft.freq == 'WEEKLY' then
     draft.byday = recurrence.parse_weekday_text(weekday_text or '', form.values.start)
+    draft.bymonth = nil
     draft.bymonthday = nil
   elseif draft.freq == 'MONTHLY' then
+    draft.bymonth = nil
     draft.bymonthday = tonumber(monthday_text) or draft.bymonthday or tonumber(custom_start_date():sub(9, 10))
     draft.byday = nil
+  elseif draft.freq == 'YEARLY' then
+    draft.byday = nil
+    local _, start_month, start_day = calendar.parse_date(custom_start_date())
+    start_month = assert(start_month)
+    start_day = assert(start_day)
+    if year_month_text ~= nil and year_day_text ~= nil then
+      if year_month_text ~= start_month or year_day_text ~= start_day then
+        draft.bymonth = year_month_text
+        draft.bymonthday = year_day_text
+      else
+        draft.bymonth = nil
+        draft.bymonthday = nil
+      end
+    elseif draft.bymonth == nil or draft.bymonthday == nil then
+      draft.bymonth = nil
+      draft.bymonthday = nil
+    end
   else
     draft.byday = nil
+    draft.bymonth = nil
     draft.bymonthday = nil
   end
 
@@ -912,6 +1003,72 @@ open_custom_end_selector = function()
   local win = open_editor('recurrence_end', ' 終了 ', lines, #lines, 30)
   editor.selected = selected
   vim.api.nvim_win_set_cursor(win, { selected, 0 })
+end
+
+local function open_date_selector(title, options, current, height)
+  custom_selector_options = options
+  local lines = {}
+  local selected = 1
+  for index, option in ipairs(options) do
+    local is_current = option.key == current
+    lines[index] = (is_current and '● ' or '  ') .. option.label
+    if is_current then
+      selected = index
+    end
+  end
+  local win = open_editor('recurrence_date', title, lines, math.min(#lines, height), 20)
+  editor.selected = selected
+  vim.api.nvim_win_set_cursor(win, { selected, 0 })
+end
+
+open_custom_date_day_selector = function(month)
+  local draft = custom_recurrence_draft or {}
+  local current = 1
+  if tonumber(draft.bymonth) == month and draft.bymonthday ~= nil then
+    current = tonumber(draft.bymonthday) or 1
+  else
+    local _, start_month, start_day = calendar.parse_date(custom_start_date())
+    start_month = assert(start_month)
+    start_day = assert(start_day)
+    if start_month == month then
+      current = start_day
+    end
+  end
+  local max_day = calendar.days_in_month(2000, month) or 31
+  current = math.min(current, max_day)
+  local options = {}
+  for day = 1, max_day do
+    options[day] = { key = day, label = day .. '日' }
+  end
+  custom_date_stage = 'day'
+  custom_date_month = month
+  open_date_selector(' 日付 ', options, current, 12)
+end
+
+open_custom_date_selector = function()
+  local draft = custom_config_from_lines(current_editor_lines(), custom_recurrence_draft)
+  custom_recurrence_draft = draft
+  if draft.freq == 'MONTHLY' then
+    local current = tonumber(draft.bymonthday) or tonumber(custom_start_date():sub(9, 10)) or 1
+    local options = {}
+    for day = 1, 31 do
+      options[day] = { key = day, label = day .. '日' }
+    end
+    custom_date_stage = 'day'
+    custom_date_month = nil
+    open_date_selector(' 日付 ', options, current, 12)
+  elseif draft.freq == 'YEARLY' then
+    local _, start_month = calendar.parse_date(custom_start_date())
+    start_month = assert(start_month)
+    local current = tonumber(draft.bymonth) or start_month
+    local options = {}
+    for month = 1, 12 do
+      options[month] = { key = month, label = month .. '月' }
+    end
+    custom_date_stage = 'month'
+    custom_date_month = nil
+    open_date_selector(' 月 ', options, current, 12)
+  end
 end
 
 open_custom_weekday_selector = function()

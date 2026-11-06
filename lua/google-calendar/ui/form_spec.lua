@@ -343,8 +343,6 @@ describe('ui.form', function()
       '単位: 週間ごと',
       '曜日: 水',
       '終了: なし',
-      '終了日: 2026-11-27',
-      '回数: 13',
     }, editor_lines())
 
     set_editor({
@@ -353,7 +351,6 @@ describe('ui.form', function()
       '曜日: 月,水',
       '終了: 終了日',
       '終了日: 2026-12-31',
-      '回数: 13',
     })
     feed_save()
     assert.are.equal('↻ 2週ごと 月・水曜日（2026-12-31 まで）', form_lines()[5])
@@ -364,6 +361,171 @@ describe('ui.form', function()
     assert.are.same({
       'RRULE:FREQ=WEEKLY;INTERVAL=2;BYDAY=MO,WE;UNTIL=20261231T235959Z',
     }, created_call.recurrence)
+  end)
+
+  it('カスタムの繰り返しで単位を選択できる', function()
+    form.open_create()
+    select_line(5)
+    feed('<CR>')
+    vim.api.nvim_win_set_cursor(state.windows.form_editor, { 7, 0 })
+    feed_save()
+    assert.are.same({
+      '間隔: 1',
+      '単位: 週間ごと',
+      '曜日: 水',
+      '終了: なし',
+    }, editor_lines())
+
+    vim.api.nvim_win_set_cursor(state.windows.form_editor, { 2, 0 })
+    feed('<CR>')
+    assert.are.same({
+      '  日ごと',
+      '● 週間ごと',
+      '  月ごと',
+      '  年ごと',
+    }, editor_lines())
+
+    vim.api.nvim_win_set_cursor(state.windows.form_editor, { 1, 0 })
+    feed_save()
+    assert.are.same({
+      '間隔: 1',
+      '単位: 日ごと',
+      '終了: なし',
+    }, editor_lines())
+
+    vim.api.nvim_win_set_cursor(state.windows.form_editor, { 2, 0 })
+    feed('<CR>')
+    vim.api.nvim_win_set_cursor(state.windows.form_editor, { 3, 0 })
+    feed_save()
+    assert.are.same({
+      '間隔: 1',
+      '単位: 月ごと',
+      '日付: 28',
+      '終了: なし',
+    }, editor_lines())
+  end)
+
+  it('カスタムの繰り返しで曜日を選択できる', function()
+    form.open_create({
+      on_created = function(item)
+        created = item
+      end,
+    })
+
+    select_line(5)
+    feed('<CR>')
+    vim.api.nvim_win_set_cursor(state.windows.form_editor, { 7, 0 })
+    feed_save()
+
+    vim.api.nvim_win_set_cursor(state.windows.form_editor, { 3, 0 })
+    feed('<CR>')
+    assert.are.same({
+      '○ 日',
+      '○ 月',
+      '○ 火',
+      '● 水',
+      '○ 木',
+      '○ 金',
+      '○ 土',
+    }, editor_lines())
+
+    -- 既定の水曜日を外し、月曜日と金曜日を選ぶ
+    feed('<Space>')
+    vim.api.nvim_win_set_cursor(state.windows.form_editor, { 2, 0 })
+    feed('<Space>')
+    vim.api.nvim_win_set_cursor(state.windows.form_editor, { 6, 0 })
+    feed('<Space>')
+    feed_save()
+
+    assert.are.equal('曜日: 月,金', editor_lines()[3])
+
+    feed_save()
+    assert.are.equal('↻ 毎週 月・金曜日', form_lines()[5])
+
+    edit_summary('曜日選択')
+    save()
+    wait_closed()
+    assert.are.same({ 'RRULE:FREQ=WEEKLY;BYDAY=MO,FR' }, created_call.recurrence)
+  end)
+
+  it('カスタムの繰り返しで終了条件に応じて項目を出し分ける', function()
+    form.open_create()
+    select_line(5)
+    feed('<CR>')
+    vim.api.nvim_win_set_cursor(state.windows.form_editor, { 7, 0 })
+    feed_save()
+    assert.are.same({
+      '間隔: 1',
+      '単位: 週間ごと',
+      '曜日: 水',
+      '終了: なし',
+    }, editor_lines())
+
+    vim.api.nvim_win_set_cursor(state.windows.form_editor, { 4, 0 })
+    feed('<CR>')
+    assert.are.same({
+      '● なし',
+      '  終了日',
+      '  回数',
+    }, editor_lines())
+    vim.api.nvim_win_set_cursor(state.windows.form_editor, { 2, 0 })
+    feed_save()
+    assert.are.same({
+      '間隔: 1',
+      '単位: 週間ごと',
+      '曜日: 水',
+      '終了: 終了日',
+      '終了日: 2026-11-27',
+    }, editor_lines())
+
+    vim.api.nvim_win_set_cursor(state.windows.form_editor, { 4, 0 })
+    feed('<CR>')
+    vim.api.nvim_win_set_cursor(state.windows.form_editor, { 3, 0 })
+    feed_save()
+    assert.are.same({
+      '間隔: 1',
+      '単位: 週間ごと',
+      '曜日: 水',
+      '終了: 回数',
+      '回数: 13',
+    }, editor_lines())
+
+    vim.api.nvim_win_set_cursor(state.windows.form_editor, { 4, 0 })
+    feed('<CR>')
+    vim.api.nvim_win_set_cursor(state.windows.form_editor, { 1, 0 })
+    feed_save()
+    assert.are.same({
+      '間隔: 1',
+      '単位: 週間ごと',
+      '曜日: 水',
+      '終了: なし',
+    }, editor_lines())
+  end)
+
+  it('更新フォームでカスタムの繰り返しを開くと現在の設定を引き継ぐ', function()
+    local item = {
+      id = 'evt-custom',
+      summary = '隔週定例',
+      start = { dateTime = '2026-10-30T09:00:00+09:00' },
+      ['end'] = { dateTime = '2026-10-30T10:00:00+09:00' },
+      recurrence = { 'RRULE:FREQ=WEEKLY;INTERVAL=2;BYDAY=MO,WE;UNTIL=20261231T235959Z' },
+      calendar_id = 'primary',
+    }
+
+    form.open_edit(item)
+    select_line(5)
+    feed('<CR>')
+    assert.are.equal('● カスタム...', editor_lines()[7])
+
+    vim.api.nvim_win_set_cursor(state.windows.form_editor, { 7, 0 })
+    feed_save()
+    assert.are.same({
+      '間隔: 2',
+      '単位: 週間ごと',
+      '曜日: 月,水',
+      '終了: 終了日',
+      '終了日: 2026-12-31',
+    }, editor_lines())
   end)
 
   it('更新フォームで繰り返しを解除する', function()

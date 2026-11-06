@@ -47,6 +47,17 @@ local function read_json(path)
   return vim.json.decode(content)
 end
 
+local WEEKDAY_LABELS = { '日', '月', '火', '水', '木', '金', '土' }
+local WEEKDAY_CODES = { 'SU', 'MO', 'TU', 'WE', 'TH', 'FR', 'SA' }
+
+local function weekday_of(date)
+  local year = assert(tonumber(date:sub(1, 4)))
+  local month = assert(tonumber(date:sub(6, 7)))
+  local day = assert(tonumber(date:sub(9, 10)))
+  local index = tonumber(os.date('%w', os.time({ year = year, month = month, day = day, hour = 12 }))) or 0
+  return WEEKDAY_LABELS[index + 1], WEEKDAY_CODES[index + 1]
+end
+
 local function state_items()
   if vim.fn.filereadable(state_path) == 0 then
     return {}
@@ -290,6 +301,33 @@ describe('e2e crud', function()
     assert.are.equal(0, #state_items())
   end)
 
+  it('繰り返し予定を登録し、RRULE を gws に送る', function()
+    open_month('2026-10')
+    local date = state.selected_date
+
+    feed('a')
+    edit_summary('週次定例')
+    edit_datetime(date .. ' 09:00', date .. ' 10:00')
+    vim.api.nvim_set_current_win(state.windows.form)
+    vim.api.nvim_win_set_cursor(state.windows.form, { 5, 0 })
+    feed('<CR>')
+    vim.api.nvim_win_set_cursor(state.windows.form_editor, { 3, 0 })
+    feed(':w<CR>')
+    local weekday_label = weekday_of(date)
+    assert.are.equal('↻ 毎週 ' .. weekday_label .. '曜日', form_lines()[5])
+
+    feed(':w<CR>')
+    assert.is_true(vim.wait(10000, function()
+      return state.windows.form == nil and not state.loading
+    end, 10))
+
+    local items = state_items()
+    assert.are.equal(1, #items)
+    local _, weekday_code = weekday_of(date)
+    assert.are.same({ 'RRULE:FREQ=WEEKLY;BYDAY=' .. weekday_code }, items[1].recurrence)
+    assert_month_matches_state()
+  end)
+
   it('月表示を開き、登録・更新・削除を通しで検証する', function()
     open_month('2026-10')
 
@@ -315,11 +353,11 @@ describe('e2e crud', function()
     edit_summary('登録1')
     edit_datetime(date .. ' 11:00', date .. ' 12:00')
     vim.api.nvim_set_current_win(state.windows.form)
-    vim.api.nvim_win_set_cursor(state.windows.form, { 5, 0 })
+    vim.api.nvim_win_set_cursor(state.windows.form, { 6, 0 })
     feed('<CR>')
     set_form_editor({ 'guest@example.com' })
     feed(':w<CR>')
-    assert.are.equal('◉ 1人のゲスト', form_lines()[5])
+    assert.are.equal('◉ 1人のゲスト', form_lines()[6])
     feed(':w<CR>')
     assert.is_true(vim.wait(10000, function()
       return state.windows.form == nil and not state.loading
@@ -496,13 +534,13 @@ describe('e2e crud', function()
       if win == nil or not vim.api.nvim_win_is_valid(win) then
         return false
       end
-      local footer = vim.api.nvim_buf_get_lines(vim.api.nvim_win_get_buf(win), 10, 11, false)[1]
+      local footer = vim.api.nvim_buf_get_lines(vim.api.nvim_win_get_buf(win), 11, 12, false)[1]
       return footer ~= nil and footer:match('^Error:') ~= nil
     end, 10))
 
     assert.is_true(vim.api.nvim_win_is_valid(state.windows.form))
     assert.are.equal('失敗する予定', form_lines()[1])
-    assert.are.equal('Error: Could not create the event: Not Found', form_lines()[11])
+    assert.are.equal('Error: Could not create the event: Not Found', form_lines()[12])
     assert.are.equal(0, #state_items())
     assert.are.same({
       { message = 'Could not create the event: Not Found', level = vim.log.levels.ERROR },

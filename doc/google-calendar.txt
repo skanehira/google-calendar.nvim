@@ -367,9 +367,12 @@ Event detail ~
 
 Create / update composer ~
   - The composer uses a Google Calendar-style layout with a main window and
-    dedicated editor windows for the title, date/time, guests, location,
-    and description. The title editor opens in insert mode, so you can type
-    immediately.
+    dedicated editor windows for the title, date/time, recurrence, guests,
+    location, and description. The title editor opens in insert mode, so you
+    can type immediately.
+  - The recurrence row opens a preset list (none, daily, weekly, monthly
+    nth weekday, yearly, weekdays) or a custom editor with interval, unit,
+    weekdays, and an end date or count. Recurring events are sent as an RRULE.
   - The guests row opens a guest editor. Enter one email address per line;
     duplicates are removed and invalid addresses are reported.
   - The description editor opens at the same size as the main composer.
@@ -378,7 +381,8 @@ Create / update composer ~
   - <Space> on the date/time row toggles between a timed event and an all-day
     event. <CR> or <Space> on the Meet row toggles Meet.
   - Save from the main composer with :w. Editor windows apply with :w and
-    close with <Esc>.
+    close with <Esc>. Editing a recurring occurrence opens the recurring
+    master event so the series rule can be changed.
 
 ==============================================================================
 9. Troubleshooting                           *google-calendar-troubleshooting*

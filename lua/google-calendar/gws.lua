@@ -180,6 +180,45 @@ function M.list_events(opts, callback)
   fetch_page(1)
 end
 
+local function has_recurrence(fields)
+  return type(fields.recurrence) == 'table' and #fields.recurrence > 0
+end
+
+local function timed_body(fields)
+  local body = {
+    summary = fields.summary,
+    start = { dateTime = fields.start },
+    ['end'] = { dateTime = fields['end'] },
+  }
+  if has_recurrence(fields) then
+    body.recurrence = fields.recurrence
+  end
+  if fields.location ~= nil and fields.location ~= '' then
+    body.location = fields.location
+  end
+  if fields.description ~= nil and fields.description ~= '' then
+    body.description = fields.description
+  end
+  if fields.attendees ~= nil and #fields.attendees > 0 then
+    body.attendees = {}
+    for _, attendee in ipairs(fields.attendees) do
+      local email = type(attendee) == 'table' and attendee.email or attendee
+      if email ~= nil and email ~= '' then
+        table.insert(body.attendees, { email = email })
+      end
+    end
+  end
+  if fields.meet then
+    body.conferenceData = {
+      createRequest = {
+        requestId = tostring(os.time()) .. tostring(math.random(100000, 999999)),
+        conferenceSolutionKey = { type = 'hangoutsMeet' },
+      },
+    }
+  end
+  return body
+end
+
 function M.create_event(fields, callback)
   local calendar_id = fields.calendar_id or default_calendar_id()
   local attendee_emails = {}
@@ -209,6 +248,9 @@ function M.create_event(fields, callback)
     if fields.description ~= nil and fields.description ~= '' then
       body.description = fields.description
     end
+    if has_recurrence(fields) then
+      body.recurrence = fields.recurrence
+    end
 
     execute({
       'calendar',
@@ -218,6 +260,29 @@ function M.create_event(fields, callback)
       vim.json.encode(params),
       '--json',
       vim.json.encode(body),
+    }, function(response, err)
+      if err ~= nil then
+        callback(nil, err)
+        return
+      end
+      callback(event.normalize(response, { calendar_id = calendar_id }), nil)
+    end)
+    return
+  end
+
+  if has_recurrence(fields) then
+    local params = { calendarId = calendar_id }
+    if fields.meet then
+      params.conferenceDataVersion = 1
+    end
+    execute({
+      'calendar',
+      'events',
+      'insert',
+      '--params',
+      vim.json.encode(params),
+      '--json',
+      vim.json.encode(timed_body(fields)),
     }, function(response, err)
       if err ~= nil then
         callback(nil, err)

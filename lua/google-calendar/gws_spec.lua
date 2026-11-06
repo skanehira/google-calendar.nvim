@@ -516,6 +516,28 @@ describe('gws adapter', function()
     assert.are.equal(vim.fn.resolve(cache_dir), vim.fn.resolve(call.cwd))
   end)
 
+  it('create_event が繰り返し予定を events insert で作成する', function()
+    local created, err = await(function(callback)
+      gws.create_event({
+        summary = '隔週定例',
+        start = '2026-10-30T09:00:00+09:00',
+        ['end'] = '2026-10-30T10:00:00+09:00',
+        recurrence = { 'RRULE:FREQ=WEEKLY;INTERVAL=2;BYDAY=FR' },
+      }, callback)
+    end)
+
+    assert.is_nil(err)
+    assert.is_not_nil(created.id)
+
+    local call = vim.json.decode(read_lines(call_log)[1])
+    assert.are.same({ 'calendar', 'events', 'insert' }, { call.argv[1], call.argv[2], call.argv[3] })
+    assert.are.same({ calendarId = 'primary' }, vim.json.decode(call.argv[5]))
+    local body = vim.json.decode(call.argv[7])
+    assert.are.same({ 'RRULE:FREQ=WEEKLY;INTERVAL=2;BYDAY=FR' }, body.recurrence)
+    assert.are.same({ dateTime = '2026-10-30T09:00:00+09:00' }, body.start)
+    assert.are.equal(1, #read_json(state_path).items)
+  end)
+
   it('create_event が終日予定を events insert で作成する', function()
     local created, err = await(function(callback)
       gws.create_event({
@@ -551,6 +573,26 @@ describe('gws adapter', function()
       ['end'] = { date = '2026-10-28' },
     }, vim.json.decode(call.argv[7]))
     assert.are.same({ '--format', 'json' }, { call.argv[8], call.argv[9] })
+  end)
+
+  it('create_event が終日繰り返し予定に recurrence を含める', function()
+    local created, err = await(function(callback)
+      gws.create_event({
+        summary = '毎週の休み',
+        start = '2026-10-27',
+        ['end'] = '2026-10-28',
+        all_day = true,
+        recurrence = { 'RRULE:FREQ=WEEKLY;BYDAY=TU' },
+      }, callback)
+    end)
+
+    assert.is_nil(err)
+    assert.is_not_nil(created.id)
+
+    local call = vim.json.decode(read_lines(call_log)[1])
+    local body = vim.json.decode(call.argv[7])
+    assert.are.same({ 'RRULE:FREQ=WEEKLY;BYDAY=TU' }, body.recurrence)
+    assert.are.same({ date = '2026-10-27' }, body.start)
   end)
 
   it('update_event が編集可能フィールドを保持して events update を実行する', function()
@@ -744,6 +786,32 @@ describe('gws adapter', function()
 
     assert.are.equal('2026-10-01T17:00:00+09:00', item.start.dateTime)
     assert.are.equal('2026-10-01T18:00:00+09:00', item['end'].dateTime)
+  end)
+
+  it('update_event が recurrence を送る', function()
+    local raw = {
+      id = 'evt-repeat-1',
+      summary = '定例',
+      start = { dateTime = '2026-10-30T09:00:00+09:00' },
+      ['end'] = { dateTime = '2026-10-30T10:00:00+09:00' },
+      recurrence = { 'RRULE:FREQ=WEEKLY;BYDAY=FR' },
+    }
+    write_json(state_path, { items = { raw } })
+
+    local updated, err = await(function(callback)
+      gws.update_event(
+        event.merge_update(event.normalize(raw, { calendar_id = 'primary' }), {
+          recurrence = { 'RRULE:FREQ=WEEKLY;INTERVAL=2;BYDAY=FR' },
+        }),
+        callback
+      )
+    end)
+
+    assert.is_nil(err)
+    assert.are.same({ 'RRULE:FREQ=WEEKLY;INTERVAL=2;BYDAY=FR' }, updated.recurrence)
+    local call = vim.json.decode(read_lines(call_log)[1])
+    local body = vim.json.decode(call.argv[7])
+    assert.are.same({ 'RRULE:FREQ=WEEKLY;INTERVAL=2;BYDAY=FR' }, body.recurrence)
   end)
 
   it('update_event が conferenceData を含めず、指定したフィールドだけを送る', function()

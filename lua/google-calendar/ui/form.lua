@@ -78,12 +78,34 @@ local editor = {
 }
 
 local recurrence_options = {}
+local custom_recurrence_draft = nil
+local custom_selector_options = {}
+local custom_weekday_selection = {}
 local open_custom_recurrence_editor
+local current_editor_lines
+local custom_config_from_lines
+local custom_recurrence_rows
+local open_custom_unit_selector
+local open_custom_end_selector
+local open_custom_weekday_selector
+local WEEKDAY_CODES = { 'SU', 'MO', 'TU', 'WE', 'TH', 'FR', 'SA' }
 local UNIT_PHRASES = { DAILY = '日ごと', WEEKLY = '週間ごと', MONTHLY = '月ごと', YEARLY = '年ごと' }
 local UNIT_BY_PHRASE = {}
 for freq, phrase in pairs(UNIT_PHRASES) do
   UNIT_BY_PHRASE[phrase] = freq
 end
+local UNIT_OPTIONS = {
+  { key = 'DAILY', label = '日ごと' },
+  { key = 'WEEKLY', label = '週間ごと' },
+  { key = 'MONTHLY', label = '月ごと' },
+  { key = 'YEARLY', label = '年ごと' },
+}
+local END_OPTIONS = {
+  { key = 'never', label = 'なし' },
+  { key = 'until', label = '終了日' },
+  { key = 'count', label = '回数' },
+}
+local END_TYPE_BY_LABEL = { ['なし'] = 'never', ['終了日'] = 'until', ['回数'] = 'count' }
 
 local function notify(message, level)
   config.get().notify(message, level)
@@ -343,6 +365,28 @@ local function set_editor_lines(lines)
   vim.bo[editor.buf].modifiable = true
 end
 
+local function custom_start_date()
+  local date = form.values.start:sub(1, 10)
+  if calendar.parse_date(date) == nil then
+    date = tostring(calendar.today())
+  end
+  return date
+end
+
+local function start_weekday_code()
+  local date = custom_start_date()
+  local year, month, day = calendar.parse_date(date)
+  year = assert(year)
+  month = assert(month)
+  day = assert(day)
+  local weekday = tonumber(os.date('%w', os.time({ year = year, month = month, day = day, hour = 12 }))) or 0
+  return WEEKDAY_CODES[weekday + 1]
+end
+
+local function default_until_date()
+  return calendar.add_days(custom_start_date(), 30)
+end
+
 local function save_editor()
   if editor.kind == nil or not vim.api.nvim_win_is_valid(editor.win) then
     return
@@ -370,44 +414,75 @@ local function save_editor()
     end
     if option.key == 'custom' then
       close_editor()
-      open_custom_recurrence_editor(nil)
+      open_custom_recurrence_editor(form.values.recurrence)
       return
     end
     form.values.recurrence = option.config
-  elseif editor.kind == 'recurrence_custom' then
-    local interval = tonumber(lines[1] and lines[1]:match('^間隔:%s*(%d+)$')) or 1
-    local unit = lines[2] and lines[2]:match('^単位:%s*(.*)$') or ''
-    local freq = UNIT_BY_PHRASE[unit] or 'WEEKLY'
-    local weekdays = lines[3] and lines[3]:match('^曜日:%s*(.*)$') or ''
-    local end_label = lines[4] and lines[4]:match('^終了:%s*(.*)$') or 'なし'
-    local until_date = lines[5] and lines[5]:match('^終了日:%s*(.*)$') or ''
-    local count = tonumber(lines[6] and lines[6]:match('^回数:%s*(%d+)$')) or 1
-    local end_type = 'never'
-    for candidate, label in pairs({ never = 'なし', ['until'] = '終了日', count = '回数' }) do
-      if label == end_label then
-        end_type = candidate
+  elseif editor.kind == 'recurrence_unit' or editor.kind == 'recurrence_end' then
+    local line = vim.api.nvim_win_get_cursor(editor.win)[1]
+    local option = custom_selector_options[line]
+    if option == nil then
+      return
+    end
+
+    local draft = custom_recurrence_draft or {}
+    if editor.kind == 'recurrence_unit' then
+      draft.freq = option.key
+      if draft.freq == 'WEEKLY' then
+        if draft.byday == nil or #draft.byday == 0 then
+          draft.byday = { start_weekday_code() }
+        end
+        draft.bymonthday = nil
+      elseif draft.freq == 'MONTHLY' then
+        draft.bymonthday = draft.bymonthday or tonumber(custom_start_date():sub(9, 10))
+        draft.byday = nil
+      else
+        draft.byday = nil
+        draft.bymonthday = nil
+      end
+    else
+      draft.end_type = option.key
+      if draft.end_type == 'until' then
+        draft.until_date = draft.until_date or default_until_date()
+      elseif draft.end_type == 'count' then
+        draft.count = tonumber(draft.count) or 13
       end
     end
 
-    local custom = {
-      freq = freq,
-      interval = interval,
-      end_type = end_type,
-      until_date = until_date,
-      count = count,
-    }
-    if freq == 'WEEKLY' then
-      custom.byday = recurrence.parse_weekday_text(weekdays, form.values.start)
-    elseif freq == 'MONTHLY' then
-      custom.bymonthday = tonumber(form.values.start:sub(9, 10))
+    draft.end_type = draft.end_type or 'never'
+    draft.until_date = draft.until_date or default_until_date()
+    draft.count = tonumber(draft.count) or 13
+    custom_recurrence_draft = draft
+    close_editor()
+    open_custom_recurrence_editor(draft, editor.kind == 'recurrence_unit' and 'unit' or 'end')
+    return
+  elseif editor.kind == 'recurrence_weekday' then
+    local selected = {}
+    for index, line in ipairs(lines) do
+      if line:match('^●') then
+        table.insert(selected, WEEKDAY_CODES[index])
+      end
+    end
+    if #selected == 0 then
+      notify('Select at least one weekday', vim.log.levels.WARN)
+      return
     end
 
-    local ok, err = recurrence.validate(custom, form.values.start)
+    local draft = custom_recurrence_draft or {}
+    draft.byday = selected
+    custom_recurrence_draft = draft
+    close_editor()
+    open_custom_recurrence_editor(draft, 'weekday')
+    return
+  elseif editor.kind == 'recurrence_custom' then
+    local draft = custom_config_from_lines(lines, custom_recurrence_draft)
+    local ok, err = recurrence.validate(draft, form.values.start)
     if not ok then
       notify(err, vim.log.levels.WARN)
       return
     end
-    form.values.recurrence = custom
+    form.values.recurrence = draft
+    custom_recurrence_draft = draft
   elseif editor.kind == 'guests' then
     local emails = {}
     local seen = {}
@@ -467,31 +542,36 @@ end
 local function editor_edit_custom()
   local line = vim.api.nvim_win_get_cursor(editor.win)[1]
   editor.selected = line
-  local lines = vim.api.nvim_buf_get_lines(editor.buf, 0, -1, false)
-
-  if line == 2 then
-    local current = lines[2] and lines[2]:match('^単位:%s*(.*)$') or ''
-    local freq = UNIT_BY_PHRASE[current] or 'WEEKLY'
-    local next_freq = recurrence.next_freq(freq)
-    lines[2] = '単位: ' .. UNIT_PHRASES[next_freq]
-    set_editor_lines(lines)
-    vim.api.nvim_win_set_cursor(editor.win, { 2, 0 })
-    return
-  elseif line == 4 then
-    local current = lines[4] and lines[4]:match('^終了:%s*(.*)$') or ''
-    local end_type = 'never'
-    for candidate, label in pairs({ never = 'なし', ['until'] = '終了日', count = '回数' }) do
-      if label == current then
-        end_type = candidate
-      end
-    end
-    lines[4] = '終了: ' .. recurrence.end_label(recurrence.next_end_type(end_type))
-    set_editor_lines(lines)
-    vim.api.nvim_win_set_cursor(editor.win, { 4, 0 })
+  local draft = custom_config_from_lines(current_editor_lines(), custom_recurrence_draft)
+  custom_recurrence_draft = draft
+  local row = custom_recurrence_rows(draft)[line]
+  if row == nil then
     return
   end
 
-  vim.cmd('startinsert!')
+  if row.key == 'unit' then
+    open_custom_unit_selector()
+  elseif row.key == 'weekday' then
+    open_custom_weekday_selector()
+  elseif row.key == 'end' then
+    open_custom_end_selector()
+  elseif row.key == 'interval' or row.key == 'until' or row.key == 'count' then
+    vim.cmd('startinsert!')
+  end
+end
+
+local function editor_toggle_weekday()
+  local line = vim.api.nvim_win_get_cursor(editor.win)[1]
+  local code = WEEKDAY_CODES[line]
+  if code == nil then
+    return
+  end
+
+  custom_weekday_selection[code] = not custom_weekday_selection[code]
+  local lines = vim.api.nvim_buf_get_lines(editor.buf, 0, -1, false)
+  lines[line] = (custom_weekday_selection[code] and '● ' or '○ ') .. WEEKDAYS[line]
+  set_editor_lines(lines)
+  vim.api.nvim_win_set_cursor(editor.win, { line, 0 })
 end
 
 local function set_editor_keymaps(buf)
@@ -530,10 +610,35 @@ local function set_editor_keymaps(buf)
       local prev_line = math.max(1, line - 1)
       vim.api.nvim_win_set_cursor(editor.win, { prev_line, 0 })
     end)
+  elseif editor.kind == 'recurrence_unit' or editor.kind == 'recurrence_end' then
+    map('n', 'next_field', function()
+      local line = vim.api.nvim_win_get_cursor(editor.win)[1]
+      local next_line = math.min(#custom_selector_options, line + 1)
+      vim.api.nvim_win_set_cursor(editor.win, { next_line, 0 })
+    end)
+    map('n', 'prev_field', function()
+      local line = vim.api.nvim_win_get_cursor(editor.win)[1]
+      local prev_line = math.max(1, line - 1)
+      vim.api.nvim_win_set_cursor(editor.win, { prev_line, 0 })
+    end)
+    map('n', 'toggle', save_editor)
+  elseif editor.kind == 'recurrence_weekday' then
+    map('n', 'next_field', function()
+      local line = vim.api.nvim_win_get_cursor(editor.win)[1]
+      local next_line = math.min(#WEEKDAY_CODES, line + 1)
+      vim.api.nvim_win_set_cursor(editor.win, { next_line, 0 })
+    end)
+    map('n', 'prev_field', function()
+      local line = vim.api.nvim_win_get_cursor(editor.win)[1]
+      local prev_line = math.max(1, line - 1)
+      vim.api.nvim_win_set_cursor(editor.win, { prev_line, 0 })
+    end)
+    map('n', 'edit', save_editor)
+    map('n', 'toggle', editor_toggle_weekday)
   elseif editor.kind == 'recurrence_custom' then
     map('n', 'next_field', function()
       local line = vim.api.nvim_win_get_cursor(editor.win)[1]
-      local next_line = math.min(6, line + 1)
+      local next_line = math.min(#custom_recurrence_rows(custom_recurrence_draft), line + 1)
       vim.api.nvim_win_set_cursor(editor.win, { next_line, 0 })
     end)
     map('n', 'prev_field', function()
@@ -616,41 +721,218 @@ local function open_description_editor()
   open_editor('description', ' 説明 ', lines, FORM_HEIGHT, form.width)
 end
 
-local function custom_recurrence_lines(recurrence_config)
-  local start_parts = form.values.start:sub(1, 10)
-  local year, month, day = calendar.parse_date(start_parts)
-  if year == nil then
-    year, month, day = calendar.date_parts(calendar.today())
-    start_parts = calendar.today()
+current_editor_lines = function()
+  if editor.buf == 0 or not vim.api.nvim_buf_is_valid(editor.buf) then
+    return {}
   end
-  start_parts = tostring(start_parts)
-  year = assert(year)
-  month = assert(month)
-  day = assert(day)
-  local weekday = tonumber(os.date('%w', os.time({ year = year, month = month, day = day, hour = 12 }))) or 0
-  local default_byday = ({ 'SU', 'MO', 'TU', 'WE', 'TH', 'FR', 'SA' })[weekday + 1]
-  local freq = recurrence_config and recurrence_config.freq or 'WEEKLY'
-  local interval = recurrence_config and recurrence_config.interval or 1
-  local byday = recurrence_config and recurrence_config.byday or { default_byday }
-  local end_type = recurrence_config and recurrence_config.end_type or 'never'
-  local until_date = recurrence_config and recurrence_config.until_date or calendar.add_days(start_parts, 30)
-  local count = recurrence_config and recurrence_config.count or 13
+  return vim.api.nvim_buf_get_lines(editor.buf, 0, -1, false)
+end
 
+local function default_custom_config()
   return {
-    '間隔: ' .. interval,
-    '単位: ' .. (UNIT_PHRASES[freq] or UNIT_PHRASES.WEEKLY),
-    '曜日: ' .. recurrence.weekday_text(byday),
-    '終了: ' .. recurrence.end_label(end_type),
-    '終了日: ' .. until_date,
-    '回数: ' .. count,
+    freq = 'WEEKLY',
+    interval = 1,
+    byday = { start_weekday_code() },
+    end_type = 'never',
+    until_date = default_until_date(),
+    count = 13,
   }
 end
 
-open_custom_recurrence_editor = function(recurrence_config)
-  local lines = custom_recurrence_lines(recurrence_config)
+local function normalize_custom_config(recurrence_config)
+  local draft = recurrence_config and vim.deepcopy(recurrence_config) or default_custom_config()
+  draft.freq = draft.freq or 'WEEKLY'
+  draft.interval = tonumber(draft.interval) or 1
+  draft.end_type = draft.end_type or 'never'
+  draft.until_date = draft.until_date or default_until_date()
+  draft.count = tonumber(draft.count) or 13
+  if draft.freq == 'WEEKLY' then
+    if draft.byday == nil or #draft.byday == 0 then
+      draft.byday = { start_weekday_code() }
+    end
+    draft.bymonthday = nil
+  elseif draft.freq == 'MONTHLY' then
+    draft.bymonthday = draft.bymonthday or tonumber(custom_start_date():sub(9, 10))
+    draft.byday = nil
+  else
+    draft.byday = nil
+    draft.bymonthday = nil
+  end
+  return draft
+end
+
+custom_recurrence_rows = function(recurrence_config)
+  local rows = {
+    { key = 'interval', text = '間隔: ' .. recurrence_config.interval },
+    { key = 'unit', text = '単位: ' .. (UNIT_PHRASES[recurrence_config.freq] or UNIT_PHRASES.WEEKLY) },
+  }
+  if recurrence_config.freq == 'WEEKLY' then
+    rows[#rows + 1] = { key = 'weekday', text = '曜日: ' .. recurrence.weekday_text(recurrence_config.byday) }
+  elseif recurrence_config.freq == 'MONTHLY' then
+    rows[#rows + 1] = {
+      key = 'monthday',
+      text = '日付: ' .. (recurrence_config.bymonthday or tonumber(custom_start_date():sub(9, 10))),
+    }
+  elseif recurrence_config.freq == 'YEARLY' then
+    local _, month, day = calendar.parse_date(custom_start_date())
+    month = assert(month)
+    day = assert(day)
+    rows[#rows + 1] = { key = 'yearday', text = '日付: ' .. month .. '月' .. day .. '日' }
+  end
+  rows[#rows + 1] = { key = 'end', text = '終了: ' .. recurrence.end_label(recurrence_config.end_type) }
+  if recurrence_config.end_type == 'until' then
+    rows[#rows + 1] = { key = 'until', text = '終了日: ' .. recurrence_config.until_date }
+  elseif recurrence_config.end_type == 'count' then
+    rows[#rows + 1] = { key = 'count', text = '回数: ' .. recurrence_config.count }
+  end
+  return rows
+end
+
+local function custom_recurrence_lines(recurrence_config)
+  local lines = {}
+  for _, row in ipairs(custom_recurrence_rows(recurrence_config)) do
+    table.insert(lines, row.text)
+  end
+  return lines
+end
+
+custom_config_from_lines = function(lines, fallback)
+  local draft = normalize_custom_config(fallback)
+  local interval = (lines[1] or ''):match('^間隔:%s*(%d+)$')
+  if interval ~= nil then
+    draft.interval = tonumber(interval)
+  end
+  local unit = (lines[2] or ''):match('^単位:%s*(.*)$')
+  if unit ~= nil and UNIT_BY_PHRASE[unit] ~= nil then
+    draft.freq = UNIT_BY_PHRASE[unit]
+  end
+
+  local weekday_text = nil
+  local monthday_text = nil
+  local end_label = nil
+  local until_date = nil
+  local count = nil
+  for _, line in ipairs(lines) do
+    local value = line:match('^曜日:%s*(.*)$')
+    if value ~= nil then
+      weekday_text = value
+    end
+    value = line:match('^日付:%s*(%d+)日?$')
+    if value ~= nil then
+      monthday_text = value
+    end
+    value = line:match('^終了:%s*(.*)$')
+    if value ~= nil then
+      end_label = value
+    end
+    value = line:match('^終了日:%s*(.*)$')
+    if value ~= nil then
+      until_date = vim.trim(value)
+    end
+    value = line:match('^回数:%s*(%d+)$')
+    if value ~= nil then
+      count = tonumber(value)
+    end
+  end
+
+  if draft.freq == 'WEEKLY' then
+    draft.byday = recurrence.parse_weekday_text(weekday_text or '', form.values.start)
+    draft.bymonthday = nil
+  elseif draft.freq == 'MONTHLY' then
+    draft.bymonthday = tonumber(monthday_text) or draft.bymonthday or tonumber(custom_start_date():sub(9, 10))
+    draft.byday = nil
+  else
+    draft.byday = nil
+    draft.bymonthday = nil
+  end
+
+  if end_label ~= nil and END_TYPE_BY_LABEL[end_label] ~= nil then
+    draft.end_type = END_TYPE_BY_LABEL[end_label]
+  end
+  if until_date ~= nil and until_date ~= '' then
+    draft.until_date = until_date
+  end
+  if count ~= nil then
+    draft.count = count
+  end
+  draft.until_date = draft.until_date or default_until_date()
+  draft.count = tonumber(draft.count) or 13
+  return draft
+end
+
+local function custom_row_index(recurrence_config, key)
+  for index, row in ipairs(custom_recurrence_rows(recurrence_config)) do
+    if row.key == key then
+      return index
+    end
+  end
+  return nil
+end
+
+open_custom_recurrence_editor = function(recurrence_config, focus_key)
+  custom_recurrence_draft = normalize_custom_config(recurrence_config)
+  local lines = custom_recurrence_lines(custom_recurrence_draft)
   local win = open_editor('recurrence_custom', ' カスタムの繰り返し ', lines, #lines, 40)
-  editor.selected = 1
-  vim.api.nvim_win_set_cursor(win, { 1, 0 })
+  local line = custom_row_index(custom_recurrence_draft, focus_key) or 1
+  editor.selected = line
+  vim.api.nvim_win_set_cursor(win, { line, 0 })
+end
+
+open_custom_unit_selector = function()
+  local draft = custom_config_from_lines(current_editor_lines(), custom_recurrence_draft)
+  custom_recurrence_draft = draft
+  custom_selector_options = UNIT_OPTIONS
+  local lines = {}
+  local selected = 1
+  for index, option in ipairs(custom_selector_options) do
+    local is_current = option.key == draft.freq
+    lines[index] = (is_current and '● ' or '  ') .. option.label
+    if is_current then
+      selected = index
+    end
+  end
+  local win = open_editor('recurrence_unit', ' 単位 ', lines, #lines, 30)
+  editor.selected = selected
+  vim.api.nvim_win_set_cursor(win, { selected, 0 })
+end
+
+open_custom_end_selector = function()
+  local draft = custom_config_from_lines(current_editor_lines(), custom_recurrence_draft)
+  custom_recurrence_draft = draft
+  custom_selector_options = END_OPTIONS
+  local lines = {}
+  local selected = 1
+  for index, option in ipairs(custom_selector_options) do
+    local is_current = option.key == draft.end_type
+    lines[index] = (is_current and '● ' or '  ') .. option.label
+    if is_current then
+      selected = index
+    end
+  end
+  local win = open_editor('recurrence_end', ' 終了 ', lines, #lines, 30)
+  editor.selected = selected
+  vim.api.nvim_win_set_cursor(win, { selected, 0 })
+end
+
+open_custom_weekday_selector = function()
+  local draft = custom_config_from_lines(current_editor_lines(), custom_recurrence_draft)
+  custom_recurrence_draft = draft
+  custom_weekday_selection = {}
+  for _, code in ipairs(draft.byday or {}) do
+    custom_weekday_selection[code] = true
+  end
+  local lines = {}
+  local selected = 1
+  for index, code in ipairs(WEEKDAY_CODES) do
+    local is_selected = custom_weekday_selection[code] == true
+    lines[index] = (is_selected and '● ' or '○ ') .. WEEKDAYS[index]
+    if is_selected then
+      selected = index
+    end
+  end
+  local win = open_editor('recurrence_weekday', ' 曜日 ', lines, #WEEKDAY_CODES, 30)
+  editor.selected = selected
+  vim.api.nvim_win_set_cursor(win, { selected, 0 })
 end
 
 local function open_recurrence_editor()

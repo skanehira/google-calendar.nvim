@@ -169,6 +169,40 @@ describe('event', function()
     end)
   end)
 
+  describe('multiday', function()
+    it('23:00〜24:00 の予定を当日の予定として扱う', function()
+      local item = build_event(
+        'evt-midnight',
+        'AI案件相談',
+        { dateTime = '2026-11-06T23:00:00+09:00' },
+        { dateTime = '2026-11-07T00:00:00+09:00' }
+      )
+
+      assert.is_false(event.is_multiday(item, '+0900'))
+      assert.are.equal('24:00', event.end_time(item, '+0900'))
+      assert.are.equal('23:00-24:00', event.time_range(item, '+0900'))
+      assert.are.same({
+        ['2026-11-06'] = { 'evt-midnight' },
+      }, ids_by_date(event.events_by_date({ item }, '2026-11-01', '2026-11-30', '+0900')))
+    end)
+
+    it('翌日以降まで続く予定は複数日として扱う', function()
+      local item = build_event(
+        'evt-midnight-multiday',
+        '合宿',
+        { dateTime = '2026-11-06T23:00:00+09:00' },
+        { dateTime = '2026-11-08T00:00:00+09:00' }
+      )
+
+      assert.is_true(event.is_multiday(item, '+0900'))
+      assert.are.equal('24:00', event.end_time(item, '+0900'))
+      assert.are.same({
+        ['2026-11-06'] = { 'evt-midnight-multiday' },
+        ['2026-11-07'] = { 'evt-midnight-multiday' },
+      }, ids_by_date(event.events_by_date({ item }, '2026-11-01', '2026-11-30', '+0900')))
+    end)
+  end)
+
   describe('time_range', function()
     it('時刻付き予定を開始時刻と終了時刻の範囲にする', function()
       local item = build_event(

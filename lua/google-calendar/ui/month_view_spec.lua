@@ -914,6 +914,84 @@ describe('ui.month_view', function()
     end
   end)
 
+  it('既定の高さでも max_events_per_cell を超える予定を +N で表示する', function()
+    plugin.setup({
+      notify = notify,
+      width = 1.0,
+      height = 0.7,
+      max_events_per_cell = 6,
+      gws_cmd = repo_root .. '/tests/fixtures/fake-gws.py',
+    })
+    gws_handler = function(_, cb)
+      local events = {}
+      for index = 1, 7 do
+        table.insert(
+          events,
+          timed_event('e' .. index, '予定' .. index, string.format('2026-10-28T%02d:00:00+09:00', 8 + index))
+        )
+      end
+      cb(event.normalize_list(events, { calendar_id = 'primary' }), nil)
+    end
+
+    run_command()
+    wait_loading()
+
+    local rows = assert(virt_lines(5))
+    assert.are.equal(7, #rows)
+    assert.is_true(has_chunk(rows[7], ' +1', 'GoogleCalendarEvent'))
+  end)
+
+  it('余った予定行がある場合も最終行に +N を表示する', function()
+    plugin.setup({
+      notify = notify,
+      width = 1.0,
+      height = 1.0,
+      max_events_per_cell = 1,
+      gws_cmd = repo_root .. '/tests/fixtures/fake-gws.py',
+    })
+    gws_handler = function(_, cb)
+      cb(
+        event.normalize_list({
+          timed_event('e1', '予定1', '2026-10-28T09:00:00+09:00'),
+          timed_event('e2', '予定2', '2026-10-28T10:00:00+09:00'),
+        }, { calendar_id = 'primary' }),
+        nil
+      )
+    end
+
+    run_command()
+    wait_loading()
+
+    local rows = assert(virt_lines(5))
+    assert.are.equal(4, #rows)
+    assert.is_true(has_chunk(rows[4], ' +1', 'GoogleCalendarEvent'))
+    assert.is_nil(chunks_text(rows[2]):find('予定', 1, true))
+  end)
+
+  it('23:00〜24:00 の予定を複数日バーではなく当日のドットで表示する', function()
+    state.year = 2026
+    state.month = 11
+    state.selected_date = '2026-11-06'
+    gws_handler = function(_, cb)
+      cb({
+        {
+          id = 'evt-midnight',
+          summary = 'AI案件相談',
+          start = { dateTime = '2026-11-06T23:00:00+09:00' },
+          ['end'] = { dateTime = '2026-11-07T00:00:00+09:00' },
+        },
+      }, nil)
+    end
+
+    run_command('2026-11')
+    wait_loading()
+
+    local rows = assert(virt_lines(1))
+    assert.is_true(has_chunk(rows[1], '●', 'GoogleCalendarCalendarColor1'))
+    assert.is_true(has_chunk(rows[1], ' 23:00 ', 'GoogleCalendarEvent'))
+    assert.is_true(chunks_text(rows[1]):find('23:00', 1, true) ~= nil)
+  end)
+
   it('4 件以上の予定 fixture を +N 表示で扱う', function()
     local body = vim.json.decode(table.concat(vim.fn.readfile('tests/fixtures/many-events.json'), '\n'))
     local events = event.normalize_list(body.items, { calendar_id = 'primary' })

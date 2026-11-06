@@ -177,6 +177,9 @@ local function build_event_rows(week, events_by_date, max_events, cell_w, rows, 
 
   local base_rows = max_events + 1
   rows = rows or base_rows
+  -- 予定を置けるのは、実際に描画する予定行のうち最終行を除いた部分。
+  -- 最終行は +N 表示用に空けておく。
+  local visible_max = math.min(max_events, math.max(0, rows - 1))
   local result = {}
 
   local function is_spanning(item)
@@ -195,6 +198,8 @@ local function build_event_rows(week, events_by_date, max_events, cell_w, rows, 
           end_date = start_date
         end
         if event.is_all_day(item) then
+          end_date = calendar.add_days(end_date, -1)
+        elseif event.end_time(item) == '24:00' and end_date > start_date then
           end_date = calendar.add_days(end_date, -1)
         end
         if end_date < start_date then
@@ -231,7 +236,7 @@ local function build_event_rows(week, events_by_date, max_events, cell_w, rows, 
   local spanning_at = {}
   for _, span in ipairs(spanning) do
     local row_index = nil
-    for candidate = 1, max_events do
+    for candidate = 1, visible_max do
       local free = true
       for column = span.start_col, span.end_col do
         if spanning_at[candidate] ~= nil and spanning_at[candidate][column] ~= nil then
@@ -257,7 +262,7 @@ local function build_event_rows(week, events_by_date, max_events, cell_w, rows, 
   for column = 1, 7 do
     for _, item in ipairs(lists[column]) do
       if not spanning_ids[item.id] then
-        for row_index = 1, max_events do
+        for row_index = 1, visible_max do
           local occupied = spanning_at[row_index] ~= nil and spanning_at[row_index][column] ~= nil
           local used = single_at[row_index] ~= nil and single_at[row_index][column] ~= nil
           if not occupied and not used then
@@ -272,12 +277,21 @@ local function build_event_rows(week, events_by_date, max_events, cell_w, rows, 
 
   local overflow = {}
   for column = 1, 7 do
-    local displayed = 0
-    for row_index = 1, max_events do
-      if spanning_at[row_index] ~= nil and spanning_at[row_index][column] ~= nil then
-        displayed = displayed + 1
+    local displayed_ids = {}
+    for row_index = 1, visible_max do
+      local spanning_item = spanning_at[row_index] ~= nil and spanning_at[row_index][column] or nil
+      if spanning_item ~= nil then
+        displayed_ids[spanning_item.id or spanning_item] = true
       end
-      if single_at[row_index] ~= nil and single_at[row_index][column] ~= nil then
+      local single_item = single_at[row_index] ~= nil and single_at[row_index][column] or nil
+      if single_item ~= nil then
+        displayed_ids[single_item.id or single_item] = true
+      end
+    end
+
+    local displayed = 0
+    for _, item in ipairs(lists[column]) do
+      if displayed_ids[item.id or item] then
         displayed = displayed + 1
       end
     end
@@ -333,7 +347,7 @@ local function build_event_rows(week, events_by_date, max_events, cell_w, rows, 
         local cell_chunks
         if item ~= nil then
           cell_chunks = chip_chunks(item, cell_w)
-        elseif row_index == base_rows and overflow[column] > 0 then
+        elseif row_index == rows and overflow[column] > 0 then
           cell_chunks = overflow_chunks(overflow[column], cell_w)
         else
           cell_chunks = blank_chunks(cell_w)

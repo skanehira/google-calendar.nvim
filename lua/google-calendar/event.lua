@@ -10,6 +10,7 @@ local EDITABLE_FIELDS = {
   'visibility',
   'transparency',
   'conferenceData',
+  'recurrence',
 }
 
 local function present(value)
@@ -184,6 +185,8 @@ function M.normalize(raw, opts)
     ['end'] = normalize_time(raw['end'], display_offset),
     hangout_link = M.extract_hangout_link(raw),
     html_link = present(raw.htmlLink),
+    recurrence = present(raw.recurrence),
+    recurring_event_id = present(raw.recurringEventId),
     calendar_id = present(opts.calendar_id),
     status = present(raw.status),
     organizer = present(raw.organizer),

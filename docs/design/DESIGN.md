@@ -30,7 +30,7 @@
 | 予定のキーワード絞り込み | 月表示の一覧性を優先する |
 | 週表示・日表示 | MVP は月表示のみ |
 | 招待メールの文面カスタマイズ | gws の既定の招待に任せる |
-| 繰り返し予定のルール編集 | RRULE の入力 UI と例外日の扱いが複雑。表示は `singleEvents=true` で各 occurrence を扱う |
+| 繰り返し予定のルール編集 | RRULE の入力 UI と例外日の扱いが複雑。プリセットとカスタムの主要項目に対応し、例外日は扱わない。表示は `singleEvents=true` で各 occurrence を扱う |
 | 予定ごとの色変更 | カレンダー色の利用で足りる |
 | 複数 Google アカウントの切り替え | gws の認証は 1 アカウント前提 |
 | 通知・リマインダー、ステータスライン表示 | プラグインの責務を月表示に絞る |
@@ -140,7 +140,8 @@ flowchart TB
 | `lua/google-calendar/init.lua` | `setup()`、コマンド実行、月表示の起動、再表示 |
 | `lua/google-calendar/config.lua` | 既定値、キーマップ、ハイライト、入力検証 |
 | `lua/google-calendar/calendar.lua` | 月グリッドの計算、日付の加算、RFC3339 変換、表示用フォーマット |
-| `lua/google-calendar/event.lua` | gws の JSON を予定モデルへ正規化、時刻・終日・Meet URL の整形、表示幅での切り詰め |
+| `lua/google-calendar/event.lua` | gws の JSON を予定モデルへ正規化、時刻・終日・Meet URL・繰り返しの整形、表示幅での切り詰め |
+| `lua/google-calendar/recurrence.lua` | RRULE の組み立て・解析・検証、繰り返しラベルの生成 |
 | `lua/google-calendar/state.lua` | 表示中の年月、選択日、予定キャッシュ、月キャッシュ、読み込み中フラグ、float スタック |
 | `lua/google-calendar/gws.lua` | `vim.system` による gws 実行、一覧のページ取得、作成・取得・更新・削除、エラー分類 |
 | `lua/google-calendar/notify.lua` | エラー種別ごとの通知文言と `vim.notify` |
@@ -208,10 +209,10 @@ nvim --headless -u tests/minimal_init.lua \
 
 実測値:
 
-- `make test`: 284 tests passed / 0 failed / 0 errors、exit 0
+- `make test`: 298 tests passed / 0 failed / 0 errors、exit 0
 - `make test-file FILE=lua/google-calendar/config_spec.lua`: 17 tests passed、exit 0
 - `make test-file FILE=lua/google-calendar/gws_spec.lua`: 17 tests passed、exit 0
-- `XDG_STATE_HOME="$PWD/.tmp-state" make test`: 284 tests passed、exit 0
+- `XDG_STATE_HOME="$PWD/.tmp-state" make test`: 298 tests passed、exit 0
 - `make test TEST_DIR=<空ディレクトリ>`: exit 2、`spec が 0 件です` を出力（0 件のまま成功しない）
 
 `TEST_DIR` は既定 `lua/`。spec は実装ファイルの隣 (`lua/**/*_spec.lua`) に置く。テストハーネスの spec も `lua/google-calendar/test_harness_spec.lua` に置き、`make test` の走査対象に含める。E2E の spec は `tests/e2e/` に置き、`make test-e2e` で実行する。
@@ -247,7 +248,7 @@ make test-e2e
 
 `scripts/e2e.sh` は `tests/fixtures/fake-gws.py` への `gws` シンボリックリンクを一時 `PATH` の先頭に置き、`FAKE_GWS_STATE` / `XDG_STATE_HOME` / `FAKE_GWS_CWD_LOG` / `FAKE_GWS_CALL_LOG` を一時ディレクトリに設定して `tests/e2e` を plenary で実行する。実カレンダーは変更しない。
 
-実測値: `make test-e2e` は 13 tests passed / 0 failed / 0 errors、exit 0。スモークテストは偽 gws が PATH の先頭にあること、空の `events list`、`+insert` 後の `list` への反映、`:GoogleCalendar` の登録、`setup()` の既定値を確認する。`tests/e2e/crud_spec.lua` は偽 gws を使い、月表示を開いて登録・更新・削除を通しで検証し、`+N`、認証エラー、作成失敗、`:w` 連打、各操作後の状態ファイルとバッファ内容の一致を確認する。
+実測値: `make test-e2e` は 14 tests passed / 0 failed / 0 errors、exit 0。スモークテストは偽 gws が PATH の先頭にあること、空の `events list`、`+insert` 後の `list` への反映、`:GoogleCalendar` の登録、`setup()` の既定値を確認する。`tests/e2e/crud_spec.lua` は偽 gws を使い、月表示を開いて登録・更新・削除を通しで検証し、`+N`、認証エラー、作成失敗、`:w` 連打、各操作後の状態ファイルとバッファ内容の一致を確認する。
 
 **実 API の手動確認**（任意）:
 
@@ -556,7 +557,7 @@ stdpath('data')/google-calendar.nvim/config.json
 - `os.date('%z')` のローカルオフセットを使う変換式は、夏時間の境界では厳密でない。MVP は Asia/Tokyo を想定し、イベントのオフセットを優先する
 - `os.date('%z')` は `+0900` 形式（コロンなし）を返す。RFC3339 のオフセットは `+09:00` 形式なので、変換時は両方を受け付ける
 - サンドボックス環境では `gws` が `~/.config/gws` に書き込めない。開発時は `GOOGLE_WORKSPACE_CLI_CONFIG_DIR` をワークスペース内に向ける（PoC `gws-sandbox-config`）
-- 月表示の予定は `singleEvents=true` で取得する。繰り返し予定のルール編集はできない
+- 月表示の予定は `singleEvents=true` で取得する。繰り返し予定の occurrence を編集するときは `recurringEventId` から親予定を取得し、親のルールを編集する。プリセットとカスタム（間隔・単位・曜日・終了日/回数）に対応し、例外日は扱わない
 - `PlenaryBustedDirectory` は spec が 0 件のディレクトリで終了コード 0 を返す。`tests/minimal_init.lua` で 0 件なら `cquit 1` にして、テストが 0 件のまま成功しないようにする
 - `PlenaryBustedDirectory` の子 Neovim は `--noplugin` で起動するため、`plugin/google-calendar.lua` のコマンドは spec 内で `runtime! plugin/google-calendar.lua` して明示的に読み込む。`nvim_create_user_command` に `force = true` を付けて再読み込みを安全にする
 - `PLENARY_TEST_TIMEOUT` は Plenary が環境変数に文字列として設定するが、`plenary.test_harness._find_files_to_run` の `Job:sync` は数値を期待する。nested Neovim の実行前に `tests/minimal_init.lua` で一時的に unset する

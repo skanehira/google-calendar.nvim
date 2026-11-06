@@ -111,13 +111,13 @@ local function edit_datetime(start_value, end_value, all_day)
 end
 
 local function edit_location(value)
-  open_editor(7)
+  open_editor(8)
   set_editor({ value })
   feed_save()
 end
 
 local function edit_description(value)
-  open_editor(8)
+  open_editor(9)
   set_editor(vim.split(value, '\n', { plain = true }))
   feed_save()
 end
@@ -135,7 +135,7 @@ end
 local function wait_error()
   assert.is_true(vim.wait(1000, function()
     local lines = form_lines()
-    return lines[11] ~= nil and lines[11]:match('^Error:') ~= nil
+    return lines[12] ~= nil and lines[12]:match('^Error:') ~= nil
   end, 10))
 end
 
@@ -226,13 +226,14 @@ describe('ui.form', function()
     local lines = form_lines()
     assert.are.equal('タイトルと日時を追加', lines[1])
     assert.are.equal('◷ 10月28日 (水曜日)・09:00〜10:00  [終日]', lines[4])
-    assert.are.equal('◉ ゲストを追加', lines[5])
-    assert.are.equal('▶ Google Meet のビデオ会議を追加  [off]', lines[6])
-    assert.are.equal('⌖ 場所を追加', lines[7])
-    assert.is_true(lines[8]:match('^≡ *説明または Google ドライブの添付ファイルを追加$') ~= nil)
-    assert.are.equal('▣ primary', lines[9])
-    assert.are.equal('', lines[10])
-    assert.is_true(lines[11]:match('^その他のオプション') ~= nil)
+    assert.are.equal('↻ 繰り返さない', lines[5])
+    assert.are.equal('◉ ゲストを追加', lines[6])
+    assert.are.equal('▶ Google Meet のビデオ会議を追加  [off]', lines[7])
+    assert.are.equal('⌖ 場所を追加', lines[8])
+    assert.is_true(lines[9]:match('^≡ *説明または Google ドライブの添付ファイルを追加$') ~= nil)
+    assert.are.equal('▣ primary', lines[10])
+    assert.are.equal('', lines[11])
+    assert.is_true(lines[12]:match('^その他のオプション') ~= nil)
     assert.are.equal(1, vim.api.nvim_win_get_cursor(win)[1])
   end)
 
@@ -246,7 +247,7 @@ describe('ui.form', function()
   it('アイコンと説明文の列を揃える', function()
     form.open_create()
     local lines = form_lines()
-    for _, line_number in ipairs({ 4, 5, 6, 7, 8, 9 }) do
+    for _, line_number in ipairs({ 4, 5, 6, 7, 8, 9, 10 }) do
       assert.are.equal(2, text_start_column(lines[line_number]))
     end
   end)
@@ -257,6 +258,10 @@ describe('ui.form', function()
     feed('<Tab>')
     assert.are.equal(4, vim.api.nvim_win_get_cursor(state.windows.form)[1])
     feed('<Tab>')
+    assert.are.equal(5, vim.api.nvim_win_get_cursor(state.windows.form)[1])
+    feed('<Tab>')
+    assert.are.equal(6, vim.api.nvim_win_get_cursor(state.windows.form)[1])
+    feed('<S-Tab>')
     assert.are.equal(5, vim.api.nvim_win_get_cursor(state.windows.form)[1])
     feed('<S-Tab>')
     assert.are.equal(4, vim.api.nvim_win_get_cursor(state.windows.form)[1])
@@ -292,20 +297,112 @@ describe('ui.form', function()
     }, editor_lines())
   end)
 
+  it('繰り返しのプリセットを選んで作成する', function()
+    form.open_create({
+      on_created = function(item)
+        created = item
+      end,
+    })
+
+    select_line(5)
+    feed('<CR>')
+    assert.are.same({
+      '● 繰り返さない',
+      '  毎日',
+      '  毎週 水曜日',
+      '  毎月 第4水曜日',
+      '  毎年 10月28日',
+      '  毎週平日（月〜金）',
+      '  カスタム...',
+    }, editor_lines())
+
+    vim.api.nvim_win_set_cursor(state.windows.form_editor, { 3, 0 })
+    feed_save()
+    assert.are.equal('↻ 毎週 水曜日', form_lines()[5])
+
+    edit_summary('定例')
+    save()
+    wait_closed()
+    assert.are.same({ 'RRULE:FREQ=WEEKLY;BYDAY=WE' }, created_call.recurrence)
+  end)
+
+  it('カスタムの繰り返しを設定して作成する', function()
+    form.open_create({
+      on_created = function(item)
+        created = item
+      end,
+    })
+
+    select_line(5)
+    feed('<CR>')
+    vim.api.nvim_win_set_cursor(state.windows.form_editor, { 7, 0 })
+    feed_save()
+
+    assert.are.same({
+      '間隔: 1',
+      '単位: 週間ごと',
+      '曜日: 水',
+      '終了: なし',
+      '終了日: 2026-11-27',
+      '回数: 13',
+    }, editor_lines())
+
+    set_editor({
+      '間隔: 2',
+      '単位: 週間ごと',
+      '曜日: 月,水',
+      '終了: 終了日',
+      '終了日: 2026-12-31',
+      '回数: 13',
+    })
+    feed_save()
+    assert.are.equal('↻ 2週ごと 月・水曜日（2026-12-31 まで）', form_lines()[5])
+
+    edit_summary('隔週定例')
+    save()
+    wait_closed()
+    assert.are.same({
+      'RRULE:FREQ=WEEKLY;INTERVAL=2;BYDAY=MO,WE;UNTIL=20261231T235959Z',
+    }, created_call.recurrence)
+  end)
+
+  it('更新フォームで繰り返しを解除する', function()
+    local item = {
+      id = 'evt-repeat',
+      summary = '定例',
+      start = { dateTime = '2026-10-30T09:00:00+09:00' },
+      ['end'] = { dateTime = '2026-10-30T10:00:00+09:00' },
+      recurrence = { 'RRULE:FREQ=WEEKLY;BYDAY=FR' },
+      calendar_id = 'primary',
+    }
+
+    form.open_edit(item)
+    assert.are.equal('↻ 毎週 金曜日', form_lines()[5])
+
+    select_line(5)
+    feed('<CR>')
+    vim.api.nvim_win_set_cursor(state.windows.form_editor, { 1, 0 })
+    feed_save()
+    save()
+
+    wait_closed()
+    assert.are.same({}, updated_call.recurrence)
+  end)
+
   it('場所と説明を別ウィンドウで編集する', function()
     form.open_create()
     edit_location('会議室A')
     edit_description('議題1\n議題2')
 
-    assert.are.equal('⌖ 会議室A', form_lines()[7])
-    assert.is_true(form_lines()[8]:match('^≡ *議題1$') ~= nil)
+    assert.are.equal('⌖ 会議室A', form_lines()[8])
+    assert.is_true(form_lines()[9]:match('^≡ *議題1$') ~= nil)
   end)
 
   it('説明エディタはメインのコンポーザーと同じサイズで開く', function()
     form.open_create()
     local main_config = vim.api.nvim_win_get_config(state.windows.form)
 
-    open_editor(8)
+    open_editor(9)
     local editor_config = vim.api.nvim_win_get_config(state.windows.form_editor)
 
     assert.are.equal(main_config.width, editor_config.width)
@@ -314,16 +411,16 @@ describe('ui.form', function()
 
   it('Meet 行を <Space> で切り替える', function()
     form.open_create()
-    select_line(6)
+    select_line(7)
     feed('<Space>')
-    assert.are.equal('▶ Google Meet のビデオ会議を追加  [on]', form_lines()[6])
+    assert.are.equal('▶ Google Meet のビデオ会議を追加  [on]', form_lines()[7])
     feed('<Space>')
-    assert.are.equal('▶ Google Meet のビデオ会議を追加  [off]', form_lines()[6])
+    assert.are.equal('▶ Google Meet のビデオ会議を追加  [off]', form_lines()[7])
   end)
 
   it('ゲスト行から別ウィンドウでゲストを追加する', function()
     form.open_create()
-    select_line(5)
+    select_line(6)
     feed('<CR>')
     assert.is_true(vim.api.nvim_win_is_valid(state.windows.form_editor))
     assert.are.same({ '' }, editor_lines())
@@ -331,7 +428,7 @@ describe('ui.form', function()
     set_editor({ 'alice@example.com', 'bob@example.com' })
     feed_save()
 
-    assert.are.equal('◉ 2人のゲスト', form_lines()[5])
+    assert.are.equal('◉ 2人のゲスト', form_lines()[6])
     assert.is_nil(state.windows.form_editor)
   end)
 
@@ -344,11 +441,11 @@ describe('ui.form', function()
     edit_summary('テスト予定')
     edit_location('会議室A')
     edit_description('説明')
-    select_line(5)
+    select_line(6)
     feed('<CR>')
     set_editor({ 'alice@example.com', 'bob@example.com' })
     feed_save()
-    select_line(6)
+    select_line(7)
     feed('<Space>')
     save()
 
@@ -369,7 +466,7 @@ describe('ui.form', function()
 
     wait_error()
     assert.is_nil(created_call)
-    assert.is_true(form_lines()[11]:match('Title is required') ~= nil)
+    assert.is_true(form_lines()[12]:match('Title is required') ~= nil)
   end)
 
   it('開始日時の形式が不正な場合はエラーを表示し、gws を呼ばない', function()
@@ -380,7 +477,7 @@ describe('ui.form', function()
 
     wait_error()
     assert.is_nil(created_call)
-    assert.is_true(form_lines()[11]:match('Start date/time must be in YYYY%-MM%-DD HH:MM format') ~= nil)
+    assert.is_true(form_lines()[12]:match('Start date/time must be in YYYY%-MM%-DD HH:MM format') ~= nil)
   end)
 
   it('<Esc> でフォームを閉じ、予定を作成しない', function()
@@ -415,9 +512,10 @@ describe('ui.form', function()
     local lines = form_lines()
     assert.are.equal('定例', lines[1])
     assert.are.equal('◷ 10月28日 (水曜日)・09:00〜10:00  [終日]', lines[4])
-    assert.are.equal('⌖ 会議室A', lines[7])
-    assert.is_true(lines[8]:match('^≡ *議題$') ~= nil)
-    assert.are.equal('▶ Google Meet のビデオ会議を追加  [固定]', lines[6])
+    assert.are.equal('↻ 繰り返さない', lines[5])
+    assert.are.equal('⌖ 会議室A', lines[8])
+    assert.is_true(lines[9]:match('^≡ *議題$') ~= nil)
+    assert.are.equal('▶ Google Meet のビデオ会議を追加  [固定]', lines[7])
   end)
 
   it('更新フォームで値を変えずに :w を押すと、gws を呼ばず閉じる', function()
@@ -469,9 +567,9 @@ describe('ui.form', function()
     }
 
     form.open_edit(item)
-    assert.are.equal('◉ 1人のゲスト', form_lines()[5])
+    assert.are.equal('◉ 1人のゲスト', form_lines()[6])
 
-    select_line(5)
+    select_line(6)
     feed('<CR>')
     assert.are.same({ 'alice@example.com' }, editor_lines())
     set_editor({ 'alice@example.com', 'bob@example.com' })
@@ -517,7 +615,7 @@ describe('ui.form', function()
     save()
 
     assert.are.equal(0, #notifications)
-    assert.is_true(form_lines()[11]:match('^Saving%.%.%.') ~= nil)
+    assert.is_true(form_lines()[12]:match('^Saving%.%.%.') ~= nil)
     callback(
       { id = 'created-1', summary = 'テスト', start = { date = '2026-10-28' }, ['end'] = { date = '2026-10-29' } },
       nil
@@ -547,7 +645,7 @@ describe('ui.form', function()
 
     wait_error()
     assert.is_nil(created_call)
-    assert.is_true(form_lines()[11]:match('End must be after the start') ~= nil)
+    assert.is_true(form_lines()[12]:match('End must be after the start') ~= nil)
   end)
 
   it('場所が 1024 文字を超える場合はエラーを表示する', function()
@@ -558,7 +656,7 @@ describe('ui.form', function()
 
     wait_error()
     assert.is_nil(created_call)
-    assert.is_true(form_lines()[11]:match('Location must be 1024 characters or fewer') ~= nil)
+    assert.is_true(form_lines()[12]:match('Location must be 1024 characters or fewer') ~= nil)
   end)
 
   it('説明が 8192 文字を超える場合はエラーを表示する', function()
@@ -569,7 +667,7 @@ describe('ui.form', function()
 
     wait_error()
     assert.is_nil(created_call)
-    assert.is_true(form_lines()[11]:match('Description must be 8192 characters or fewer') ~= nil)
+    assert.is_true(form_lines()[12]:match('Description must be 8192 characters or fewer') ~= nil)
   end)
 
   it('? でフォームのヘルプを開き、閉じるとフォームに戻る', function()

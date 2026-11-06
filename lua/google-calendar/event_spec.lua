@@ -219,6 +219,20 @@ describe('event', function()
   end)
 
   describe('meet_url', function()
+    it('recurrence と recurringEventId を保持する', function()
+      local model = event.normalize({
+        id = 'evt-instance',
+        summary = '定例',
+        start = { dateTime = '2026-10-30T09:00:00+09:00' },
+        ['end'] = { dateTime = '2026-10-30T10:00:00+09:00' },
+        recurrence = { 'RRULE:FREQ=WEEKLY;BYDAY=FR' },
+        recurringEventId = 'evt-master',
+      })
+
+      assert.are.same({ 'RRULE:FREQ=WEEKLY;BYDAY=FR' }, model.recurrence)
+      assert.are.equal('evt-master', model.recurring_event_id)
+    end)
+
     it('htmlLink をカレンダー URL として保持する', function()
       local model = event.normalize({
         id = 'evt-url',

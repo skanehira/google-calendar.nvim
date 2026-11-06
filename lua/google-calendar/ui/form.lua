@@ -1,6 +1,7 @@
 local calendar = require('google-calendar.calendar')
 local config = require('google-calendar.config')
 local event = require('google-calendar.event')
+local recurrence = require('google-calendar.recurrence')
 local notify_adapter = require('google-calendar.notify')
 local state = require('google-calendar.state')
 local window = require('google-calendar.ui.window')
@@ -12,7 +13,7 @@ local TITLE_LIMIT = 1024
 local LOCATION_LIMIT = 1024
 local DESCRIPTION_LIMIT = 8192
 local FORM_WIDTH_MAX = 80
-local FORM_HEIGHT = 11
+local FORM_HEIGHT = 12
 
 local WEEKDAYS = { '日', '月', '火', '水', '木', '金', '土' }
 local ICON_CALENDAR = '▣'
@@ -21,15 +22,17 @@ local ICON_GUESTS = '◉'
 local ICON_MEET = '▶'
 local ICON_LOCATION = '⌖'
 local ICON_NOTES = '≡'
+local ICON_RECURRENCE = '↻'
 
 local ROWS = {
   { key = 'summary', line = 1, kind = 'summary' },
   { key = 'datetime', line = 4, kind = 'datetime' },
-  { key = 'guests', line = 5, kind = 'guests' },
-  { key = 'meet', line = 6, kind = 'toggle' },
-  { key = 'location', line = 7, kind = 'text' },
-  { key = 'description', line = 8, kind = 'text' },
-  { key = 'calendar', line = 9, kind = 'calendar' },
+  { key = 'recurrence', line = 5, kind = 'recurrence' },
+  { key = 'guests', line = 6, kind = 'guests' },
+  { key = 'meet', line = 7, kind = 'toggle' },
+  { key = 'location', line = 8, kind = 'text' },
+  { key = 'description', line = 9, kind = 'text' },
+  { key = 'calendar', line = 10, kind = 'calendar' },
 }
 
 ---@class GoogleCalendarForm
@@ -73,6 +76,14 @@ local editor = {
   kind = nil,
   selected = 1,
 }
+
+local recurrence_options = {}
+local open_custom_recurrence_editor
+local UNIT_PHRASES = { DAILY = '日ごと', WEEKLY = '週間ごと', MONTHLY = '月ごと', YEARLY = '年ごと' }
+local UNIT_BY_PHRASE = {}
+for freq, phrase in pairs(UNIT_PHRASES) do
+  UNIT_BY_PHRASE[phrase] = freq
+end
 
 local function notify(message, level)
   config.get().notify(message, level)
@@ -193,6 +204,14 @@ local function render()
     { 0, #ICON_CLOCK, 'GoogleCalendarFormIcon' },
     { #date_text + 2, #date_text + 2 + #button, 'GoogleCalendarFormButton' },
   })
+
+  local recurrence_label = recurrence.label(form.values.recurrence, form.values.start)
+  add_icon_line(
+    add,
+    ICON_RECURRENCE,
+    event.truncate(recurrence_label, math.max(1, width - 2)),
+    form.values.recurrence == nil and 'GoogleCalendarFormMuted' or nil
+  )
 
   local attendees = form.values.attendees or {}
   local guest_text
@@ -343,6 +362,52 @@ local function save_editor()
     form.values.start = vim.trim(start_value)
     form.values['end'] = vim.trim(end_value)
     form.values.all_day = all_day
+  elseif editor.kind == 'recurrence' then
+    local line = vim.api.nvim_win_get_cursor(editor.win)[1]
+    local option = recurrence_options[line]
+    if option == nil then
+      return
+    end
+    if option.key == 'custom' then
+      close_editor()
+      open_custom_recurrence_editor(nil)
+      return
+    end
+    form.values.recurrence = option.config
+  elseif editor.kind == 'recurrence_custom' then
+    local interval = tonumber(lines[1] and lines[1]:match('^間隔:%s*(%d+)$')) or 1
+    local unit = lines[2] and lines[2]:match('^単位:%s*(.*)$') or ''
+    local freq = UNIT_BY_PHRASE[unit] or 'WEEKLY'
+    local weekdays = lines[3] and lines[3]:match('^曜日:%s*(.*)$') or ''
+    local end_label = lines[4] and lines[4]:match('^終了:%s*(.*)$') or 'なし'
+    local until_date = lines[5] and lines[5]:match('^終了日:%s*(.*)$') or ''
+    local count = tonumber(lines[6] and lines[6]:match('^回数:%s*(%d+)$')) or 1
+    local end_type = 'never'
+    for candidate, label in pairs({ never = 'なし', ['until'] = '終了日', count = '回数' }) do
+      if label == end_label then
+        end_type = candidate
+      end
+    end
+
+    local custom = {
+      freq = freq,
+      interval = interval,
+      end_type = end_type,
+      until_date = until_date,
+      count = count,
+    }
+    if freq == 'WEEKLY' then
+      custom.byday = recurrence.parse_weekday_text(weekdays, form.values.start)
+    elseif freq == 'MONTHLY' then
+      custom.bymonthday = tonumber(form.values.start:sub(9, 10))
+    end
+
+    local ok, err = recurrence.validate(custom, form.values.start)
+    if not ok then
+      notify(err, vim.log.levels.WARN)
+      return
+    end
+    form.values.recurrence = custom
   elseif editor.kind == 'guests' then
     local emails = {}
     local seen = {}
@@ -399,6 +464,36 @@ local function editor_edit_selected()
   vim.cmd('startinsert!')
 end
 
+local function editor_edit_custom()
+  local line = vim.api.nvim_win_get_cursor(editor.win)[1]
+  editor.selected = line
+  local lines = vim.api.nvim_buf_get_lines(editor.buf, 0, -1, false)
+
+  if line == 2 then
+    local current = lines[2] and lines[2]:match('^単位:%s*(.*)$') or ''
+    local freq = UNIT_BY_PHRASE[current] or 'WEEKLY'
+    local next_freq = recurrence.next_freq(freq)
+    lines[2] = '単位: ' .. UNIT_PHRASES[next_freq]
+    set_editor_lines(lines)
+    vim.api.nvim_win_set_cursor(editor.win, { 2, 0 })
+    return
+  elseif line == 4 then
+    local current = lines[4] and lines[4]:match('^終了:%s*(.*)$') or ''
+    local end_type = 'never'
+    for candidate, label in pairs({ never = 'なし', ['until'] = '終了日', count = '回数' }) do
+      if label == current then
+        end_type = candidate
+      end
+    end
+    lines[4] = '終了: ' .. recurrence.end_label(recurrence.next_end_type(end_type))
+    set_editor_lines(lines)
+    vim.api.nvim_win_set_cursor(editor.win, { 4, 0 })
+    return
+  end
+
+  vim.cmd('startinsert!')
+end
+
 local function set_editor_keymaps(buf)
   local function map(mode, action, handler)
     local key = config.resolve('form', action)
@@ -407,7 +502,7 @@ local function set_editor_keymaps(buf)
     end
   end
 
-  if editor.kind ~= 'datetime' then
+  if editor.kind ~= 'datetime' and editor.kind ~= 'recurrence_custom' then
     map('n', 'edit', save_editor)
   end
 
@@ -424,6 +519,30 @@ local function set_editor_keymaps(buf)
     end)
     map('n', 'edit', editor_edit_selected)
     map('n', 'toggle', editor_toggle_all_day)
+  elseif editor.kind == 'recurrence' then
+    map('n', 'next_field', function()
+      local line = vim.api.nvim_win_get_cursor(editor.win)[1]
+      local next_line = math.min(#recurrence_options, line + 1)
+      vim.api.nvim_win_set_cursor(editor.win, { next_line, 0 })
+    end)
+    map('n', 'prev_field', function()
+      local line = vim.api.nvim_win_get_cursor(editor.win)[1]
+      local prev_line = math.max(1, line - 1)
+      vim.api.nvim_win_set_cursor(editor.win, { prev_line, 0 })
+    end)
+  elseif editor.kind == 'recurrence_custom' then
+    map('n', 'next_field', function()
+      local line = vim.api.nvim_win_get_cursor(editor.win)[1]
+      local next_line = math.min(6, line + 1)
+      vim.api.nvim_win_set_cursor(editor.win, { next_line, 0 })
+    end)
+    map('n', 'prev_field', function()
+      local line = vim.api.nvim_win_get_cursor(editor.win)[1]
+      local prev_line = math.max(1, line - 1)
+      vim.api.nvim_win_set_cursor(editor.win, { prev_line, 0 })
+    end)
+    map('n', 'edit', editor_edit_custom)
+    map('n', 'toggle', editor_edit_custom)
   end
 
   local save_key = config.resolve('form', 'save')
@@ -497,6 +616,69 @@ local function open_description_editor()
   open_editor('description', ' 説明 ', lines, FORM_HEIGHT, form.width)
 end
 
+local function custom_recurrence_lines(recurrence_config)
+  local start_parts = form.values.start:sub(1, 10)
+  local year, month, day = calendar.parse_date(start_parts)
+  if year == nil then
+    year, month, day = calendar.date_parts(calendar.today())
+    start_parts = calendar.today()
+  end
+  start_parts = tostring(start_parts)
+  year = assert(year)
+  month = assert(month)
+  day = assert(day)
+  local weekday = tonumber(os.date('%w', os.time({ year = year, month = month, day = day, hour = 12 }))) or 0
+  local default_byday = ({ 'SU', 'MO', 'TU', 'WE', 'TH', 'FR', 'SA' })[weekday + 1]
+  local freq = recurrence_config and recurrence_config.freq or 'WEEKLY'
+  local interval = recurrence_config and recurrence_config.interval or 1
+  local byday = recurrence_config and recurrence_config.byday or { default_byday }
+  local end_type = recurrence_config and recurrence_config.end_type or 'never'
+  local until_date = recurrence_config and recurrence_config.until_date or calendar.add_days(start_parts, 30)
+  local count = recurrence_config and recurrence_config.count or 13
+
+  return {
+    '間隔: ' .. interval,
+    '単位: ' .. (UNIT_PHRASES[freq] or UNIT_PHRASES.WEEKLY),
+    '曜日: ' .. recurrence.weekday_text(byday),
+    '終了: ' .. recurrence.end_label(end_type),
+    '終了日: ' .. until_date,
+    '回数: ' .. count,
+  }
+end
+
+open_custom_recurrence_editor = function(recurrence_config)
+  local lines = custom_recurrence_lines(recurrence_config)
+  local win = open_editor('recurrence_custom', ' カスタムの繰り返し ', lines, #lines, 40)
+  editor.selected = 1
+  vim.api.nvim_win_set_cursor(win, { 1, 0 })
+end
+
+local function open_recurrence_editor()
+  recurrence_options = recurrence.presets(form.values.start)
+  if #recurrence_options == 0 then
+    notify('Set a valid start date/time first', vim.log.levels.WARN)
+    return
+  end
+  local lines = {}
+  local selected = 1
+  local current_key = 'none'
+  if form.values.recurrence ~= nil then
+    current_key = recurrence.preset_key(form.values.recurrence, form.values.start)
+  end
+
+  for index, option in ipairs(recurrence_options) do
+    local is_current = option.key == current_key
+    lines[index] = (is_current and '● ' or '  ') .. option.label
+    if is_current then
+      selected = index
+    end
+  end
+
+  local win = open_editor('recurrence', ' 繰り返し ', lines, #lines, 40)
+  editor.selected = selected
+  vim.api.nvim_win_set_cursor(win, { selected, 0 })
+end
+
 local function open_datetime_editor()
   open_editor('datetime', ' 日時 ', {
     '開始: ' .. form.values.start,
@@ -550,6 +732,8 @@ local function open_selected()
     open_summary_editor()
   elseif row.kind == 'datetime' then
     open_datetime_editor()
+  elseif row.kind == 'recurrence' then
+    open_recurrence_editor()
   elseif row.kind == 'guests' then
     open_guests_editor()
   elseif row.kind == 'toggle' then
@@ -591,6 +775,11 @@ local function validate(values)
     return nil, 'Description must be 8192 characters or fewer', 'description'
   end
 
+  local recurrence_ok, recurrence_err = recurrence.validate(values.recurrence, values.start)
+  if not recurrence_ok then
+    return nil, recurrence_err, 'recurrence'
+  end
+
   if values.all_day then
     if calendar.parse_date(values.start) == nil then
       return nil, 'Start date must be in YYYY-MM-DD format', 'start'
@@ -611,6 +800,7 @@ local function validate(values)
       description = values.description,
       meet = values.meet,
       attendees = values.attendees,
+      recurrence = recurrence.to_api(values.recurrence, values.all_day),
     }
   end
 
@@ -641,6 +831,7 @@ local function validate(values)
     description = values.description,
     meet = values.meet,
     attendees = values.attendees,
+    recurrence = recurrence.to_api(values.recurrence, values.all_day),
   }
 end
 
@@ -669,7 +860,7 @@ local function in_display_range(created)
   return date >= grid.weeks[1][1].date and date <= grid.weeks[6][7].date
 end
 
-local CHANGE_KEYS = { 'summary', 'start', 'end', 'all_day', 'location', 'description', 'attendees' }
+local CHANGE_KEYS = { 'summary', 'start', 'end', 'all_day', 'location', 'description', 'attendees', 'recurrence' }
 
 local function emails_key(emails)
   return table.concat(emails or {}, '\n')
@@ -680,6 +871,8 @@ local function changed_fields()
   for _, key in ipairs(CHANGE_KEYS) do
     if key == 'attendees' then
       changed[key] = emails_key(form.values.attendees) ~= emails_key(form.initial_values.attendees)
+    elseif key == 'recurrence' then
+      changed[key] = recurrence.key(form.values.recurrence) ~= recurrence.key(form.initial_values.recurrence)
     else
       changed[key] = form.values[key] ~= form.initial_values[key]
     end
@@ -719,6 +912,10 @@ local function update_changes(fields, changed)
     for _, email in ipairs(fields.attendees or {}) do
       table.insert(changes.attendees, existing[email] or { email = email })
     end
+  end
+
+  if changed.recurrence then
+    changes.recurrence = fields.recurrence
   end
 
   local function time_value(value)
@@ -996,6 +1193,7 @@ local function edit_values(item)
     meet = item.hangout_link or '',
     attendees = emails,
     attendee_details = item.attendees,
+    recurrence = recurrence.parse(item.recurrence),
   }
 end
 
@@ -1032,6 +1230,7 @@ function M.open_create(opts)
     description = '',
     meet = false,
     attendees = {},
+    recurrence = nil,
   }
 
   render()

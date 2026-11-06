@@ -5,7 +5,7 @@
 
 ## 何を作るか
 
-予定の詳細から更新フォームを開き、現在の値を初期値としてタイトル・日時・場所・説明・終日を変更する。変更は `gws calendar events update`（PUT）で送る。`events patch` は終日⇔時刻付きの切り替えで `Invalid start time.` になるため使わない（[FEASIBILITY.md](../FEASIBILITY.md) の PoC `gws-calendar-crud`）。更新前に `events get` で現在の予定を取得し、編集可能なフィールドを保持したまま変更分を上書きする。既存の Meet URL は保持する。
+予定の詳細から更新フォームを開き、現在の値を初期値としてタイトル・日時・繰り返し・場所・説明・終日を変更する。変更は `gws calendar events update`（PUT）で送る。`events patch` は終日⇔時刻付きの切り替えで `Invalid start time.` になるため使わない（[FEASIBILITY.md](../FEASIBILITY.md) の PoC `gws-calendar-crud`）。更新前に `events get` で現在の予定を取得し、編集可能なフィールドを保持したまま変更分を上書きする。既存の Meet URL は保持する。繰り返し予定の occurrence を選んだ場合は `recurringEventId` から親予定を取得し、親の繰り返し設定を編集する。
 
 ## 入出力と振る舞い
 
@@ -15,7 +15,7 @@
 | --- | --- |
 | 詳細で `e` | 現在の値が入力された更新フォームを開く |
 | `<Tab>` / `<S-Tab>` | メインウィンドウの次の行 / 前の行へ移動する |
-| `<CR>` | タイトル・日時・場所・説明・ゲストのエディタを開く。Meet 行は読み取り専用 |
+| `<CR>` | タイトル・日時・繰り返し・場所・説明・ゲストのエディタを開く。Meet 行は読み取り専用 |
 | `<Space>` | 日時行では終日をトグルする（Meet は変更不可） |
 | `:w` | 入力を検証し、変更があれば `gws` で更新する |
 | `<Esc>` / `q` | フォームを閉じ、変更を破棄する（`<Esc>` は insert モードでは insert を抜けるだけで、normal モードでキャンセルする。`q` は normal モードのみ） |
@@ -32,6 +32,7 @@
 | 開始 | 予定の `start`（`dateTime` はローカル時刻、`date` は日付） |
 | 終了 | 予定の `end` |
 | 終日 | `start.date` があれば on、`start.dateTime` があれば off |
+| 繰り返し | 予定の `recurrence` の RRULE を解析した設定。なければ「繰り返さない」 |
 | 場所 | 予定の `location` |
 | 説明 | 予定の `description` |
 | Meet | 読み取り専用（既存の Meet URL を表示。変更・新規作成はしない） |
@@ -43,7 +44,7 @@
 
 1. フォームの値を検証する（[event-create.md](event-create.md) と同じ規則）
 2. 現在の予定を `gws calendar events get --params '{"calendarId":"<event.calendar_id>","eventId":"<id>"}'` で取得する
-3. 取得した予定の編集可能フィールド（`summary` / `description` / `location` / `start` / `end` / `attendees` / `reminders` / `colorId` / `visibility` / `transparency` / `conferenceData`）を保持し、フォームの変更分で上書きする
+3. 取得した予定の編集可能フィールド（`summary` / `description` / `location` / `start` / `end` / `attendees` / `reminders` / `colorId` / `visibility` / `transparency` / `conferenceData` / `recurrence`）を保持し、フォームの変更分で上書きする
 4. ゲストを変更した場合は `attendees` を既存の参加情報（`responseStatus` など）を保ったまま差し替える
 5. `gws calendar events update --params '{"calendarId":"primary","eventId":"<id>","conferenceDataVersion":1}' --json <body>` を実行する（`conferenceData` がある場合のみ `conferenceDataVersion=1`）
 6. 成功時はフォームと詳細を閉じ、月表示を再取得し、`Event updated` と通知する
@@ -65,13 +66,14 @@
 | 更新フォームの描画・入力・検証 | UI | `lua/google-calendar/ui/form.lua` |
 | 予定の取得と編集可能フィールドのマージ | ドメイン | `lua/google-calendar/event.lua` |
 | `events get` / `events update` の実行（アダプタの `get_event` / `update_event` を呼ぶ） | アダプタ | `lua/google-calendar/gws.lua` |
+| RRULE の解析・組み立て・検証 | ドメイン | `lua/google-calendar/recurrence.lua` |
 | 404・API エラーの通知（アダプタの通知を使う） | アダプタ | `lua/google-calendar/notify.lua` |
 | 更新後の月表示の再取得 | UI | `lua/google-calendar/ui/month_view.lua`（月表示が `on_changed` コールバックをアジェンダ・詳細経由でフォームへ渡し、フォームが更新後に呼ぶ） |
 
 ## エッジケースの決定
 
 - **空・最小データ**: タイトルを空にできない。場所・説明は空にできる（空にした場合は `location` / `description` を空文字で送る）
-- **上限・境界値**: タイトル 1024 文字、説明 8192 文字。終日⇔時刻付きの切り替えは `events update` で行う。終日予定の終了日は開始日 + 1 日以上。月をまたぐ変更も扱う
+- **上限・境界値**: タイトル 1024 文字、説明 8192 文字。繰り返しの間隔は 1〜999、カスタムの曜日は 1 つ以上、終了日は開始日より後、回数は 1〜999。終日⇔時刻付きの切り替えは `events update` で行う。終日予定の終了日は開始日 + 1 日以上。月をまたぐ変更も扱う
 - **エラー時に利用者へ見えるもの**: 検証エラーはフォーム内に表示する。gws のエラーはフォームを閉じずにフッターへ表示し、入力値を保持する。404 の場合は`The event has already been deleted.`と通知し、フォームと詳細を閉じて月表示を再取得する
 - **並行操作・二重実行**: 保存中は `:w` を無効化し、`Saving...` を表示する。他者が同時に更新した場合は、`events get` で取得した最新の値をベースにマージする（最後の書き込みが勝つ）
 - **再表示時の整合**: 更新後に表示中の月を再取得し、選択日と選択中の予定 ID を維持する。予定が表示範囲外へ移動した場合は、月表示から消える旨を通知に含める
@@ -87,3 +89,5 @@
 | （US-007）他者によって削除済みの予定を更新しようとすると、404 のエラーが通知され、月表示が再取得される | 結合 |
 | （US-007）更新に失敗した場合、フォームは閉じず、入力値が保持されたままエラーが表示される | 結合 |
 | （US-011）終日予定を時刻付き予定に変更して `:w` を押すと、時刻付き予定として更新される | 結合 |
+| （US-007）繰り返し予定の occurrence から `e` を押すと、親予定の繰り返し設定が表示される | 結合 |
+| （US-007）繰り返しを「繰り返さない」に変更して `:w` を押すと、RRULE が解除される | 結合 |

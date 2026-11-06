@@ -1,4 +1,4 @@
----@diagnostic disable: undefined-field
+---@diagnostic disable: undefined-field, duplicate-set-field
 local calendar = require('google-calendar.calendar')
 local config = require('google-calendar.config')
 local detail = require('google-calendar.ui.detail')
@@ -144,6 +144,41 @@ describe('ui.detail', function()
     detail.openers = original_openers
     vim.o.columns = original_columns
     vim.o.lines = original_lines
+  end)
+
+  it('繰り返し予定の occurrence を編集すると親予定を取得して開く', function()
+    local item = full_event()
+    item.recurring_event_id = 'evt-master'
+    local master = full_event()
+    master.id = 'evt-master'
+    master.recurrence = { 'RRULE:FREQ=WEEKLY;BYDAY=WE' }
+
+    local actual_edit = original_openers.edit
+    local original_gws = package.loaded['google-calendar.gws']
+    local original_form_open_edit = require('google-calendar.ui.form').open_edit
+    local opened
+    local requested_id
+
+    package.loaded['google-calendar.gws'] = {
+      get_event = function(event_id, _calendar_id, callback)
+        requested_id = event_id
+        callback(master, nil)
+      end,
+    }
+    require('google-calendar.ui.form').open_edit = function(value)
+      opened = value
+    end
+    detail.openers.edit = actual_edit
+
+    detail.openers.edit(item, {})
+
+    assert.are.equal('evt-master', requested_id)
+    assert.are.equal('evt-master', opened.id)
+    assert.are.same({ 'RRULE:FREQ=WEEKLY;BYDAY=WE' }, opened.recurrence)
+
+    detail.openers.edit = original_openers.edit
+    package.loaded['google-calendar.gws'] = original_gws
+    require('google-calendar.ui.form').open_edit = original_form_open_edit
   end)
 
   it('予定の詳細を仕様の項目順で表示する', function()

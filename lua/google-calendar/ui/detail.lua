@@ -1,6 +1,7 @@
 local calendar = require('google-calendar.calendar')
 local config = require('google-calendar.config')
 local event = require('google-calendar.event')
+local notify_adapter = require('google-calendar.notify')
 local state = require('google-calendar.state')
 local window = require('google-calendar.ui.window')
 
@@ -9,6 +10,17 @@ local M = {}
 -- 更新フォーム・削除確認・Meet URL コピーの実処理は別機能が持つため、キー処理からは opener 経由で呼ぶ
 M.openers = {
   edit = function(item, opts)
+    -- 繰り返し予定の 1 回分を選んだ場合は、繰り返し設定を持つ親予定を編集する
+    if item.recurring_event_id ~= nil and (item.recurrence == nil or #item.recurrence == 0) then
+      require('google-calendar.gws').get_event(item.recurring_event_id, item.calendar_id, function(master, err)
+        if err ~= nil then
+          notify_adapter.error(err)
+          return
+        end
+        require('google-calendar.ui.form').open_edit(master, opts)
+      end)
+      return
+    end
     require('google-calendar.ui.form').open_edit(item, opts)
   end,
   delete = function(item, opts)

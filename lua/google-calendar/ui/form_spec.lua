@@ -448,6 +448,95 @@ describe('ui.form', function()
     assert.are.same({ 'RRULE:FREQ=WEEKLY;BYDAY=MO,FR' }, created_call.recurrence)
   end)
 
+  it('カスタムの繰り返しで月ごとの日付を選択できる', function()
+    form.open_create({
+      on_created = function(item)
+        created = item
+      end,
+    })
+
+    select_line(5)
+    feed('<CR>')
+    vim.api.nvim_win_set_cursor(state.windows.form_editor, { 7, 0 })
+    feed_save()
+    vim.api.nvim_win_set_cursor(state.windows.form_editor, { 2, 0 })
+    feed('<CR>')
+    vim.api.nvim_win_set_cursor(state.windows.form_editor, { 3, 0 })
+    feed_save()
+    assert.are.same({
+      '間隔: 1',
+      '単位: 月ごと',
+      '日付: 28',
+      '終了: なし',
+    }, editor_lines())
+
+    vim.api.nvim_win_set_cursor(state.windows.form_editor, { 3, 0 })
+    feed('<CR>')
+    assert.are.equal('● 28日', editor_lines()[28])
+    vim.api.nvim_win_set_cursor(state.windows.form_editor, { 15, 0 })
+    feed_save()
+    assert.are.same({
+      '間隔: 1',
+      '単位: 月ごと',
+      '日付: 15',
+      '終了: なし',
+    }, editor_lines())
+
+    feed_save()
+    assert.are.equal('↻ 毎月 15日', form_lines()[5])
+
+    edit_summary('月次日付')
+    save()
+    wait_closed()
+    assert.are.same({ 'RRULE:FREQ=MONTHLY;BYMONTHDAY=15' }, created_call.recurrence)
+  end)
+
+  it('カスタムの繰り返しで年ごとの日付を選択できる', function()
+    form.open_create({
+      on_created = function(item)
+        created = item
+      end,
+    })
+
+    select_line(5)
+    feed('<CR>')
+    vim.api.nvim_win_set_cursor(state.windows.form_editor, { 7, 0 })
+    feed_save()
+    vim.api.nvim_win_set_cursor(state.windows.form_editor, { 2, 0 })
+    feed('<CR>')
+    vim.api.nvim_win_set_cursor(state.windows.form_editor, { 4, 0 })
+    feed_save()
+    assert.are.same({
+      '間隔: 1',
+      '単位: 年ごと',
+      '日付: 10月28日',
+      '終了: なし',
+    }, editor_lines())
+
+    vim.api.nvim_win_set_cursor(state.windows.form_editor, { 3, 0 })
+    feed('<CR>')
+    assert.are.equal('● 10月', editor_lines()[10])
+    vim.api.nvim_win_set_cursor(state.windows.form_editor, { 12, 0 })
+    feed_save()
+    assert.are.equal('● 1日', editor_lines()[1])
+    vim.api.nvim_win_set_cursor(state.windows.form_editor, { 24, 0 })
+    feed_save()
+    assert.are.same({
+      '間隔: 1',
+      '単位: 年ごと',
+      '日付: 12月24日',
+      '終了: なし',
+    }, editor_lines())
+
+    feed_save()
+    assert.are.equal('↻ 毎年 12月24日', form_lines()[5])
+
+    edit_summary('年次日付')
+    save()
+    wait_closed()
+    assert.are.same({ 'RRULE:FREQ=YEARLY;BYMONTH=12;BYMONTHDAY=24' }, created_call.recurrence)
+  end)
+
   it('カスタムの繰り返しで終了条件に応じて項目を出し分ける', function()
     form.open_create()
     select_line(5)

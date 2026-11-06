@@ -121,8 +121,12 @@ local function base_label(config, parts)
     if config.bymonthday ~= nil then
       return prefix .. ' ' .. config.bymonthday .. '日'
     end
-  elseif config.freq == 'YEARLY' and parts ~= nil then
-    return prefix .. ' ' .. parts.month .. '月' .. parts.day .. '日'
+  elseif config.freq == 'YEARLY' then
+    local month = config.bymonth or (parts and parts.month)
+    local day = config.bymonthday or (parts and parts.day)
+    if month ~= nil and day ~= nil then
+      return prefix .. ' ' .. month .. '月' .. day .. '日'
+    end
   end
 
   return prefix
@@ -137,7 +141,8 @@ local function normalize_config(config)
     freq = config.freq,
     interval = tonumber(config.interval) or 1,
     byday = config.byday and vim.deepcopy(config.byday) or nil,
-    bymonthday = config.bymonthday,
+    bymonth = tonumber(config.bymonth),
+    bymonthday = tonumber(config.bymonthday),
     end_type = config.end_type or 'never',
     until_date = config.until_date,
     count = tonumber(config.count),
@@ -151,7 +156,10 @@ local function normalize_config(config)
   if normalized.freq ~= 'WEEKLY' and normalized.freq ~= 'MONTHLY' then
     normalized.byday = nil
   end
-  if normalized.freq ~= 'MONTHLY' then
+  if normalized.freq ~= 'YEARLY' then
+    normalized.bymonth = nil
+  end
+  if normalized.freq ~= 'MONTHLY' and normalized.freq ~= 'YEARLY' then
     normalized.bymonthday = nil
   end
   return normalized
@@ -209,7 +217,10 @@ function M.key(config, all_day)
       table.insert(parts, 'BYDAY=' .. table.concat(normalized.byday, ','))
     end
   end
-  if normalized.bymonthday ~= nil then
+  if normalized.freq == 'YEARLY' and normalized.bymonth ~= nil and normalized.bymonthday ~= nil then
+    table.insert(parts, 'BYMONTH=' .. normalized.bymonth)
+    table.insert(parts, 'BYMONTHDAY=' .. normalized.bymonthday)
+  elseif normalized.bymonthday ~= nil then
     table.insert(parts, 'BYMONTHDAY=' .. normalized.bymonthday)
   end
   if normalized.end_type == 'until' and normalized.until_date ~= nil then
@@ -260,6 +271,7 @@ function M.parse(recurrence_array)
     freq = values.FREQ,
     interval = tonumber(values.INTERVAL) or 1,
     byday = values.BYDAY and vim.split(values.BYDAY, ',', { plain = true }) or nil,
+    bymonth = values.BYMONTH and tonumber(values.BYMONTH) or nil,
     bymonthday = values.BYMONTHDAY and tonumber(values.BYMONTHDAY) or nil,
     end_type = values.COUNT and 'count' or (values.UNTIL and 'until' or 'never'),
     until_date = values.UNTIL and values.UNTIL:sub(1, 8):gsub('(%d%d%d%d)(%d%d)(%d%d)', '%1-%2-%3') or nil,
@@ -366,6 +378,22 @@ function M.validate(config, start)
       if nth == nil or WEEKDAY_BY_CODE[code] == nil then
         return false, 'Invalid monthly recurrence'
       end
+    end
+  end
+  if config.freq == 'MONTHLY' and config.bymonthday ~= nil then
+    local day = tonumber(config.bymonthday)
+    if day == nil or day < 1 or day > 31 then
+      return false, 'Monthly recurrence day must be between 1 and 31'
+    end
+  end
+  if config.freq == 'YEARLY' and (config.bymonth ~= nil or config.bymonthday ~= nil) then
+    local month = tonumber(config.bymonth)
+    local day = tonumber(config.bymonthday)
+    if month == nil or month < 1 or month > 12 then
+      return false, 'Yearly recurrence month must be between 1 and 12'
+    end
+    if day == nil or day < 1 or day > calendar.days_in_month(2000, month) then
+      return false, 'Yearly recurrence day is invalid for the selected month'
     end
   end
   if config.end_type == 'until' then

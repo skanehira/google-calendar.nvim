@@ -737,6 +737,7 @@ local function fetch(initial, selected_event_id)
   local request_id = request_seq
 
   local gws = require('google-calendar.gws')
+  require('google-calendar.calendar_store').ensure_loaded(function() end)
   local calendar_ids = cfg.calendars
   if type(calendar_ids) ~= 'table' or #calendar_ids == 0 then
     calendar_ids = { 'primary' }

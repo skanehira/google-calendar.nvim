@@ -165,6 +165,24 @@ describe('gws adapter', function()
     vim.fn.delete(tmp_root, 'rf')
   end)
 
+  it('list_calendars が calendarList list を実行してカレンダー一覧を返す', function()
+    local calendars, err = await(function(callback)
+      gws.list_calendars(callback)
+    end)
+
+    assert.is_nil(err)
+    assert.are.equal(1, #calendars)
+    assert.are.equal('primary', calendars[1].id)
+
+    local calls = read_lines(call_log)
+    assert.are.equal(1, #calls)
+    local call = vim.json.decode(calls[1])
+    assert.are.same({ 'calendar', 'calendarList', 'list' }, { call.argv[1], call.argv[2], call.argv[3] })
+    assert.are.equal('--params', call.argv[4])
+    assert.are.same({ maxResults = 250 }, vim.json.decode(call.argv[5]))
+    assert.are.same({ '--format', 'json' }, { call.argv[6], call.argv[7] })
+  end)
+
   it(
     'gws calendar events list の JSON から予定モデルを組み立て、nextPageToken がある限りページを取得して items を結合する',
     function()

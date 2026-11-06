@@ -1,5 +1,6 @@
 ---@diagnostic disable: undefined-field, duplicate-set-field
 local calendar = require('google-calendar.calendar')
+local calendar_store = require('google-calendar.calendar_store')
 local config = require('google-calendar.config')
 local detail = require('google-calendar.ui.detail')
 local event = require('google-calendar.event')
@@ -94,6 +95,13 @@ describe('ui.detail', function()
   before_each(function()
     state.reset()
     config.setup({})
+    calendar_store.set({
+      {
+        id = 'me@example.com',
+        summary = 'My Calendar',
+        primary = true,
+      },
+    })
     edited = nil
     deleted = nil
     copied = nil
@@ -181,6 +189,20 @@ describe('ui.detail', function()
     require('google-calendar.ui.form').open_edit = original_form_open_edit
   end)
 
+  it('カレンダーをメールアドレスと名前に整形して表示する', function()
+    calendar_store.set({
+      {
+        id = 'me@example.com',
+        summary = 'My Calendar',
+        primary = true,
+      },
+    })
+
+    detail.open(full_event())
+
+    assert.are.equal('▣ me@example.com (My Calendar)', buffer_lines()[#buffer_lines()])
+  end)
+
   it('予定の詳細を仕様の項目順で表示する', function()
     local item = full_event()
     local parent = vim.api.nvim_get_current_win()
@@ -204,7 +226,7 @@ describe('ui.detail', function()
       '☰ 議題1',
       '  議題2',
       '',
-      '▣ primary',
+      '▣ me@example.com (My Calendar)',
     }, buffer_lines())
   end)
 
@@ -265,7 +287,7 @@ describe('ui.detail', function()
       '☰ 議題1',
       '  議題2',
       '',
-      '▣ primary',
+      '▣ me@exampl…',
     }, buffer_lines())
   end)
 
@@ -281,7 +303,7 @@ describe('ui.detail', function()
       '  ' .. japanese_when(item),
       '↗ https://meet.google.com/abc-defg-hij',
       '',
-      '▣ primary',
+      '▣ me@example.com (My Calendar)',
     }, buffer_lines())
   end)
 
@@ -326,7 +348,7 @@ describe('ui.detail', function()
         '',
         '☰ 配信等がなくレンタルビデオ店も縮小し...',
         '',
-        '▣ onizawa.yuji@gb-sense.com',
+        '▣ me@example.com (My Calendar)',
       }, buffer_lines())
     end
   )

@@ -46,7 +46,7 @@
   - `☷ N人のゲスト`、`参加: N人`、`返答待ち: N人`、`仮: N人`、`辞退: N人`
   - ゲストごとに `✓`（参加）/ `○`（返答待ち）/ `?`（仮）/ `✕`（辞退）とメールアドレス。`displayName` があれば次の行に表示し、主催者には `主催者` を付ける
   - `☰ 説明`（幅に合わせて折り返し、全行を省略せずに表示する）
-  - `▣ 主催者またはカレンダー`
+  - `▣ カレンダーのメールアドレス (名前)`（`calendarList.list` の `id` と `summary` / `summaryOverride`。`primary` は `primary == true` のエントリに対応させ、取得できない場合はカレンダー ID をそのまま表示する）
 - 値がない項目はセクションごと省略する（場所が空なら場所セクションを出さない）
 - アイコンは `GoogleCalendarDetailIcon`、タイトルは `GoogleCalendarDetailTitle`、補助情報は `GoogleCalendarDetailMuted`、参加状態は `GoogleCalendarDetailAccepted` / `GoogleCalendarDetailPending` / `GoogleCalendarDetailDeclined`、Meet URL は `GoogleCalendarDetailMeet` でハイライトする
 - Meet URL は `hangoutLink` を優先し、なければ `conferenceData.entryPoints` の `entryPointType == 'video'` の `uri` を使う
@@ -55,7 +55,7 @@
 **データ**:
 
 - アジェンダの予定は `state.events_by_date[selected_date]` から取得する。月表示の取得結果をそのまま使う（追加の API 呼び出しはしない）
-- 詳細は選択した予定モデルをそのまま表示する
+- 詳細は選択した予定モデルをそのまま表示する。カレンダー表示のために `calendarList.list` を 1 回取得してキャッシュし、失敗時はカレンダー ID にフォールバックする
 
 キーマップは `config.keymaps.agenda` / `config.keymaps.detail` から解決し、`setup()` で上書きできる。アジェンダ・詳細の `q` / `<Esc>` は `agenda.esc_close` / `detail.esc_close` で別々に変更・無効化できる。
 
@@ -70,6 +70,8 @@
 | 日別アジェンダの描画・選択 | UI | `lua/google-calendar/ui/agenda.lua` |
 | 予定詳細の描画・操作の導線（`e` / `d` / `y` / `?` のキーマップを含む） | UI | `lua/google-calendar/ui/detail.lua` |
 | 予定の表示用整形（時刻・終日・Meet URL・説明の切り詰め） | ドメイン | `lua/google-calendar/event.lua` |
+| カレンダー一覧の取得とキャッシュ・表示名の整形 | ドメイン | `lua/google-calendar/calendar_store.lua` |
+| `calendarList.list` の実行 | アダプタ | `lua/google-calendar/gws.lua` |
 | 選択日の予定一覧の取得 | ドメイン | `lua/google-calendar/state.lua` |
 | float の生成・破棄・フォーカス復帰 | UI | `lua/google-calendar/ui/window.lua` |
 
@@ -87,5 +89,6 @@
 | --- | --- |
 | （US-004）日を選んで `<CR>` を押すと、その日の予定を開始時刻順に並べた日別アジェンダが開く | 結合 |
 | （US-004）日別アジェンダで予定を選んで `<CR>` を押すと、タイトル・日時・場所・ゲスト・説明・Meet URL を含む詳細が開く | 結合 |
+| （US-004）カレンダー行に `calendarList.list` のメールアドレスと表示名が出る（取得できない場合は ID にフォールバックする） | 結合 |
 | （US-004）ゲストが 5 人を超える場合は折り畳んで表示し、`g` で展開・折り畳みを切り替えられ、カーソル位置が保持される | 結合 |
 | （US-004）詳細で `q` を押すと日別アジェンダに戻り、さらに `q` を押すと月表示に戻る | 結合 |

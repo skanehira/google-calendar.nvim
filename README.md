@@ -274,7 +274,7 @@ Override any group with `setup({ highlights = { ... } })`. Set a group to `false
 - Month data is cached in memory. The cache is cleared when the month window closes, when you press `r` or `R`, and after creating, updating, or deleting an event.
 - While loading, the month header shows `読み込み中...` but navigation, refresh, opening the agenda/form/help, and closing remain available. Only the latest fetch result is rendered.
 - Agenda rows use a colored `●` or `○` dot, the start time, and the title. The dot uses the event's calendar color. Events with `status == 'tentative'` or `transparency == 'transparent'` use the hollow `○` dot. All-day events use the all-day label. Press `<C-o>` to open the selected event in Google Calendar; if the event has no URL, the plugin reports it instead.
-- The detail view uses a Google Calendar-style card. Guests are collapsed by default when there are more than five attendees; press `g` to expand or collapse them. The cursor stays in place when toggling.
+- The detail view uses a Google Calendar-style card. The calendar line shows the calendar's email address and display name (for example `me@example.com (My Calendar)`) using `calendarList.list`, instead of the raw `primary` alias. Guests are collapsed by default when there are more than five attendees; press `g` to expand or collapse them. The cursor stays in place when toggling.
 - Event descriptions wrap to the window width and are never truncated.
 - `y` copies the Meet URL to the `+` register. If the event has no Meet URL, the plugin reports that instead.
 

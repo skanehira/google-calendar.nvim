@@ -180,6 +180,49 @@ function M.list_events(opts, callback)
   fetch_page(1)
 end
 
+function M.list_calendars(callback)
+  local params = { maxResults = 250 }
+  local collected = {}
+
+  local function fetch_page(pages)
+    execute({ 'calendar', 'calendarList', 'list', '--params', vim.json.encode(params) }, function(body, err, out)
+      if err ~= nil then
+        callback(nil, err)
+        return
+      end
+
+      local items = body.items
+      if items == nil or items == vim.NIL then
+        items = {}
+      end
+      if type(items) ~= 'table' then
+        callback(nil, {
+          kind = 'invalid_output',
+          output = first_chars(vim.json.encode(body), 200),
+          stderr = (out and out.stderr) or '',
+        })
+        return
+      end
+      vim.list_extend(collected, items)
+
+      local next_page_token = body.nextPageToken
+      if next_page_token == nil or next_page_token == vim.NIL then
+        callback(collected, nil)
+        return
+      end
+      if pages >= MAX_PAGES then
+        callback(collected, nil)
+        return
+      end
+
+      params.pageToken = next_page_token
+      fetch_page(pages + 1)
+    end)
+  end
+
+  fetch_page(1)
+end
+
 local function has_recurrence(fields)
   return type(fields.recurrence) == 'table' and #fields.recurrence > 0
 end

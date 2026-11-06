@@ -357,6 +357,9 @@ Day agenda ~
 Event detail ~
   - The detail view uses a Google Calendar-style card with the title, date and
     time, location, guests, description, Meet URL, and calendar.
+  - The calendar line shows the calendar's email address and display name
+    (for example `me@example.com (My Calendar)`) using `calendarList.list`,
+    instead of the raw `primary` alias.
   - Guests are collapsed by default when there are more than five attendees.
     Press `g` to expand or collapse them. The cursor stays in place when
     toggling; collapsing from a guest row moves the cursor to the guest header.

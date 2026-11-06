@@ -1,4 +1,5 @@
 local calendar = require('google-calendar.calendar')
+local calendar_store = require('google-calendar.calendar_store')
 local config = require('google-calendar.config')
 local event = require('google-calendar.event')
 local notify_adapter = require('google-calendar.notify')
@@ -255,11 +256,9 @@ local function build_lines(item, width)
     end
   end
 
-  local calendar_label
-  if type(item.organizer) == 'table' and item.organizer.email ~= nil then
+  local calendar_label = calendar_store.label(item.calendar_id)
+  if calendar_label == nil and type(item.organizer) == 'table' and item.organizer.email ~= nil then
     calendar_label = item.organizer.email
-  elseif item.calendar_id ~= nil and item.calendar_id ~= '' then
-    calendar_label = item.calendar_id
   end
   if calendar_label ~= nil then
     add('')
@@ -419,6 +418,23 @@ function M.open(item, opts)
   render(win, item)
   set_keymaps(vim.api.nvim_win_get_buf(win))
   vim.api.nvim_set_current_win(win)
+
+  calendar_store.ensure_loaded(function(ok)
+    if not ok then
+      return
+    end
+    vim.schedule(function()
+      if current_item ~= item then
+        return
+      end
+      local detail_win = state.windows.detail
+      if detail_win ~= win or not vim.api.nvim_win_is_valid(detail_win) then
+        return
+      end
+      local cursor = vim.api.nvim_win_get_cursor(detail_win)
+      render(detail_win, current_item, cursor[1])
+    end)
+  end)
 
   return win
 end

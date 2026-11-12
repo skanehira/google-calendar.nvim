@@ -247,6 +247,19 @@ describe('ui.confirm', function()
     }, confirm_lines())
   end)
 
+  it('タイトルがない予定は予定ありと表示する', function()
+    local item = full_event()
+    item.summary = nil
+
+    local win = confirm.open(item)
+
+    assert.is_true(vim.api.nvim_win_is_valid(win))
+    assert.are.same({
+      '予定「予定あり」を削除しますか? (y/n)',
+      'y:削除  n:キャンセル',
+    }, confirm_lines())
+  end)
+
   it('確認は長いタイトルを … で切り詰め、メッセージを 1 行に収める', function()
     local item = full_event()
     item.summary = string.rep('あ', 50)

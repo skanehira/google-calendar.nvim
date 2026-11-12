@@ -244,6 +244,19 @@ describe('ui.detail', function()
     assert.are.equal('  11月6日 (金曜日)・23:00〜24:00', buffer_lines()[2])
   end)
 
+  it('タイトルがない予定は予定ありと表示する', function()
+    local item = {
+      id = 'evt-no-title',
+      start = { dateTime = '2026-11-13T15:00:00+09:00' },
+      ['end'] = { dateTime = '2026-11-13T17:00:00+09:00' },
+    }
+
+    detail.open(item)
+
+    assert.are.equal('▣ 予定あり', buffer_lines()[1])
+    assert.are.equal('  11月13日 (金曜日)・15:00〜17:00', buffer_lines()[2])
+  end)
+
   it('値がない項目は行ごと省略し、終日予定は日付をそのまま表示する', function()
     local item = {
       id = 'evt-2',

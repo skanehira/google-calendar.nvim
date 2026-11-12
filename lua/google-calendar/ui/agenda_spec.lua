@@ -195,6 +195,16 @@ describe('ui.agenda', function()
     }, groups)
   end)
 
+  it('タイトルがない予定は予定ありと表示する', function()
+    set_events({
+      timed_event('e1', nil, '2026-10-28T09:00:00+09:00', '2026-10-28T10:00:00+09:00'),
+    })
+
+    agenda.open()
+
+    assert.are.same({ '● 09:00 予定あり' }, buffer_lines())
+  end)
+
   it('予定が 0 件の日は予定なしを表示し、<CR> では詳細を開かない', function()
     state.events_by_date = {}
     state.selected_date = '2026-10-28'

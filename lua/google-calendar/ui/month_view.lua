@@ -55,7 +55,7 @@ local function bar_chunks(item, cell_w)
   end
 
   local available = math.max(0, cell_w - 1 - vim.fn.strdisplaywidth(prefix))
-  local title = event.truncate(event.sanitize(item.summary), available)
+  local title = event.truncate(event.display_title(item), available)
   local text = ' ' .. prefix .. title
   local used = vim.fn.strdisplaywidth(text)
   local group = calendar_color.bar_group(item.calendar_id)
@@ -71,7 +71,7 @@ local function dot_chunks(item, cell_w)
   local time = event.start_time(item) or ''
   local prefix = ' ' .. dot .. ' ' .. time .. ' '
   local available = math.max(0, cell_w - vim.fn.strdisplaywidth(prefix))
-  local title = event.truncate(event.sanitize(item.summary), available)
+  local title = event.truncate(event.display_title(item), available)
   local used = vim.fn.strdisplaywidth(prefix) + vim.fn.strdisplaywidth(title)
 
   return {
@@ -129,7 +129,7 @@ local function bar_run_chunks(item, total_width, frame_offsets)
   end
 
   local available = math.max(0, total_width - 1 - vim.fn.strdisplaywidth(prefix))
-  local title = event.truncate(event.sanitize(item.summary), available)
+  local title = event.truncate(event.display_title(item), available)
   local text = ' ' .. prefix .. title
   local used = vim.fn.strdisplaywidth(text)
   local padding = string.rep(' ', math.max(0, total_width - used))

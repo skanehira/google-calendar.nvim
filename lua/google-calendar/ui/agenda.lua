@@ -66,7 +66,7 @@ local function build_lines(events, width)
 
     local prefix = dot .. ' ' .. time .. ' '
     local available = math.max(0, width - vim.fn.strdisplaywidth(prefix))
-    local title = event.truncate(event.sanitize(item.summary), available)
+    local title = event.truncate(event.display_title(item), available)
 
     starts[index] = #lines + 1
     table.insert(lines, prefix .. title)

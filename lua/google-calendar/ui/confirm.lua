@@ -19,7 +19,7 @@ local function message(item, width)
   local prefix = '予定「'
   local suffix = '」を削除しますか? (y/n)'
   local available = math.max(0, width - vim.fn.strdisplaywidth(prefix) - vim.fn.strdisplaywidth(suffix))
-  return prefix .. event.truncate(event.sanitize(item.summary), available) .. suffix
+  return prefix .. event.truncate(event.display_title(item), available) .. suffix
 end
 
 local function key_hint()

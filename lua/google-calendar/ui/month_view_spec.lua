@@ -662,6 +662,24 @@ describe('ui.month_view', function()
     end
   )
 
+  it('タイトルがない予定は予定ありと表示する', function()
+    gws_handler = function(_, cb)
+      cb({
+        {
+          id = 'evt-no-title',
+          start = { date = '2026-10-28' },
+          ['end'] = { date = '2026-10-29' },
+        },
+      }, nil)
+    end
+
+    run_command()
+    wait_loading()
+
+    local rows = assert(virt_lines(5))
+    assert.is_true(chunks_text(rows[1]):find('予定あり', 1, true) ~= nil)
+  end)
+
   it('予定がない日にはセルに予定の行を表示しない', function()
     gws_handler = function(_, cb)
       cb({ timed_event('e1', '定例', '2026-10-27T12:00:00+09:00') }, nil)

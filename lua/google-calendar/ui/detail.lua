@@ -161,10 +161,8 @@ local function build_lines(item, width)
     add(text, { { 0, #text, 'GoogleCalendarDetailMuted' } })
   end
 
-  local title = event.sanitize(item.summary or '')
-  if title ~= '' then
-    add_icon_line(ICON_CALENDAR, event.truncate(title, math.max(0, width - 2)), 'GoogleCalendarDetailTitle')
-  end
+  local title = event.display_title(item)
+  add_icon_line(ICON_CALENDAR, event.truncate(title, math.max(0, width - 2)), 'GoogleCalendarDetailTitle')
 
   local when = format_when(item)
   if when ~= nil then

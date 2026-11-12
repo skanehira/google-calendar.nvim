@@ -432,6 +432,14 @@ function M.truncate(text, width)
   return result .. '…'
 end
 
+function M.display_title(item)
+  local title = M.sanitize(item.summary)
+  if title == '' then
+    return '予定あり'
+  end
+  return title
+end
+
 function M.chip_parts(item, width, local_offset)
   local prefix
   if M.is_all_day(item) then
@@ -445,7 +453,7 @@ function M.chip_parts(item, width, local_offset)
     available = 0
   end
 
-  return prefix, M.truncate(M.sanitize(item.summary), available)
+  return prefix, M.truncate(M.display_title(item), available)
 end
 
 function M.chip(item, width, local_offset)

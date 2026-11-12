@@ -326,9 +326,11 @@ Month view ~
     `選択: MM-DD`.
   - Month cells use Google Calendar-style event chips: all-day and multi-day
     events are colored bars with white text, and single-day timed events are a
-    colored dot followed by the start time and title. A timed event ending at
-    00:00 on the next day is treated as ending at 24:00 on its start day, so it
-    stays a single-day dot instead of spilling into the next cell. Multi-day
+    colored dot followed by the start time and title. Events without a title
+    (including private events whose details are hidden) display `予定あり`.
+    A timed event ending at 00:00 on the next day is treated as ending at 24:00
+    on its start day, so it stays a single-day dot instead of spilling into the
+    next cell. Multi-day
     bars continue across adjacent day cells and week rows instead of restarting
     in each cell. Their titles are truncated to the width of the whole bar, not
     to a single cell.
@@ -350,7 +352,8 @@ Month view ~
 
 Day agenda ~
   - Each event uses a colored `●` or `○` dot, the start time, and the title.
-    All-day events use an all-day label.
+    Events without a title display `予定あり`. All-day events use an all-day
+    label.
   - The dot color follows the event's calendar color, assigned automatically
     from the order of `calendars`.
   - Events with `status == 'tentative'` or `transparency == 'transparent'` use

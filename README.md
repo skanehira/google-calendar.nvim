@@ -302,7 +302,8 @@ The default highlight groups are:
 | `GoogleCalendarFormButton` | Composer buttons such as Save |
 | `GoogleCalendarFormSeparator` | Composer title separator |
 | `GoogleCalendarSlotCandidate` | Selected slot block in the slot timeline |
-| `GoogleCalendarSlotEventEnd` | Underline on the last row of each event in the slot timeline, separating back-to-back events |
+| `GoogleCalendarSlotRuler` | Faint gray vertical line to the right of the times in the slot timeline |
+| `GoogleCalendarSlotHourLine` | Faint gray hourly gridline in the empty areas of the slot timeline |
 | `GoogleCalendarBorder` | Float border and month grid separators |
 | `GoogleCalendarError` | Form errors |
 
@@ -332,7 +333,7 @@ Override any group with `setup({ highlights = { ... } })`. Set a group to `false
 - `buffer` minutes (default 60) before and after each busy event are kept free. Event times are not rounded, so an event ending at 10:15 frees the time from 11:15.
 - Each slot covers the whole free range, for example `13:00 ~ 17:00` for a 1-hour meeting. Past days are skipped, and today starts at the current time rounded up to the next 30 minutes.
 
-The left window lists the slots; the right window shows a 30-minute-per-row timeline of the selected slot's day with busy events (side by side when they overlap) and the slot itself. Event blocks and the slot block share the same right edge, and the hour ruler extends to the bottom of the window. All-day events for that day are shown in the window's `winbar`, so they stay visible while the timeline is scrolled to the slot. `y` copies every slot in this format:
+The left window lists the slots; the right window shows a 30-minute-per-row timeline of the selected slot's day with busy events (side by side when they overlap) and the slot itself. Event blocks and the slot block share the same right edge, a faint gray gridline marks every hour in the empty areas (as in Google Calendar), and the hour ruler extends to the bottom of the window. All-day events for that day are shown in the window's `winbar`, spanning the same width as the slot block, so they stay visible while the timeline is scrolled to the slot. `y` copies every slot in this format:
 
 ```text
 1. 2026/11/16 09:00 ~ 11:00

@@ -57,7 +57,9 @@ local default_highlights = {
   GoogleCalendarFormButton = { fg = '#7aa2f7', bold = true },
   GoogleCalendarFormSeparator = { fg = '#565f89' },
   GoogleCalendarSlotCandidate = { fg = '#1a1b26', bg = '#9ece6a', bold = true },
-  GoogleCalendarSlotEventEnd = { underline = true },
+  -- 下線の色 (sp) を使わない端末は文字色で下線を描くため、fg も同じ薄いグレーにする
+  GoogleCalendarSlotHourLine = { fg = '#5c5c5c', sp = '#5c5c5c', underline = true },
+  GoogleCalendarSlotRuler = { fg = '#5c5c5c' },
   GoogleCalendarBorder = { fg = '#7aa2f7' },
   GoogleCalendarError = { fg = '#f7768e', bold = true },
 }

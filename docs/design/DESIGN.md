@@ -274,8 +274,9 @@ GOOGLE_WORKSPACE_CLI_CONFIG_DIR="$PWD/.local/gws-config" gws calendar calendarLi
 | `:GoogleCalendar` | なし | 当月の月表示を開く。既に開いている場合はメモリキャッシュを使ってフォーカスする（再取得は `r` / `R`） |
 | `:GoogleCalendar <YYYY-MM>` | `2026-11` 形式 | 指定した月の月表示を開く |
 | `:GoogleCalendar <YYYY-MM>` | 不正な形式 | `Month must be specified in YYYY-MM format` と通知し、開かない |
+| `:GoogleCalendar slots` | `slots` | オンライン MTG の空き枠候補の条件選択を開く（[features/meeting-slots.md](features/meeting-slots.md)） |
 
-`nargs = '?'`、`complete` は `YYYY-MM` の候補を返す。コマンドは `plugin/google-calendar.lua` で登録する。
+`nargs = '?'`、`complete` は `slots` と `YYYY-MM` の候補を返す。コマンドは `plugin/google-calendar.lua` で登録する。
 
 **キーマップ（既定）**:
 
@@ -287,6 +288,7 @@ GOOGLE_WORKSPACE_CLI_CONFIG_DIR="$PWD/.local/gws-config" gws calendar calendarLi
 | 月表示 | `t` | 今日へ移動 |
 | 月表示 | `<CR>` | 選択日の日別アジェンダを開く |
 | 月表示 | `a` | 選択日の予定を登録する |
+| 月表示 | `s` | 空き枠候補の条件選択を開く |
 | 月表示 | `r` / `R` | 表示中の月を再取得する（キャッシュを破棄する） |
 | 月表示 | `?` | ヘルプを開く |
 | 月表示 | `q` / `<Esc>` | 月表示を閉じる |
@@ -311,6 +313,15 @@ GOOGLE_WORKSPACE_CLI_CONFIG_DIR="$PWD/.local/gws-config" gws calendar calendarLi
 | フォームエディタ | `<CR>` | 日時フィールドの編集を開始する |
 | フォームエディタ | `:w` | エディタの値を適用して閉じる |
 | フォームエディタ | `<Esc>` / `q` | 適用せずにエディタを閉じる |
+| 空き枠の条件選択 | `j` / `k` | 選択肢を移動する（見出しは飛ばす） |
+| 空き枠の条件選択 | `<Space>` | 時間帯・所要時間を切り替える。週の選択を反転する |
+| 空き枠の条件選択 | `<CR>` | 選んだ条件で候補一覧を開く |
+| 空き枠の条件選択 | `?` | ヘルプを開く |
+| 空き枠の条件選択 | `q` / `<Esc>` | 条件選択を閉じる |
+| 空き枠の候補一覧 | `j` / `k` | 候補を選択し、タイムラインを描き直す |
+| 空き枠の候補一覧 | `y` | 表示中のすべての候補をコピーする |
+| 空き枠の候補一覧 | `?` | ヘルプを開く |
+| 空き枠の候補一覧 | `q` / `<Esc>` | 条件選択に戻る |
 | ヘルプ | `q` / `<Esc>` | ヘルプを閉じる |
 
 キーマップは `setup({ keymaps = { ... } })` で画面ごとに上書きできる。`false` を指定するとそのキーを無効にする。すべての画面のキーは `config.keymaps.<screen>.<action>` から解決し、実装に直書きしない。ヘルプを閉じる `q` / `<Esc>` は `help.close` / `help.esc_close`、アジェンダ・詳細を閉じる `q` / `<Esc>` は `agenda.esc_close` / `detail.esc_close`、月表示を閉じる `q` / `<Esc>` は `month.close` / `month.esc_close` で別々に変更・無効化できる。フォームの `<Esc>` / `q` も `form.cancel` / `form.close` で別々に変更・無効化できる（`q` は normal モードのみ。`form.cancel` は insert モードでは insert を抜けるだけ、normal モードでキャンセルする）。保存の既定コマンドは `:w`（`<C-s>` は herdr の prefix と衝突するため使わない）。
@@ -342,12 +353,20 @@ require('google-calendar').setup({
   clipboard = function(url)
     vim.fn.setreg('+', url)
   end,
+  -- 空き枠候補の選択肢と探し方（詳細は features/meeting-slots.md）
+  slots = {
+    time_ranges = { '09:00-18:00', '09:00-23:00' }, default_time_range = '09:00-18:00',
+    durations = { 30, 60, 90, 120 }, default_duration = 60,
+    buffer = 60, weeks = 8,
+    weekdays = { 'sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday' },
+    width = 0.8, height = 0.8,
+  },
   -- キーマップの上書き（画面ごとに指定。false で無効化）
   keymaps = {
     month = {
       prev_day = 'h', next_day = 'l', prev_week = 'k', next_week = 'j',
       prev_month = 'H', next_month = 'L', today = 't',
-      agenda = '<CR>', create = 'a', refresh = 'r', help = '?', close = 'q', esc_close = '<Esc>',
+      agenda = '<CR>', create = 'a', slots = 's', refresh = 'r', help = '?', close = 'q', esc_close = '<Esc>',
     },
     agenda = { next = 'j', prev = 'k', open = '<CR>', open_url = '<C-o>', delete = 'd', help = '?', close = 'q', esc_close = '<Esc>' },
     detail = {
@@ -365,6 +384,8 @@ require('google-calendar').setup({
     },
     confirm = { yes = 'y', no = 'n', close = 'q', esc_close = '<Esc>' },
     help = { close = 'q', esc_close = '<Esc>' },
+    slot_filter = { next = 'j', prev = 'k', toggle = '<Space>', search = '<CR>', help = '?', close = 'q', esc_close = '<Esc>' },
+    slots = { next = 'j', prev = 'k', copy = 'y', help = '?', close = 'q', esc_close = '<Esc>' },
   },
   -- ハイライトの上書き
   highlights = {},
@@ -484,6 +505,8 @@ stdpath('data')/google-calendar.nvim/config.json
 | `GoogleCalendarFormIcon` | フォームのセクションアイコン |
 | `GoogleCalendarFormButton` | フォームの保存などのボタン |
 | `GoogleCalendarFormSeparator` | フォームのタイトル下の区切り線 |
+| `GoogleCalendarSlotCandidate` | 空き枠のタイムラインで選択中の候補のブロック |
+| `GoogleCalendarSlotEventEnd` | 空き枠のタイムラインで予定の最終行に引く下線（続けて並ぶ予定を区切る） |
 | `GoogleCalendarBorder` | float のボーダーと月表示の区切り線 |
 | `GoogleCalendarError` | フォーム内のエラー |
 
@@ -507,6 +530,7 @@ stdpath('data')/google-calendar.nvim/config.json
 - 月表示の曜日ヘッダーは winbar として固定し、月グリッドをスクロールしても表示し続ける。選択週をスクロールするときは、選択枠の下線も見えるように 1 行余裕を持たせる。最終週には次の週がないため、選択枠の下線を予定行の末尾に追加する。
 - 月表示の予定は Google カレンダー風に、終日・複数日予定はカレンダー色のバー（白文字）、単日の時刻付き予定はカレンダー色の `●` / `○` ドット＋開始時刻＋タイトルで表示する。タイトルがない予定（非公開予定で詳細が隠れている場合を含む）は `予定あり` と表示する。終了が翌日 00:00 の時刻付き予定は `24:00` 終了の単日予定として扱い、バーを翌日に伸ばさない。複数日予定のバーは隣接する日セルと週行を跨いで連続し、セル境界の `│` を背景で覆う。バーのタイトルはバー全体の幅に合わせて切り詰める。色は `primary` を先頭に、続いて `calendars` の順で 11 色を自動割り当てし、12 件目以降は先頭に戻る
 - 月グリッドは `│` の縦線に加えて、各週の上に `─` / `┼` の横線を引いてセルを区切る
+- 空き枠の候補一覧は左に候補、右に選択中の候補の日のタイムライン（1 行 30 分）を並べた 2 つの float で表示する。`q` / `<Esc>` で左右を同時に閉じて条件選択に戻る。月表示の状態とキャッシュは読み書きしない（[features/meeting-slots.md](features/meeting-slots.md)）
 - insert モードの `<Esc>` は insert を抜けるだけにし、normal モードでキャンセルする（Vim の慣習に合わせる）
 - 画面を開いたら、実際のターミナルで代表データ（予定が多い日・長いタイトル・日本語）を使ってキー操作とスクリーンショットを確認する
 

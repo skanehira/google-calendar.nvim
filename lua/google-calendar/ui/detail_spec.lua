@@ -154,7 +154,7 @@ describe('ui.detail', function()
     vim.o.lines = original_lines
   end)
 
-  it('繰り返し予定の occurrence を編集すると親予定を取得して開く', function()
+  it('繰り返し予定の occurrence の編集は親予定を取得して fast event 外で開く', function()
     local item = full_event()
     item.recurring_event_id = 'evt-master'
     local master = full_event()
@@ -165,24 +165,35 @@ describe('ui.detail', function()
     local original_gws = package.loaded['google-calendar.gws']
     local original_form_open_edit = require('google-calendar.ui.form').open_edit
     local opened
+    local opened_in_fast_event
     local requested_id
 
+    -- 本物の gws は vim.system の on_exit (fast event) から callback を呼ぶので、libuv の timer で同じ状況を作る
     package.loaded['google-calendar.gws'] = {
       get_event = function(event_id, _calendar_id, callback)
         requested_id = event_id
-        callback(master, nil)
+        local timer = assert(vim.uv.new_timer())
+        timer:start(0, 0, function()
+          timer:close()
+          callback(master, nil)
+        end)
       end,
     }
     require('google-calendar.ui.form').open_edit = function(value)
       opened = value
+      opened_in_fast_event = vim.in_fast_event()
     end
     detail.openers.edit = actual_edit
 
     detail.openers.edit(item, {})
 
+    assert.is_true(vim.wait(1000, function()
+      return opened ~= nil
+    end))
     assert.are.equal('evt-master', requested_id)
     assert.are.equal('evt-master', opened.id)
     assert.are.same({ 'RRULE:FREQ=WEEKLY;BYDAY=WE' }, opened.recurrence)
+    assert.are.equal(false, opened_in_fast_event)
 
     detail.openers.edit = original_openers.edit
     package.loaded['google-calendar.gws'] = original_gws

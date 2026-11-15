@@ -14,11 +14,13 @@ M.openers = {
     -- 繰り返し予定の 1 回分を選んだ場合は、繰り返し設定を持つ親予定を編集する
     if item.recurring_event_id ~= nil and (item.recurrence == nil or #item.recurrence == 0) then
       require('google-calendar.gws').get_event(item.recurring_event_id, item.calendar_id, function(master, err)
-        if err ~= nil then
-          notify_adapter.error(err)
-          return
-        end
-        require('google-calendar.ui.form').open_edit(master, opts)
+        vim.schedule(function()
+          if err ~= nil then
+            notify_adapter.error(err)
+            return
+          end
+          require('google-calendar.ui.form').open_edit(master, opts)
+        end)
       end)
       return
     end

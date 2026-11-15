@@ -65,6 +65,16 @@ local function feed_save()
   end
 end
 
+local function flush_scheduled()
+  local done = false
+  vim.schedule(function()
+    done = true
+  end)
+  assert.is_true(vim.wait(1000, function()
+    return done
+  end, 10))
+end
+
 local function form_lines()
   local win = state.windows.form
   assert.is_true(win ~= nil and vim.api.nvim_win_is_valid(win))
@@ -748,6 +758,133 @@ describe('ui.form', function()
     assert.is_true(vim.api.nvim_win_is_valid(state.windows.form))
   end)
 
+  local function is_hidden(win)
+    return vim.api.nvim_win_get_config(win).hide == true
+  end
+
+  it('q でフォームを隠し、表示し直すと入力したタイトルが残っている', function()
+    local original = vim.api.nvim_get_current_win()
+    local win = form.open_create()
+    edit_summary('下書き')
+
+    feed('q')
+
+    assert.is_true(is_hidden(win))
+    assert.are.equal(original, vim.api.nvim_get_current_win())
+
+    window.show_all()
+
+    assert.are.equal(win, vim.api.nvim_get_current_win())
+    assert.are.equal('下書き', form_lines()[1])
+  end)
+
+  it('エディタで q を押すと、エディタを適用せずにフォームごと隠す', function()
+    local original = vim.api.nvim_get_current_win()
+    local win = form.open_create()
+    open_editor(1)
+    local editor_win = state.windows.form_editor
+
+    feed('q')
+
+    assert.are.same({ true, true }, { is_hidden(win), is_hidden(editor_win) })
+    assert.are.equal(original, vim.api.nvim_get_current_win())
+  end)
+
+  it(
+    '保存中に q で隠しても保存を続け、終わったら通知し、フォーカスは開く前のウィンドウに残る',
+    function()
+      local callback
+      update_handler = function(fields, cb)
+        updated_call = fields
+        callback = cb
+      end
+      local original = vim.api.nvim_get_current_win()
+      local agenda_win = window.open('agenda', { relative = 'editor', width = 40, height = 10, row = 1, col = 1 })
+      window.open('detail', { relative = 'editor', width = 40, height = 10, row = 1, col = 1 })
+      form.open_edit({
+        id = 'evt-1',
+        summary = '定例',
+        start = { dateTime = '2026-10-28T09:00:00+09:00' },
+        ['end'] = { dateTime = '2026-10-28T10:00:00+09:00' },
+        calendar_id = 'primary',
+      })
+      edit_summary('更新後')
+      save()
+
+      feed('q')
+      assert.is_true(vim.wait(1000, function()
+        return callback ~= nil
+      end, 10))
+      callback({
+        id = 'evt-1',
+        summary = '更新後',
+        start = { dateTime = '2026-10-28T09:00:00+09:00' },
+        ['end'] = { dateTime = '2026-10-28T10:00:00+09:00' },
+        calendar_id = 'primary',
+      }, nil)
+      wait_closed()
+
+      assert.are.same({ { message = 'Event updated', level = vim.log.levels.INFO } }, notifications)
+      assert.is_nil(state.windows.detail)
+      assert.is_true(is_hidden(agenda_win))
+      assert.are.equal(original, vim.api.nvim_get_current_win())
+    end
+  )
+
+  it(
+    '作成の保存中に q で隠しても保存を続け、終わったら通知し、フォーカスは開く前のウィンドウに残る',
+    function()
+      local callback
+      create_handler = function(fields, cb)
+        created_call = fields
+        callback = cb
+      end
+      local original = vim.api.nvim_get_current_win()
+      local month_win = window.open('month', { relative = 'editor', width = 40, height = 10, row = 1, col = 1 })
+      form.open_create()
+      edit_summary('新しい予定')
+      save()
+
+      feed('q')
+      assert.is_true(vim.wait(1000, function()
+        return callback ~= nil
+      end, 10))
+      default_create_handler(created_call, callback)
+      wait_closed()
+
+      assert.are.same({ { message = 'Event created', level = vim.log.levels.INFO } }, notifications)
+      assert.is_true(is_hidden(month_win))
+      assert.are.equal(original, vim.api.nvim_get_current_win())
+    end
+  )
+
+  it(
+    '隠した画面を閉じて開き直した後に届いた古い保存の応答は、新しいフォームを閉じない',
+    function()
+      local callback
+      create_handler = function(fields, cb)
+        created_call = fields
+        callback = cb
+      end
+      form.open_create()
+      edit_summary('古い予定')
+      save()
+      feed('q')
+      assert.is_true(vim.wait(1000, function()
+        return callback ~= nil
+      end, 10))
+      window.close_all()
+
+      local new_win = form.open_create()
+      edit_summary('新しい下書き')
+      default_create_handler(created_call, callback)
+      flush_scheduled()
+
+      assert.are.equal(new_win, state.windows.form)
+      assert.are.equal('新しい下書き', form_lines()[1])
+    end
+  )
+
   it('更新フォームに現在の値を表示する', function()
     local item = {
       id = 'evt-1',
@@ -926,7 +1063,7 @@ describe('ui.form', function()
     feed('?')
 
     assert.is_true(vim.api.nvim_win_is_valid(state.windows.help))
-    feed('q')
+    feed('<Esc>')
     assert.is_nil(state.windows.help)
     assert.is_true(vim.api.nvim_win_is_valid(state.windows.form))
   end)

@@ -16,7 +16,8 @@
 | 詳細で `d` | 削除確認を開く。`予定「<タイトル>」を削除しますか? (y/n)` を表示する |
 | アジェンダで `d` | 選択中の予定の削除確認を開く。削除後もアジェンダを開いたまま一覧を更新する |
 | `y` | `gws` で予定を削除し、確認を閉じる。詳細から開いた場合は詳細も閉じ、アジェンダから開いた場合はアジェンダを更新する。月表示を再取得して `Event deleted` と通知する |
-| `n` / `<Esc>` / `q` | 確認を閉じ、削除しない |
+| `n` / `<Esc>` | 確認を閉じ、削除しない |
+| `q` | 確認を含むすべての float を隠す。削除中でも隠せて、削除は続ける |
 | その他のキー | 何もしない（誤操作で削除しない） |
 
 **確認の表示**:
@@ -35,7 +36,7 @@ gws calendar events delete --params '{"calendarId":"<event.calendar_id>","eventI
 - 終了コード 0 を成功とする。stdout の `saved_file` などは無視する
 - 成功時は確認を閉じる。詳細から開いた場合は詳細も閉じ、アジェンダから開いた場合はアジェンダを更新する。月表示を再取得する
 
-キーマップは `config.keymaps.confirm` から解決し、`setup()` で上書きできる。`y` / `n` は `confirm.yes` / `confirm.no`、`q` / `<Esc>` は `confirm.close` / `confirm.esc_close` で別々に変更・無効化できる。
+キーマップは `config.keymaps.confirm` から解決し、`setup()` で上書きできる。`y` / `n` は `confirm.yes` / `confirm.no`、隠す `q` と閉じる `<Esc>` は `confirm.close` / `confirm.esc_close` で別々に変更・無効化できる。
 
 ## API
 

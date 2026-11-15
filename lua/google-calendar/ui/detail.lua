@@ -19,7 +19,12 @@ M.openers = {
             notify_adapter.error(err)
             return
           end
+          local hidden = window.is_hidden()
           require('google-calendar.ui.form').open_edit(master, opts)
+          -- 開くときは隠した画面も表示されるので、利用者が隠したままなら隠し直す
+          if hidden then
+            window.hide_all()
+          end
         end)
       end)
       return
@@ -384,7 +389,7 @@ local key_actions = {
   copy_meet = copy_meet,
   toggle_guests = toggle_guests,
   help = open_help,
-  close = close,
+  close = window.hide_all,
   esc_close = close,
 }
 

@@ -6,6 +6,10 @@ local window = require('google-calendar.ui.window')
 
 local screen_opts = { relative = 'editor', width = 40, height = 10, row = 1, col = 1 }
 
+local function is_hidden(win)
+  return vim.api.nvim_win_get_config(win).hide == true
+end
+
 local default_month_lines = {
   'h/l:前日/翌日',
   'k/j:前週/翌週',
@@ -16,7 +20,8 @@ local default_month_lines = {
   's:空き枠',
   'r:再取得',
   '?:ヘルプ',
-  'q/<Esc>:閉じる',
+  '<Esc>:閉じる',
+  'q:隠す',
 }
 
 describe('ui.help', function()
@@ -41,7 +46,8 @@ describe('ui.help', function()
       '<CR>:詳細',
       '<C-o>:カレンダーで開く',
       'd:削除',
-      'q/<Esc>:戻る',
+      '<Esc>:戻る',
+      'q:隠す',
     }, help.lines('agenda'))
   end)
 
@@ -51,7 +57,8 @@ describe('ui.help', function()
       'd:削除',
       'y:Meet URL コピー',
       'g:ゲスト折り畳み',
-      'q/<Esc>:戻る',
+      '<Esc>:戻る',
+      'q:隠す',
     }, help.lines('detail'))
   end)
 
@@ -60,7 +67,8 @@ describe('ui.help', function()
       'j/k:移動',
       '<Space>:選択',
       '<CR>:検索',
-      'q/<Esc>:閉じる',
+      '<Esc>:閉じる',
+      'q:隠す',
     }, help.lines('slot_filter'))
   end)
 
@@ -68,7 +76,8 @@ describe('ui.help', function()
     assert.are.same({
       'j/k:選択',
       'y:コピー',
-      'q/<Esc>:戻る',
+      '<Esc>:戻る',
+      'q:隠す',
     }, help.lines('slots'))
   end)
 
@@ -78,7 +87,8 @@ describe('ui.help', function()
       '<CR>:編集',
       '<Space>:切替',
       ':w:保存',
-      '<Esc>/q:取消',
+      '<Esc>:取消',
+      'q:隠す',
       '?:ヘルプ',
     }, help.lines('form'))
   end)
@@ -88,7 +98,7 @@ describe('ui.help', function()
 
     local expected_month = vim.deepcopy(default_month_lines)
     expected_month[3] = 'H/N:前月/次月'
-    expected_month[10] = 'Q/<Esc>:閉じる'
+    expected_month[11] = 'Q:隠す'
 
     assert.are.same(expected_month, help.lines('month'))
     assert.are.same({
@@ -96,7 +106,8 @@ describe('ui.help', function()
       '<CR>:編集',
       '<Space>:切替',
       '<A-s>:保存',
-      '<Esc>/q:取消',
+      '<Esc>:取消',
+      'q:隠す',
       '?:ヘルプ',
     }, help.lines('form'))
   end)
@@ -112,13 +123,15 @@ describe('ui.help', function()
       '<CR>:アジェンダ',
       's:空き枠',
       'r:再取得',
-      'q/<Esc>:閉じる',
+      '<Esc>:閉じる',
+      'q:隠す',
     }, help.lines('month'))
     assert.are.same({
       '<Tab>/<S-Tab>:移動',
       '<CR>:編集',
       '<Space>:切替',
-      '<Esc>/q:取消',
+      '<Esc>:取消',
+      'q:隠す',
       '?:ヘルプ',
     }, help.lines('form'))
   end)
@@ -168,17 +181,17 @@ describe('ui.help', function()
     assert.are.same(default_month_lines, vim.api.nvim_buf_get_lines(vim.api.nvim_win_get_buf(win), 0, -1, false))
   end)
 
-  it('ヘルプで q を押すと閉じ、元の画面に戻る', function()
+  it('ヘルプで q を押すと、元の画面ごと隠して開く前のウィンドウへ戻る', function()
+    local original = vim.api.nvim_get_current_win()
     local screen_win = window.open('month', screen_opts)
     local help_win = help.open('month')
     assert.are.equal(help_win, vim.api.nvim_get_current_win())
 
     vim.api.nvim_feedkeys('q', 'x', false)
 
-    assert.is_false(vim.api.nvim_win_is_valid(help_win))
-    assert.are.equal(screen_win, vim.api.nvim_get_current_win())
-    assert.are.equal(1, #state.stack)
-    assert.are.equal('month', state.stack[1].name)
+    assert.are.same({ true, true }, { is_hidden(screen_win), is_hidden(help_win) })
+    assert.are.equal(original, vim.api.nvim_get_current_win())
+    assert.are.equal(2, #state.stack)
   end)
 
   it('ヘルプで <Esc> を押すと閉じ、元の画面に戻る', function()
@@ -207,20 +220,21 @@ describe('ui.help', function()
     assert.are.equal(screen_win, vim.api.nvim_get_current_win())
   end)
 
-  it('keymaps.help.esc_close = false のとき <Esc> では閉じず、q で閉じる', function()
+  it('keymaps.help.esc_close = false のとき <Esc> では閉じず、q で隠す', function()
     config.setup({ keymaps = { help = { esc_close = false } } })
-    local screen_win = window.open('month', screen_opts)
+    local original = vim.api.nvim_get_current_win()
+    window.open('month', screen_opts)
     local help_win = help.open('month')
 
     vim.api.nvim_feedkeys(vim.api.nvim_replace_termcodes('<Esc>', true, false, true), 'x', false)
 
-    assert.is_true(vim.api.nvim_win_is_valid(help_win))
+    assert.is_false(is_hidden(help_win))
     assert.are.equal(help_win, vim.api.nvim_get_current_win())
 
     vim.api.nvim_feedkeys('q', 'x', false)
 
-    assert.is_false(vim.api.nvim_win_is_valid(help_win))
-    assert.are.equal(screen_win, vim.api.nvim_get_current_win())
+    assert.is_true(is_hidden(help_win))
+    assert.are.equal(original, vim.api.nvim_get_current_win())
   end)
 
   it('ヘルプを再表示すると変更した esc_close を反映し、旧キーでは閉じない', function()
@@ -254,7 +268,7 @@ describe('ui.help', function()
     local second = help.open('month')
 
     local expected_month = vim.deepcopy(default_month_lines)
-    expected_month[10] = 'Q/<Esc>:閉じる'
+    expected_month[11] = 'Q:隠す'
 
     assert.are.equal(first, second)
     assert.are.equal(first, vim.api.nvim_get_current_win())
@@ -263,30 +277,31 @@ describe('ui.help', function()
     end, state.stack))
     assert.are.same(expected_month, vim.api.nvim_buf_get_lines(vim.api.nvim_win_get_buf(first), 0, -1, false))
   end)
-  it('keymaps.help.close の上書きが効き、既定の q では閉じない', function()
+  it('keymaps.help.close の上書きが効き、既定の q では隠さない', function()
     config.setup({ keymaps = { help = { close = 'Q' } } })
-    local screen_win = window.open('month', screen_opts)
+    local original = vim.api.nvim_get_current_win()
+    window.open('month', screen_opts)
     local help_win = help.open('month')
 
     vim.api.nvim_feedkeys('q', 'x', false)
 
-    assert.is_true(vim.api.nvim_win_is_valid(help_win))
+    assert.is_false(is_hidden(help_win))
     assert.are.equal(help_win, vim.api.nvim_get_current_win())
 
     vim.api.nvim_feedkeys('Q', 'x', false)
 
-    assert.is_false(vim.api.nvim_win_is_valid(help_win))
-    assert.are.equal(screen_win, vim.api.nvim_get_current_win())
+    assert.is_true(is_hidden(help_win))
+    assert.are.equal(original, vim.api.nvim_get_current_win())
   end)
 
-  it('keymaps.help.close = false のとき q では閉じず、<Esc> で閉じる', function()
+  it('keymaps.help.close = false のとき q では隠さず、<Esc> で閉じる', function()
     config.setup({ keymaps = { help = { close = false } } })
     local screen_win = window.open('month', screen_opts)
     local help_win = help.open('month')
 
     vim.api.nvim_feedkeys('q', 'x', false)
 
-    assert.is_true(vim.api.nvim_win_is_valid(help_win))
+    assert.is_false(is_hidden(help_win))
     assert.are.equal(help_win, vim.api.nvim_get_current_win())
 
     vim.api.nvim_feedkeys(vim.api.nvim_replace_termcodes('<Esc>', true, false, true), 'x', false)
@@ -295,7 +310,8 @@ describe('ui.help', function()
     assert.are.equal(screen_win, vim.api.nvim_get_current_win())
   end)
 
-  it('ヘルプを再表示すると変更した close を反映し、旧キーでは閉じない', function()
+  it('ヘルプを再表示すると変更した close を反映し、旧キーでは隠さない', function()
+    local original = vim.api.nvim_get_current_win()
     local screen_win = window.open('month', screen_opts)
     local help_win = help.open('month')
 
@@ -307,12 +323,12 @@ describe('ui.help', function()
 
     vim.api.nvim_feedkeys('q', 'x', false)
 
-    assert.is_true(vim.api.nvim_win_is_valid(help_win))
+    assert.is_false(is_hidden(help_win))
     assert.are.equal(help_win, vim.api.nvim_get_current_win())
 
     vim.api.nvim_feedkeys('Q', 'x', false)
 
-    assert.is_false(vim.api.nvim_win_is_valid(help_win))
-    assert.are.equal(screen_win, vim.api.nvim_get_current_win())
+    assert.is_true(is_hidden(help_win))
+    assert.are.equal(original, vim.api.nvim_get_current_win())
   end)
 end)

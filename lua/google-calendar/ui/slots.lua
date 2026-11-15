@@ -23,7 +23,8 @@ local function ruler_highlight(line_index)
 end
 local FOOTER_ITEMS = {
   { action = 'copy', label = 'コピー' },
-  { action = 'close', label = '戻る' },
+  { action = 'esc_close', label = '戻る' },
+  { action = 'close', label = '隠す' },
 }
 
 function M.fetch_events(calendar_ids, time_min, time_max, callback)
@@ -453,7 +454,7 @@ local key_actions = {
   help = function()
     M.openers.help(LIST)
   end,
-  close = close,
+  close = window.hide_all,
   esc_close = close,
 }
 

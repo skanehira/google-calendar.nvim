@@ -712,7 +712,7 @@ local function set_editor_keymaps(buf)
   map('i', 'cancel', function()
     vim.cmd('stopinsert')
   end)
-  map('n', 'close', close_editor)
+  map('n', 'close', window.hide_all)
 end
 
 local function open_editor(kind, title, lines, height, width)
@@ -1424,6 +1424,11 @@ local function handle_edit_error(err, prefix)
   notify_adapter.error(err)
 end
 
+-- 閉じて開き直したフォームも form.active が真になるため、保存を始めたときのウィンドウと比べて古い応答を捨てる
+local function is_request_form(request_win)
+  return form.active and form.win == request_win and vim.api.nvim_win_is_valid(request_win)
+end
+
 local function save_edit(fields)
   local changed = changed_fields()
   if not has_changes(changed) then
@@ -1437,10 +1442,11 @@ local function save_edit(fields)
 
   local changes = update_changes(fields, changed)
   local gws = require('google-calendar.gws')
+  local request_win = form.win
 
   gws.get_event(form.event_id, form.calendar_id, function(base, err)
     vim.schedule(function()
-      if not form.active or not vim.api.nvim_win_is_valid(form.win) then
+      if not is_request_form(request_win) then
         return
       end
 
@@ -1454,7 +1460,7 @@ local function save_edit(fields)
 
       gws.update_event(update_fields, function(updated, update_err)
         vim.schedule(function()
-          if not form.active or not vim.api.nvim_win_is_valid(form.win) then
+          if not is_request_form(request_win) then
             return
           end
 
@@ -1472,10 +1478,11 @@ end
 
 local function save_create(fields)
   fields.calendar_id = config.get().calendars[1] or 'primary'
+  local request_win = form.win
   local gws = require('google-calendar.gws')
   gws.create_event(fields, function(created, err)
     vim.schedule(function()
-      if not form.active or not vim.api.nvim_win_is_valid(form.win) then
+      if not is_request_form(request_win) then
         return
       end
 
@@ -1585,7 +1592,7 @@ local function set_keymaps(buf)
     end, { buffer = buf, nowait = true, silent = true })
   end
   map('n', 'cancel', cancel)
-  map('n', 'close', cancel)
+  map('n', 'close', window.hide_all)
   map('n', 'help', open_help)
 end
 

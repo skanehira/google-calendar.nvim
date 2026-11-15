@@ -7,6 +7,10 @@ local event = require('google-calendar.event')
 local state = require('google-calendar.state')
 local window = require('google-calendar.ui.window')
 
+local function is_hidden(win)
+  return vim.api.nvim_win_get_config(win).hide == true
+end
+
 local screen_opts = { relative = 'editor', width = 40, height = 10, row = 1, col = 1 }
 
 local original_columns
@@ -153,6 +157,45 @@ describe('ui.detail', function()
     vim.o.columns = original_columns
     vim.o.lines = original_lines
   end)
+
+  it(
+    '繰り返し予定の編集で親予定の取得中に q で隠すと、届いたフォームも隠したまま積み、フォーカスを動かさない',
+    function()
+      local item = full_event()
+      item.recurring_event_id = 'evt-master'
+      local master = full_event()
+      master.id = 'evt-master'
+      master.summary = '親予定'
+      local original_gws = package.loaded['google-calendar.gws']
+      local respond
+      package.loaded['google-calendar.gws'] = {
+        get_event = function(_event_id, _calendar_id, callback)
+          respond = callback
+        end,
+      }
+      detail.openers.edit = original_openers.edit
+      local original = vim.api.nvim_get_current_win()
+      window.open('agenda', screen_opts)
+      local detail_win = detail.open(item)
+
+      feed('e')
+      feed('q')
+      respond(master, nil)
+      assert.is_true(vim.wait(1000, function()
+        return state.windows.form ~= nil
+      end, 10))
+      package.loaded['google-calendar.gws'] = original_gws
+
+      assert.are.same({ true, true }, { is_hidden(detail_win), is_hidden(state.windows.form) })
+      assert.are.equal(original, vim.api.nvim_get_current_win())
+      window.show_all()
+      assert.are.equal(state.windows.form, vim.api.nvim_get_current_win())
+      assert.are.equal(
+        '親予定',
+        vim.api.nvim_buf_get_lines(vim.api.nvim_win_get_buf(state.windows.form), 0, 1, false)[1]
+      )
+    end
+  )
 
   it('繰り返し予定の occurrence の編集は親予定を取得して fast event 外で開く', function()
     local item = full_event()
@@ -506,19 +549,21 @@ describe('ui.detail', function()
     assert.are.equal('detail', opened_help)
   end)
 
-  it('q で詳細を閉じ、アジェンダに戻る', function()
-    local parent = window.open('agenda', screen_opts)
-    local win = detail.open(full_event())
-    assert.are.equal(win, vim.api.nvim_get_current_win())
+  it(
+    'q でアジェンダごと詳細を隠し、アジェンダを開く前のウィンドウへフォーカスが戻る',
+    function()
+      local original = vim.api.nvim_get_current_win()
+      local agenda_win = window.open('agenda', screen_opts)
+      local win = detail.open(full_event())
+      assert.are.equal(win, vim.api.nvim_get_current_win())
 
-    feed('q')
+      feed('q')
 
-    assert.is_false(vim.api.nvim_win_is_valid(win))
-    assert.is_nil(state.windows.detail)
-    assert.are.equal(parent, vim.api.nvim_get_current_win())
-    assert.are.equal(1, #state.stack)
-    assert.are.equal('agenda', state.stack[1].name)
-  end)
+      assert.are.same({ true, true }, { is_hidden(agenda_win), is_hidden(win) })
+      assert.are.equal(original, vim.api.nvim_get_current_win())
+      assert.are.equal(2, #state.stack)
+    end
+  )
 
   it('<Esc> で詳細を閉じる', function()
     local parent = window.open('agenda', screen_opts)
@@ -530,18 +575,20 @@ describe('ui.detail', function()
     assert.are.equal(parent, vim.api.nvim_get_current_win())
   end)
 
-  it('setup() で上書きしたキーで詳細を閉じ、esc_close = false では <Esc> で閉じない', function()
+  it('setup() で上書きしたキーで詳細を隠し、esc_close = false では <Esc> で閉じない', function()
     config.setup({ keymaps = { detail = { close = 'Q', esc_close = false } } })
-    local parent = window.open('agenda', screen_opts)
+    local original = vim.api.nvim_get_current_win()
+    window.open('agenda', screen_opts)
     local win = detail.open(full_event())
 
     feed('<Esc>')
     assert.is_true(vim.api.nvim_win_is_valid(win))
+    assert.is_false(is_hidden(win))
 
     feed('Q')
 
-    assert.is_false(vim.api.nvim_win_is_valid(win))
-    assert.are.equal(parent, vim.api.nvim_get_current_win())
+    assert.is_true(is_hidden(win))
+    assert.are.equal(original, vim.api.nvim_get_current_win())
   end)
 
   it(

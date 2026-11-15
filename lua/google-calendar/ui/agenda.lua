@@ -228,7 +228,7 @@ local key_actions = {
   open_url = open_url,
   delete = delete,
   help = open_help,
-  close = close,
+  close = window.hide_all,
   esc_close = close,
 }
 

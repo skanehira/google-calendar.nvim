@@ -369,6 +369,15 @@ describe('ui.slots', function()
     end
   )
 
+  it('フッターにコピー・戻る・隠すのキーを表示する', function()
+    slots_ui.open(conditions)
+
+    assert.are.same(
+      { { ' y:コピー <Esc>:戻る q:隠す ' } },
+      vim.api.nvim_win_get_config(state.windows.slots).footer
+    )
+  end)
+
   it('y で表示中のすべての候補を番号なしでコピーして件数を通知する', function()
     slots_ui.open(conditions)
     fetches[1].callback({ timed('a', '朝会', '2026-11-16T12:00:00+09:00', '2026-11-16T13:00:00+09:00') }, nil)
@@ -487,11 +496,27 @@ describe('ui.slots', function()
   end)
 
   it(
-    'q で左右の候補一覧を閉じて条件選択に戻り、閉じた後に届いた応答は捨てる',
+    'q で隠している間に届いた応答も候補一覧に描き、表示し直すと候補が見える',
     function()
+      local original = state.stack[1].parent
       slots_ui.open(conditions)
 
       feed('q')
+      assert.are.equal(original, vim.api.nvim_get_current_win())
+      fetches[1].callback({}, nil)
+      window.show_all()
+
+      assert.are.equal(state.windows.slots, vim.api.nvim_get_current_win())
+      assert.are.same({ '>2026/11/16 09:00 ~ 18:00', ' 2026/11/17 09:00 ~ 18:00' }, lines_of('slots'))
+    end
+  )
+
+  it(
+    '<Esc> で左右の候補一覧を閉じて条件選択に戻り、閉じた後に届いた応答は捨てる',
+    function()
+      slots_ui.open(conditions)
+
+      feed('<Esc>')
 
       assert.is_nil(state.windows.slots)
       assert.is_nil(state.windows.slots_timeline)

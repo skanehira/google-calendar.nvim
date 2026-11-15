@@ -12,7 +12,21 @@ local function find_entry(name)
   return nil, nil
 end
 
+local function is_hidden_win(win)
+  return vim.api.nvim_win_is_valid(win) and vim.api.nvim_win_get_config(win).hide == true
+end
+
+-- 隠したかどうかをフラグで持たないのは、非同期の応答で float が閉じたときにフラグとスタックがずれるため
+function M.is_hidden()
+  local bottom = state.stack[1]
+  return bottom ~= nil and is_hidden_win(bottom.win)
+end
+
 local function focus_after_close(entry)
+  if M.is_hidden() then
+    return
+  end
+
   local target = entry.parent
   if target == nil or not vim.api.nvim_win_is_valid(target) then
     target = nil
@@ -27,7 +41,64 @@ local function focus_after_close(entry)
   end
 end
 
+local function set_hidden(hide)
+  for _, entry in ipairs(state.stack) do
+    if vim.api.nvim_win_is_valid(entry.win) then
+      vim.api.nvim_win_set_config(entry.win, { hide = hide })
+    end
+  end
+end
+
+local function base_window()
+  local bottom = state.stack[1]
+  if bottom ~= nil and vim.api.nvim_win_is_valid(bottom.parent) and not is_hidden_win(bottom.parent) then
+    return bottom.parent
+  end
+  for _, win in ipairs(vim.api.nvim_tabpage_list_wins(0)) do
+    if vim.api.nvim_win_get_config(win).relative == '' then
+      return win
+    end
+  end
+  return nil
+end
+
+function M.hide_all()
+  if #state.stack == 0 then
+    return false
+  end
+
+  local target = base_window()
+  set_hidden(true)
+  -- 隠した float はカレントのまま残り、見えない画面にキー入力が入るため、開く前のウィンドウへ戻す
+  if target ~= nil then
+    vim.api.nvim_set_current_win(target)
+  end
+  return true
+end
+
+function M.show_all()
+  if not M.is_hidden() then
+    return false
+  end
+
+  set_hidden(false)
+  local top = state.stack[#state.stack]
+  if vim.api.nvim_win_is_valid(top.win) then
+    vim.api.nvim_set_current_win(top.win)
+  end
+  return true
+end
+
+function M.close_all()
+  while #state.stack > 0 do
+    M.close(state.stack[#state.stack].name)
+  end
+end
+
 function M.open(name, opts)
+  -- 隠した画面の上に新しい画面だけが見える状態を作らないため、先に全体を表示する
+  M.show_all()
+
   local parent = vim.api.nvim_get_current_win()
   local buf = vim.api.nvim_create_buf(false, true)
 
@@ -46,6 +117,22 @@ function M.open(name, opts)
 
   state.windows[name] = win
   table.insert(state.stack, { name = name, win = win, buf = buf, parent = parent })
+  -- :q などプラグインのキー以外で閉じた float がスタックに残ると、隠した・表示中の判定を誤るため取り除く
+  vim.api.nvim_create_autocmd('WinClosed', {
+    pattern = tostring(win),
+    once = true,
+    callback = function()
+      for index, entry in ipairs(state.stack) do
+        if entry.win == win then
+          table.remove(state.stack, index)
+          if state.windows[entry.name] == win then
+            state.windows[entry.name] = nil
+          end
+          break
+        end
+      end
+    end,
+  })
 
   return win
 end

@@ -60,12 +60,24 @@ require('google-calendar').setup()
 
 | Command | Description |
 | --- | --- |
-| `:GoogleCalendar` | Open the current month. If the month view is already open, focus it and reuse the cache. |
-| `:GoogleCalendar 2026-11` | Open the specified month. |
+| `:GoogleCalendar` | Open the current month. If the windows are hidden with `q`, show them again as they were. If the month view is already open, focus it and reuse the cache. |
+| `:GoogleCalendar 2026-11` | Open the specified month. Hidden windows are closed first. |
 | `:GoogleCalendar 2026-13` | Report an invalid month and do not open the month view. |
-| `:GoogleCalendar slots` | Open the online meeting slot finder. |
+| `:GoogleCalendar slots` | Open the online meeting slot finder. Hidden windows are closed first. |
 
 Use `r` or `R` in the month view to refetch the displayed month.
+
+### Hide and show
+
+`q` hides every plugin window at once and returns to the window you were in before opening the plugin. Nothing is closed: the screen you were on, unsaved form input, and a save or delete in progress are kept. Run `:GoogleCalendar` to show the windows again. `:GoogleCalendar 2026-11` or `:GoogleCalendar slots` closes the hidden windows instead; a save or delete still in progress then finishes in Google Calendar without a notification. To hide and show with one key, map `toggle()`:
+
+```lua
+vim.keymap.set('n', '<leader>gc', function()
+  require('google-calendar').toggle()
+end)
+```
+
+`toggle()` shows the hidden windows, hides the windows that are shown, and opens the current month when nothing is open. `<Esc>` closes only the current window and returns to the previous one.
 
 ## Default keymaps
 
@@ -80,40 +92,41 @@ Use `r` or `R` in the month view to refetch the displayed month.
 | Month | `s` | Open the online meeting slot finder |
 | Month | `r` / `R` | Refetch the displayed month |
 | Month | `?` | Open help |
-| Month | `q` / `<Esc>` | Close the month view |
+| Month | `<Esc>` | Close the month view |
 | Agenda | `j` / `k` | Select an event |
 | Agenda | `<CR>` | Open the selected event |
 | Agenda | `<C-o>` | Open the selected event in Google Calendar |
 | Agenda | `d` | Delete the selected event |
 | Agenda | `?` | Open help |
-| Agenda | `q` / `<Esc>` | Return to the month view |
+| Agenda | `<Esc>` | Return to the month view |
 | Detail | `e` | Open the update form |
 | Detail | `d` | Open the delete confirmation |
 | Detail | `y` | Copy the Meet URL |
 | Detail | `g` | Expand or collapse the guest list |
 | Detail | `?` | Open help |
-| Detail | `q` / `<Esc>` | Return to the agenda |
+| Detail | `<Esc>` | Return to the agenda |
 | Confirm | `y` | Delete the event |
-| Confirm | `n` / `q` / `<Esc>` | Close the confirmation without deleting |
+| Confirm | `n` / `<Esc>` | Close the confirmation without deleting |
 | Form | `<Tab>` / `<S-Tab>` | Move to the next / previous composer row |
 | Form | `<CR>` | Open the editor for the selected row, or toggle Meet |
 | Form | `<Space>` | Toggle all-day or Meet |
 | Form | `:w` | Save |
-| Form | `<Esc>` / `q` | Cancel. `<Esc>` leaves insert mode first; `q` works in normal mode only. |
+| Form | `<Esc>` | Cancel. In insert mode, `<Esc>` leaves insert mode first. |
 | Form | `?` | Open help |
 | Form editor | `<CR>` | Edit the selected date/time field |
 | Form editor | `:w` | Apply the editor value and close it |
-| Form editor | `<Esc>` / `q` | Close the editor without applying |
+| Form editor | `<Esc>` | Close the editor without applying |
 | Slot filter | `j` / `k` | Move between choices (headings are skipped) |
 | Slot filter | `<Space>` | Choose a time range or length, or toggle a week |
 | Slot filter | `<CR>` | Search slots with the chosen conditions |
 | Slot filter | `?` | Open help |
-| Slot filter | `q` / `<Esc>` | Close the slot filter |
+| Slot filter | `<Esc>` | Close the slot filter |
 | Slots | `j` / `k` | Select a slot and redraw the timeline |
 | Slots | `y` | Copy every listed slot |
 | Slots | `?` | Open help |
-| Slots | `q` / `<Esc>` | Return to the slot filter |
-| Help | `q` / `<Esc>` | Close help |
+| Slots | `<Esc>` | Return to the slot filter |
+| Help | `<Esc>` | Close help |
+| Every screen | `q` | Hide every plugin window (normal mode only). See [Hide and show](#hide-and-show). |
 
 All keys can be changed through `setup()`. See `:help google-calendar-keymaps` for details.
 
@@ -261,7 +274,7 @@ For a default Neovim setup this is `~/.local/share/nvim/google-calendar.nvim/con
 
 ### Keymap overrides
 
-Keymaps are deep-merged with the defaults. Setting a key to `false` disables it. Unknown screens or actions produce a warning and are ignored.
+Keymaps are deep-merged with the defaults. Setting a key to `false` disables it. Unknown screens or actions produce a warning and are ignored. In every screen, `close` is the key that hides every plugin window (`q`), and `esc_close` (`cancel` in the form) closes only the current window (`<Esc>`).
 
 ```lua
 require('google-calendar').setup({
@@ -316,7 +329,7 @@ Override any group with `setup({ highlights = { ... } })`. Set a group to `false
 - Month cells use Google Calendar-style event chips: all-day and multi-day events are colored bars with white text, and single-day timed events are a colored `●` / `○` dot followed by the start time and title. A timed event ending at `00:00` on the next day is treated as ending at `24:00` on its start day, so it stays a single-day dot instead of a bar that spills into the next cell. Events without a title (including private events whose details are hidden) display `予定あり`. Multi-day bars continue across adjacent day cells and week rows instead of restarting in each cell. Their titles are truncated to the width of the whole bar, not to a single cell. Calendar colors are assigned automatically in the order `primary`, then the entries in `calendars` (11 colors, wrapping).
 - The weekday header is rendered as a fixed `winbar`, so it stays visible while the month grid scrolls. When a day has more events than `max_events_per_cell`, the final event row shows `+N` for the hidden events.
 - Month grid separators use the same `GoogleCalendarBorder` highlight for both horizontal and vertical lines.
-- Month data is cached in memory. The cache is cleared when the month window closes, when you press `r` or `R`, and after creating, updating, or deleting an event.
+- Month data is cached in memory. The cache is cleared when the month window closes, when you press `r` or `R`, and after creating, updating, or deleting an event. Hiding the windows with `q` keeps the cache.
 - While loading, the month header shows `読み込み中...` but navigation, refresh, opening the agenda/form/help, and closing remain available. Only the latest fetch result is rendered.
 - Agenda rows use a colored `●` or `○` dot, the start time, and the title. Events without a title display `予定あり`. The dot uses the event's calendar color. Events with `status == 'tentative'` or `transparency == 'transparent'` use the hollow `○` dot. All-day events use the all-day label. Press `<C-o>` to open the selected event in Google Calendar; if the event has no URL, the plugin reports it instead.
 - The detail view uses a Google Calendar-style card. Events without a title display `▣ 予定あり`. The calendar line shows the calendar's email address and display name (for example `me@example.com (My Calendar)`) using `calendarList.list`, instead of the raw `primary` alias. Guests are collapsed by default when there are more than five attendees; press `g` to expand or collapse them. The cursor stays in place when toggling.

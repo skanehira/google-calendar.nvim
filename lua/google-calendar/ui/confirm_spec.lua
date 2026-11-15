@@ -8,6 +8,10 @@ local notify_module = require('google-calendar.notify')
 local state = require('google-calendar.state')
 local window = require('google-calendar.ui.window')
 
+local function is_hidden(win)
+  return vim.api.nvim_win_get_config(win).hide == true
+end
+
 local repo_root = vim.fn.getcwd()
 local fake_gws = repo_root .. '/tests/fixtures/fake-gws.py'
 
@@ -77,6 +81,16 @@ end
 
 local function feed(keys)
   vim.api.nvim_feedkeys(vim.api.nvim_replace_termcodes(keys, true, false, true), 'x', false)
+end
+
+local function flush_scheduled()
+  local done = false
+  vim.schedule(function()
+    done = true
+  end)
+  assert.is_true(vim.wait(1000, function()
+    return done
+  end, 10))
 end
 
 local function confirm_lines()
@@ -276,7 +290,6 @@ describe('ui.confirm', function()
   for _, case in ipairs({
     { key = 'n', label = 'n' },
     { key = '<Esc>', label = '<Esc>' },
-    { key = 'q', label = 'q' },
   }) do
     it('確認で ' .. case.label .. ' を押すと確認を閉じ、予定を削除しない', function()
       local detail_win = detail.open(full_event())
@@ -379,6 +392,82 @@ describe('ui.confirm', function()
       { message = 'Event deleted', level = vim.log.levels.INFO },
     }, notifications)
   end)
+
+  it(
+    '削除中に q で隠しても削除を続け、終わったら通知し、フォーカスは開く前のウィンドウに残る',
+    function()
+      local original = vim.api.nvim_get_current_win()
+      write_state({ full_event() })
+      local agenda_win = window.open('agenda', { relative = 'editor', width = 40, height = 10, row = 1, col = 1 })
+      detail.open(full_event())
+      feed('d')
+
+      feed('y')
+      feed('q')
+      assert.are.equal(original, vim.api.nvim_get_current_win())
+      wait_until(function()
+        return state.windows.confirm == nil and state.windows.detail == nil
+      end)
+
+      assert.are.same({ { message = 'Event deleted', level = vim.log.levels.INFO } }, notifications)
+      assert.are.equal(1, #delete_calls())
+      assert.is_true(is_hidden(agenda_win))
+      assert.are.equal(original, vim.api.nvim_get_current_win())
+    end
+  )
+
+  it(
+    'アジェンダから削除中に q で隠しても、削除と月表示の再取得を終え、隠したままフォーカスを動かさない',
+    function()
+      local original = vim.api.nvim_get_current_win()
+      open_month()
+      local month_win = state.windows.month
+      feed('<CR>')
+      feed('d')
+
+      feed('y')
+      feed('q')
+      wait_until(function()
+        return state.windows.confirm == nil and #notifications == 1 and not state.loading
+      end)
+
+      assert.are.same({ { message = 'Event deleted', level = vim.log.levels.INFO } }, notifications)
+      assert.are.same(
+        { '予定なし' },
+        vim.api.nvim_buf_get_lines(vim.api.nvim_win_get_buf(state.windows.agenda), 0, -1, false)
+      )
+      assert.are.same({ true, true }, { is_hidden(month_win), is_hidden(state.windows.agenda) })
+      assert.are.equal(original, vim.api.nvim_get_current_win())
+    end
+  )
+
+  it(
+    '隠した画面を閉じて開き直した後に届いた古い削除の応答は、新しい詳細を閉じない',
+    function()
+      local original_gws = package.loaded['google-calendar.gws']
+      local respond
+      package.loaded['google-calendar.gws'] = {
+        delete_event = function(_id, _calendar_id, callback)
+          respond = callback
+        end,
+      }
+      detail.open(full_event())
+      feed('d')
+      feed('y')
+      feed('q')
+      window.close_all()
+
+      local other = full_event()
+      other.id = 'evt-other'
+      local new_detail = detail.open(other)
+      respond(nil, nil)
+      flush_scheduled()
+      package.loaded['google-calendar.gws'] = original_gws
+
+      assert.are.equal(new_detail, state.windows.detail)
+      assert.are.equal(new_detail, vim.api.nvim_get_current_win())
+    end
+  )
 
   it('二重に y を押しても削除は 1 回だけ実行する', function()
     local script = tmp_root .. '/slow-gws'
@@ -509,6 +598,9 @@ describe('ui.confirm', function()
     assert.is_true(vim.api.nvim_win_is_valid(state.windows.confirm))
 
     feed('Q')
+    assert.is_true(is_hidden(state.windows.confirm))
+    window.show_all()
+    feed('N')
     assert.is_nil(state.windows.confirm)
     assert.are.equal(0, #delete_calls())
 

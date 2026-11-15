@@ -18,39 +18,45 @@ local layouts = {
     { { action = 'slots', label = '空き枠' } },
     { { action = 'refresh', label = '再取得' } },
     { { action = 'help', label = 'ヘルプ' } },
-    { { action = 'close', label = '閉じる' }, { action = 'esc_close', label = '閉じる' } },
+    { { action = 'esc_close', label = '閉じる' } },
+    { { action = 'close', label = '隠す' } },
   },
   agenda = {
     { { action = 'next', label = '選択' }, { action = 'prev', label = '選択' } },
     { { action = 'open', label = '詳細' } },
     { { action = 'open_url', label = 'カレンダーで開く' } },
     { { action = 'delete', label = '削除' } },
-    { { action = 'close', label = '戻る' }, { action = 'esc_close', label = '戻る' } },
+    { { action = 'esc_close', label = '戻る' } },
+    { { action = 'close', label = '隠す' } },
   },
   detail = {
     { { action = 'edit', label = '更新' } },
     { { action = 'delete', label = '削除' } },
     { { action = 'copy_meet', label = 'Meet URL コピー' } },
     { { action = 'toggle_guests', label = 'ゲスト折り畳み' } },
-    { { action = 'close', label = '戻る' }, { action = 'esc_close', label = '戻る' } },
+    { { action = 'esc_close', label = '戻る' } },
+    { { action = 'close', label = '隠す' } },
   },
   slot_filter = {
     { { action = 'next', label = '移動' }, { action = 'prev', label = '移動' } },
     { { action = 'toggle', label = '選択' } },
     { { action = 'search', label = '検索' } },
-    { { action = 'close', label = '閉じる' }, { action = 'esc_close', label = '閉じる' } },
+    { { action = 'esc_close', label = '閉じる' } },
+    { { action = 'close', label = '隠す' } },
   },
   slots = {
     { { action = 'next', label = '選択' }, { action = 'prev', label = '選択' } },
     { { action = 'copy', label = 'コピー' } },
-    { { action = 'close', label = '戻る' }, { action = 'esc_close', label = '戻る' } },
+    { { action = 'esc_close', label = '戻る' } },
+    { { action = 'close', label = '隠す' } },
   },
   form = {
     { { action = 'next_field', label = '移動' }, { action = 'prev_field', label = '移動' } },
     { { action = 'edit', label = '編集' } },
     { { action = 'toggle', label = '切替' } },
     { { action = 'save', label = '保存' } },
-    { { action = 'cancel', label = '取消' }, { action = 'close', label = '取消' } },
+    { { action = 'cancel', label = '取消' } },
+    { { action = 'close', label = '隠す' } },
     { { action = 'help', label = 'ヘルプ' } },
   },
 }
@@ -119,10 +125,11 @@ local function apply_keymaps(buf)
     end
   end
 
+  local handlers = { close = window.hide_all, esc_close = M.close }
   for _, action in ipairs(HELP_KEYMAP_ACTIONS) do
     local key = current[action]
     if key ~= nil then
-      vim.keymap.set('n', key, M.close, { buffer = buf, nowait = true })
+      vim.keymap.set('n', key, handlers[action], { buffer = buf, nowait = true })
     end
   end
 

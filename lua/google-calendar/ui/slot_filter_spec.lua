@@ -129,7 +129,7 @@ describe('ui.slot_filter', function()
     assert.are.equal('>○ 11/15(日)~11/21(土)', buffer_lines()[10])
   end)
 
-  it('候補一覧を q で閉じて戻ると、直前に選んだ条件のまま表示する', function()
+  it('候補一覧を <Esc> で閉じて戻ると、直前に選んだ条件のまま表示する', function()
     local slots_ui = require('google-calendar.ui.slots')
     local original_fetch = slots_ui.deps.fetch_events
     slots_ui.deps.fetch_events = function() end
@@ -138,7 +138,7 @@ describe('ui.slot_filter', function()
 
     feed('jjjj<Space>jjj<Space><CR>')
     assert.is_not_nil(state.windows.slots)
-    feed('q')
+    feed('<Esc>')
     slots_ui.deps.fetch_events = original_fetch
 
     assert.is_nil(state.windows.slots)
@@ -158,13 +158,32 @@ describe('ui.slot_filter', function()
     }, buffer_lines())
   end)
 
-  it('? でヘルプを開き、q で閉じる', function()
+  it('q で条件選択を隠し、開く前のウィンドウへフォーカスを戻す', function()
+    local original = vim.api.nvim_get_current_win()
+    local win = slot_filter.open({ today = '2026-11-18' })
+
+    feed('q')
+
+    assert.is_true(vim.api.nvim_win_get_config(win).hide)
+    assert.are.equal(original, vim.api.nvim_get_current_win())
+  end)
+
+  it('フッターに選択・検索・閉じる・隠すのキーを表示する', function()
+    local win = slot_filter.open({ today = '2026-11-18' })
+
+    assert.are.same(
+      { { ' <Space>:選択 <CR>:検索 <Esc>:閉じる q:隠す ' } },
+      vim.api.nvim_win_get_config(win).footer
+    )
+  end)
+
+  it('? でヘルプを開き、<Esc> で閉じる', function()
     slot_filter.open({ today = '2026-11-18' })
 
     feed('?')
     assert.are.equal('slot_filter', opened_help)
 
-    feed('q')
+    feed('<Esc>')
     assert.is_nil(state.windows.slot_filter)
   end)
 end)

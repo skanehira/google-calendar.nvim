@@ -3,6 +3,7 @@ local config = require('google-calendar.config')
 local notify = require('google-calendar.notify')
 local state = require('google-calendar.state')
 local month_view = require('google-calendar.ui.month_view')
+local window = require('google-calendar.ui.window')
 
 local M = {}
 
@@ -21,6 +22,14 @@ local function ensure_gws()
 end
 
 function M.open(args)
+  if window.is_hidden() then
+    if args == nil or args == '' then
+      return window.show_all()
+    end
+    -- 別の月や空き枠を指定されたら、隠した画面の上に重ねず閉じてから開き直す
+    window.close_all()
+  end
+
   if args == 'slots' then
     if not ensure_gws() then
       return false
@@ -59,6 +68,16 @@ function M.open(args)
   end
 
   return month_view.open()
+end
+
+function M.toggle()
+  if window.is_hidden() then
+    return window.show_all()
+  end
+  if #state.stack > 0 then
+    return window.hide_all()
+  end
+  return M.open()
 end
 
 return M

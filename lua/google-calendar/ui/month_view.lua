@@ -943,7 +943,7 @@ local key_actions = {
   slots = open_slots,
   refresh = M.refresh,
   help = open_help,
-  close = close,
+  close = window.hide_all,
   esc_close = close,
 }
 

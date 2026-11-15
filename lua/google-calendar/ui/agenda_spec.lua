@@ -5,6 +5,10 @@ local event = require('google-calendar.event')
 local state = require('google-calendar.state')
 local window = require('google-calendar.ui.window')
 
+local function is_hidden(win)
+  return vim.api.nvim_win_get_config(win).hide == true
+end
+
 local screen_opts = { relative = 'editor', width = 40, height = 10, row = 1, col = 1 }
 
 local original_columns
@@ -306,23 +310,25 @@ describe('ui.agenda', function()
     assert.is_true(changed)
   end)
 
-  it('q でアジェンダを閉じ、元の月表示へフォーカスが戻る', function()
-    local parent = window.open('month', screen_opts)
-    set_events({
-      timed_event('e1', '定例', '2026-10-28T09:00:00+09:00', '2026-10-28T10:00:00+09:00'),
-    })
+  it(
+    'q で月表示ごとアジェンダを隠し、月表示を開く前のウィンドウへフォーカスが戻る',
+    function()
+      local original = vim.api.nvim_get_current_win()
+      local month_win = window.open('month', screen_opts)
+      set_events({
+        timed_event('e1', '定例', '2026-10-28T09:00:00+09:00', '2026-10-28T10:00:00+09:00'),
+      })
 
-    local win = agenda.open()
-    assert.are.equal(win, vim.api.nvim_get_current_win())
+      local win = agenda.open()
+      assert.are.equal(win, vim.api.nvim_get_current_win())
 
-    feed('q')
+      feed('q')
 
-    assert.is_false(vim.api.nvim_win_is_valid(win))
-    assert.is_nil(state.windows.agenda)
-    assert.are.equal(parent, vim.api.nvim_get_current_win())
-    assert.are.equal(1, #state.stack)
-    assert.are.equal('month', state.stack[1].name)
-  end)
+      assert.are.same({ true, true }, { is_hidden(month_win), is_hidden(win) })
+      assert.are.equal(original, vim.api.nvim_get_current_win())
+      assert.are.equal(2, #state.stack)
+    end
+  )
 
   it('<Esc> でアジェンダを閉じる', function()
     local parent = window.open('month', screen_opts)
@@ -350,7 +356,7 @@ describe('ui.agenda', function()
     assert.are.equal('agenda', opened_help)
   end)
 
-  it('q で詳細からアジェンダ、さらに q で月表示へ 1 段ずつ戻る', function()
+  it('<Esc> で詳細からアジェンダ、さらに <Esc> で月表示へ 1 段ずつ戻る', function()
     agenda.openers.open_detail = original_open_detail
     local parent = window.open('month', screen_opts)
     set_events({
@@ -365,21 +371,22 @@ describe('ui.agenda', function()
     assert.are.equal(detail_win, vim.api.nvim_get_current_win())
     assert.are.equal(3, #state.stack)
 
-    feed('q')
+    feed('<Esc>')
 
     assert.is_false(vim.api.nvim_win_is_valid(detail_win))
     assert.are.equal(agenda_win, vim.api.nvim_get_current_win())
 
-    feed('q')
+    feed('<Esc>')
 
     assert.is_false(vim.api.nvim_win_is_valid(agenda_win))
     assert.are.equal(parent, vim.api.nvim_get_current_win())
     assert.are.equal(1, #state.stack)
   end)
 
-  it('setup() で上書きしたキーで予定を選択し、アジェンダを閉じる', function()
+  it('setup() で上書きしたキーで予定を選択し、アジェンダを隠す', function()
     config.setup({ keymaps = { agenda = { next = 'n', close = 'Q', esc_close = false } } })
-    local parent = window.open('month', screen_opts)
+    local original = vim.api.nvim_get_current_win()
+    window.open('month', screen_opts)
     set_events({
       timed_event('e1', '朝会', '2026-10-28T09:00:00+09:00', '2026-10-28T09:30:00+09:00'),
       timed_event('e2', '定例', '2026-10-28T10:00:00+09:00', '2026-10-28T11:00:00+09:00'),
@@ -395,8 +402,8 @@ describe('ui.agenda', function()
 
     feed('Q')
 
-    assert.is_false(vim.api.nvim_win_is_valid(win))
-    assert.are.equal(parent, vim.api.nvim_get_current_win())
+    assert.is_true(is_hidden(win))
+    assert.are.equal(original, vim.api.nvim_get_current_win())
   end)
 
   it('予定が 25 件の日は設定した高さで表示し、j で最後の予定まで選択できる', function()

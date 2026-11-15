@@ -81,21 +81,46 @@ If you add the plugin to `runtimepath` manually, generate the help tags once:
 4. Commands                                         *google-calendar-commands*
 
 :GoogleCalendar                                    *:GoogleCalendar*
-  Open the current month. If the month view is already open, focus it and
-  reuse the cache. Press `r` or `R` in the month view to refetch.
+  Open the current month. If the windows are hidden with `q`, show them
+  again as they were (see |google-calendar-hide|). If the month view is
+  already open, focus it and reuse the cache. Press `r` or `R` in the month
+  view to refetch.
 
 :GoogleCalendar {YYYY-MM}                          *:GoogleCalendar-month*
   Open the specified month. Example: `:GoogleCalendar 2026-11`
-  An invalid month such as `2026-13` reports an error and does not open the
-  month view.
+  Hidden windows are closed first. An invalid month such as `2026-13`
+  reports an error and does not open the month view.
 
 :GoogleCalendar slots                              *:GoogleCalendar-slots*
-  Open the online meeting slot finder. See |google-calendar-slots|.
+  Open the online meeting slot finder. Hidden windows are closed first. See
+  |google-calendar-slots|.
+
+Hide and show                                      *google-calendar-hide*
+  `q` hides every plugin window at once and returns to the window you were
+  in before opening the plugin. Nothing is closed: the screen you were on,
+  unsaved form input, and a save or delete in progress are kept. Run
+  `:GoogleCalendar` to show the windows again. `:GoogleCalendar {YYYY-MM}`
+  or `:GoogleCalendar slots` closes the hidden windows instead; a save or
+  delete still in progress then finishes in Google Calendar without a
+  notification. `<Esc>` closes only the current window and returns to the
+  previous one.
+
+require('google-calendar').toggle()          *google-calendar.toggle()*
+  Show the hidden windows, hide the windows that are shown, or open the
+  current month when nothing is open. Map it to hide and show with one key:
+>lua
+  vim.keymap.set('n', '<leader>gc', function()
+    require('google-calendar').toggle()
+  end)
+<
 
 ==============================================================================
 5. Keymaps                                          *google-calendar-keymaps*
 
 Every key can be changed through `setup()`. Set a key to `false` to disable it.
+
+In every screen, normal mode `q` hides every plugin window. See
+|google-calendar-hide|.
 
 Month view ~
   h / l              Select the previous / next day
@@ -107,7 +132,7 @@ Month view ~
   s                  Open the online meeting slot finder
   r / R              Refetch the displayed month
   ?                  Open month view help
-  q / <Esc>          Close the month view
+  <Esc>              Close the month view
 
 Day agenda ~
   j / k              Select an event
@@ -115,7 +140,7 @@ Day agenda ~
   <C-o>              Open the selected event in Google Calendar
   d                  Delete the selected event
   ?                  Open agenda help
-  q / <Esc>          Return to the month view
+  <Esc>              Return to the month view
 
 Event detail ~
   e                  Open the update form
@@ -123,41 +148,41 @@ Event detail ~
   y                  Copy the Meet URL
   g                  Expand or collapse the guest list
   ?                  Open detail help
-  q / <Esc>          Return to the agenda
+  <Esc>              Return to the agenda
 
 Delete confirmation ~
   y                  Delete the event
-  n / q / <Esc>      Close the confirmation without deleting
+  n / <Esc>          Close the confirmation without deleting
 
 Create / update form ~
   <Tab> / <S-Tab>    Move to the next / previous composer row
   <CR>               Open the editor for the selected row, or toggle Meet
   <Space>            Toggle all-day or Meet
   :w                 Save (write command)
-  <Esc> / q          Cancel. <Esc> leaves insert mode first; q works in
-                     normal mode only.
+  <Esc>              Cancel. In insert mode, <Esc> leaves insert mode
+                     first.
   ?                  Open form help
 
 Form editor ~
   <CR>               Edit the selected date/time field
   :w                 Apply the editor value and close it
-  <Esc> / q          Close the editor without applying
+  <Esc>              Close the editor without applying
 
 Slot filter ~
   j / k              Move between choices (headings are skipped)
   <Space>            Choose a time range or length, or toggle a week
   <CR>               Search slots with the chosen conditions
   ?                  Open slot filter help
-  q / <Esc>          Close the slot filter
+  <Esc>              Close the slot filter
 
 Slots ~
   j / k              Select a slot and redraw the timeline
   y                  Copy every listed slot
   ?                  Open slots help
-  q / <Esc>          Return to the slot filter
+  <Esc>              Return to the slot filter
 
 Help ~
-  q / <Esc>          Close help
+  <Esc>              Close help
 
 The default save command is :w. <C-s> is not used because it conflicts with the
 herdr prefix.
@@ -301,7 +326,9 @@ Calendar configuration file ~
   explicitly provided.
 
 Keymaps are deep-merged with the defaults. Setting a key to `false` disables
-it; unknown screens or actions produce a warning and are ignored.
+it; unknown screens or actions produce a warning and are ignored. In every
+screen, `close` is the key that hides every plugin window (`q`), and
+`esc_close` (`cancel` in the form) closes only the current window (`<Esc>`).
 
 Example: change the save key and disable `q` in the month view:
 >lua
@@ -395,7 +422,7 @@ Month view ~
     both horizontal and vertical lines.
   - Month data is cached in memory. The cache is cleared when the month window
     closes, when you press `r` or `R`, and after creating, updating, or
-    deleting an event.
+    deleting an event. Hiding the windows with `q` keeps the cache.
   - While loading, the header shows `読み込み中...` but navigation, refresh,
     opening the agenda/form/help, and closing remain available. Only the
     latest fetch result is rendered.

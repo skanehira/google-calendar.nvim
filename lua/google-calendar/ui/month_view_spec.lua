@@ -306,13 +306,26 @@ describe('ui.month_view', function()
     assert.are.equal(winbar, vim.wo[win].winbar)
   end)
 
-  it('q で float を閉じ、元のウィンドウへフォーカスが戻る', function()
+  it('q で月表示を隠し、元のウィンドウへフォーカスが戻る', function()
     local parent = vim.api.nvim_get_current_win()
     run_command()
     wait_loading()
     local win = state.windows.month
 
     feed('q')
+
+    assert.is_true(vim.api.nvim_win_get_config(win).hide)
+    assert.are.equal(parent, vim.api.nvim_get_current_win())
+    assert.are.equal(1, #state.stack)
+  end)
+
+  it('<Esc> で float を閉じ、元のウィンドウへフォーカスが戻る', function()
+    local parent = vim.api.nvim_get_current_win()
+    run_command()
+    wait_loading()
+    local win = state.windows.month
+
+    feed('<Esc>')
 
     assert.is_false(vim.api.nvim_win_is_valid(win))
     assert.are.equal(parent, vim.api.nvim_get_current_win())
@@ -854,7 +867,7 @@ describe('ui.month_view', function()
     assert.are.equal('2026-10-29', state.selected_date)
     assert.is_true(vim.api.nvim_win_is_valid(state.windows.month))
 
-    feed('q')
+    feed('<Esc>')
     assert.is_nil(state.windows.month)
 
     pending_callbacks[1]({}, nil)
@@ -921,7 +934,7 @@ describe('ui.month_view', function()
     feed('<Esc>')
     assert.is_true(vim.api.nvim_win_is_valid(win))
     feed('q')
-    assert.is_false(vim.api.nvim_win_is_valid(win))
+    assert.is_true(vim.api.nvim_win_get_config(win).hide)
   end)
 
   it('タイトル・ボーダー・選択セル・チップ背景にハイライトを適用する', function()
@@ -1049,7 +1062,7 @@ describe('ui.month_view', function()
     assert.is_true(state.loading)
     feed('l')
     assert.are.equal('2026-10-29', state.selected_date)
-    feed('q')
+    feed('<Esc>')
     assert.is_nil(state.windows.month)
 
     pending_callbacks[1]({}, nil)
@@ -1153,7 +1166,7 @@ describe('ui.month_view', function()
     wait_loading()
     assert.are.equal(1, #gws_calls)
 
-    feed('q')
+    feed('<Esc>')
     assert.is_nil(state.windows.month)
 
     run_command()
@@ -1200,9 +1213,10 @@ describe('ui.month_view', function()
     wait_loading()
     local win = state.windows.month
     feed('q')
-    assert.is_true(vim.api.nvim_win_is_valid(win))
+    assert.is_false(vim.api.nvim_win_get_config(win).hide)
     feed('Q')
-    assert.is_false(vim.api.nvim_win_is_valid(win))
+    assert.is_true(vim.api.nvim_win_get_config(win).hide)
+    window.close_all()
 
     plugin.setup({
       notify = notify,
@@ -1213,7 +1227,7 @@ describe('ui.month_view', function()
     wait_loading()
     win = state.windows.month
     feed('q')
-    assert.is_true(vim.api.nvim_win_is_valid(win))
+    assert.is_false(vim.api.nvim_win_get_config(win).hide)
     feed('<Esc>')
     assert.is_false(vim.api.nvim_win_is_valid(win))
   end)

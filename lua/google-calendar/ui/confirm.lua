@@ -92,10 +92,12 @@ local function delete()
   render()
 
   local item = confirm.item
+  local request_win = confirm.win
   local gws = require('google-calendar.gws')
   gws.delete_event(item.id, item.calendar_id, function(_, err)
     vim.schedule(function()
-      if not confirm.active then
+      -- 閉じて開き直した確認も confirm.active が真になるため、削除を始めたときのウィンドウと比べて古い応答を捨てる
+      if not confirm.active or confirm.win ~= request_win or not vim.api.nvim_win_is_valid(request_win) then
         return
       end
 
@@ -119,7 +121,7 @@ end
 local key_actions = {
   yes = delete,
   no = close,
-  close = close,
+  close = window.hide_all,
   esc_close = close,
 }
 

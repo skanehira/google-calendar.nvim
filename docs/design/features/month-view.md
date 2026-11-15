@@ -47,7 +47,8 @@ Google カレンダーの月表示を Neovim の float window に描画する。
 | `a` | 選択日の登録フォームを開く（[event-create.md](event-create.md)） |
 | `r` / `R` | 表示中の月を再取得する（キャッシュを破棄する） |
 | `?` | ヘルプを開く（[help.md](help.md)） |
-| `q` / `<Esc>` | 月表示を閉じ、元のウィンドウへ戻る |
+| `<Esc>` | 月表示を閉じ、元のウィンドウへ戻る |
+| `q` | 月表示とその上に重ねた float をすべて隠し、元のウィンドウへ戻る。キャッシュは残す |
 
 **描画の決定**:
 
@@ -73,7 +74,7 @@ Google カレンダーの月表示を Neovim の float window に描画する。
 - 予定は `events_by_date` に `YYYY-MM-DD` をキーとして保持する
 - 取得済みの月は `state.month_cache[YYYY-MM]` に保持し、同じ月へ戻るときは `gws` を呼ばずに再利用する。月表示を閉じるか、`r` / `R` で再取得するとキャッシュを破棄する
 
-キーマップは `config.keymaps.month` から解決し、`setup()` で上書きできる。閉じる `q` / `<Esc>` は `month.close` / `month.esc_close` で別々に変更・無効化できる。
+キーマップは `config.keymaps.month` から解決し、`setup()` で上書きできる。隠す `q` と閉じる `<Esc>` は `month.close` / `month.esc_close` で別々に変更・無効化できる。
 
 ## API
 
@@ -105,7 +106,8 @@ Google カレンダーの月表示を Neovim の float window に描画する。
 | 受け入れ基準 (docs/design/USECASES.md) | レベル |
 | --- | --- |
 | （US-001）Neovim で `:GoogleCalendar` を実行すると、当月の月表示 float window が開き、月タイトルと曜日ヘッダーと 6 週分の日付セルが表示される | 結合 |
-| （US-001）月表示を開いた状態で `q` を押すと float window が閉じ、元のウィンドウに戻る | 結合 |
+| （US-001）月表示を開いた状態で `<Esc>` を押すと float window が閉じ、元のウィンドウに戻る | 結合 |
+| （US-001）月表示を開いた状態で `q` を押すと float window が隠れて元のウィンドウに戻り、引数なしの `:GoogleCalendar` を実行すると隠す前の画面がそのまま表示される | 結合（`ui/month_view_spec.lua` / `init_spec.lua`） |
 | （US-002）月表示で `H` を押すと前月、`L` を押すと次月の表示に切り替わり、月タイトルと日付セルがその月のものになる | 結合 |
 | （US-002）月表示で `t` を押すと今日を含む月の表示に戻り、今日のセルが強調される | 結合 |
 | （US-002）`:GoogleCalendar 2026-11` のように年月を指定して実行すると、指定した月の表示で開く | 結合 |

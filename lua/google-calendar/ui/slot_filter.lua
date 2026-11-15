@@ -19,7 +19,8 @@ local SCREEN = 'slot_filter'
 local FOOTER_ITEMS = {
   { action = 'toggle', label = '選択' },
   { action = 'search', label = '検索' },
-  { action = 'close', label = '閉じる' },
+  { action = 'esc_close', label = '閉じる' },
+  { action = 'close', label = '隠す' },
 }
 
 local rows = {}
@@ -186,7 +187,7 @@ local key_actions = {
   help = function()
     M.openers.help(SCREEN)
   end,
-  close = close,
+  close = window.hide_all,
   esc_close = close,
 }
 

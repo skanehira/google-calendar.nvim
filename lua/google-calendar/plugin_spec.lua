@@ -13,13 +13,18 @@ describe('plugin', function()
     assert.are.equal('?', commands.GoogleCalendar.nargs)
   end)
 
-  it(':GoogleCalendar の補完が YYYY-MM の候補を返す', function()
+  it(':GoogleCalendar の補完が slots と YYYY-MM の候補を返す', function()
     local candidates = vim.fn.getcompletion('GoogleCalendar ', 'cmdline')
 
-    assert.is_true(#candidates > 0)
-    for _, candidate in ipairs(candidates) do
-      assert.is_truthy(candidate:match('^%d%d%d%d%-%d%d$'))
+    assert.are.equal('slots', candidates[1])
+    assert.are.equal(26, #candidates)
+    for index = 2, #candidates do
+      assert.is_truthy(candidates[index]:match('^%d%d%d%d%-%d%d$'))
     end
+  end)
+
+  it(':GoogleCalendar の補完が入力中の文字列で候補を絞る', function()
+    assert.are.same({ 'slots' }, vim.fn.getcompletion('GoogleCalendar sl', 'cmdline'))
   end)
 
   it('init.setup が config に設定を反映する', function()

@@ -13,6 +13,7 @@ local default_keymaps = {
     agenda = '<CR>',
     create = 'a',
     refresh = 'r',
+    slots = 's',
     help = '?',
     close = 'q',
     esc_close = '<Esc>',
@@ -48,7 +49,39 @@ local default_keymaps = {
   },
   confirm = { yes = 'y', no = 'n', close = 'q', esc_close = '<Esc>' },
   help = { close = 'q', esc_close = '<Esc>' },
+  slot_filter = {
+    next = 'j',
+    prev = 'k',
+    toggle = '<Space>',
+    search = '<CR>',
+    help = '?',
+    close = 'q',
+    esc_close = '<Esc>',
+  },
+  slots = { next = 'j', prev = 'k', copy = 'y', help = '?', close = 'q', esc_close = '<Esc>' },
 }
+
+local default_slots = {
+  time_ranges = { '09:00-18:00', '09:00-23:00' },
+  default_time_range = '09:00-18:00',
+  durations = { 30, 60, 90, 120 },
+  default_duration = 60,
+  buffer = 60,
+  weeks = 8,
+  weekdays = { 'sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday' },
+  width = 0.8,
+  height = 0.8,
+}
+
+local function capture_setup(opts)
+  local messages = {}
+  config.setup(vim.tbl_extend('force', opts, {
+    notify = function(msg, level)
+      table.insert(messages, { msg = msg, level = level })
+    end,
+  }))
+  return messages
+end
 
 local default_highlight_groups = {
   'GoogleCalendarBorder',
@@ -105,6 +138,8 @@ local default_highlight_groups = {
   'GoogleCalendarSaturday',
   'GoogleCalendarSelected',
   'GoogleCalendarSelectedBorder',
+  'GoogleCalendarSlotCandidate',
+  'GoogleCalendarSlotEventEnd',
   'GoogleCalendarSunday',
   'GoogleCalendarToday',
 }
@@ -137,6 +172,7 @@ describe('config', function()
     assert.are.equal('gws', cfg.gws_cmd)
     assert.are.equal(vim.notify, cfg.notify)
     assert.are.same(default_keymaps, cfg.keymaps)
+    assert.are.same(default_slots, cfg.slots)
     assert.are.same(default_highlight_groups, vim.fn.sort(vim.tbl_keys(cfg.highlights)))
   end)
 
@@ -419,5 +455,73 @@ describe('config', function()
     local cfg = config.get()
     assert.are.same({ width = 0.6, height = 0.7 }, cfg.agenda)
     assert.are.same({ width = 0.5, height = 0.7 }, cfg.detail)
+  end)
+  it('setup() が slots の上書きを既定値とマージする', function()
+    local messages = capture_setup({
+      slots = {
+        time_ranges = { '10:00-19:00', '20:00-24:00' },
+        default_time_range = '20:00-24:00',
+        durations = { 45, 60 },
+        default_duration = 45,
+        buffer = 30,
+        weeks = 4,
+        weekdays = { 'monday', 'friday' },
+        width = 0.6,
+      },
+    })
+
+    assert.are.same({}, messages)
+    assert.are.same({
+      time_ranges = { '10:00-19:00', '20:00-24:00' },
+      default_time_range = '20:00-24:00',
+      durations = { 45, 60 },
+      default_duration = 45,
+      buffer = 30,
+      weeks = 4,
+      weekdays = { 'monday', 'friday' },
+      width = 0.6,
+      height = 0.8,
+    }, config.get().slots)
+  end)
+
+  it('slots の既定値が選択肢にない場合は警告せずに選択肢の先頭を使う', function()
+    local messages = capture_setup({
+      slots = { time_ranges = { '10:00-19:00' }, durations = { 45 } },
+    })
+
+    assert.are.same({}, messages)
+    assert.are.equal('10:00-19:00', config.get().slots.default_time_range)
+    assert.are.equal(45, config.get().slots.default_duration)
+  end)
+
+  it('slots の不正な値は警告して既定値を使う', function()
+    local messages = capture_setup({
+      slots = {
+        time_ranges = { '18:00-09:00' },
+        durations = { 0 },
+        buffer = -1,
+        weeks = 53,
+        weekdays = { 'funday' },
+      },
+    })
+
+    assert.are.same(default_slots, config.get().slots)
+    local warn = vim.log.levels.WARN
+    assert.are.same({
+      {
+        msg = "google-calendar.nvim: slots.time_ranges must be a list of 'HH:MM-HH:MM'. Using the default.",
+        level = warn,
+      },
+      {
+        msg = 'google-calendar.nvim: slots.durations must be a list of positive minutes. Using the default.',
+        level = warn,
+      },
+      { msg = 'google-calendar.nvim: slots.buffer must be between 0 and 1440. Using the default 60.', level = warn },
+      { msg = 'google-calendar.nvim: slots.weeks must be between 1 and 52. Using the default 8.', level = warn },
+      {
+        msg = "google-calendar.nvim: slots.weekdays must be a list of weekday names such as 'monday'. Using every day.",
+        level = warn,
+      },
+    }, messages)
   end)
 end)

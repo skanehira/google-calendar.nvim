@@ -914,6 +914,10 @@ local function open_help()
   require('google-calendar.ui.help').open('month')
 end
 
+local function open_slots()
+  require('google-calendar.ui.slot_filter').open()
+end
+
 local key_actions = {
   prev_day = function()
     move_days(-1)
@@ -936,6 +940,7 @@ local key_actions = {
   today = go_today,
   agenda = open_agenda,
   create = open_create,
+  slots = open_slots,
   refresh = M.refresh,
   help = open_help,
   close = close,

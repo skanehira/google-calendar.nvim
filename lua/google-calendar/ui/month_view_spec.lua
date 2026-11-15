@@ -40,6 +40,12 @@ local fake_form = {
   end,
 }
 
+local fake_slot_filter = {
+  open = function()
+    openers.slots = true
+  end,
+}
+
 local fake_help = {
   open = function(screen)
     openers.help = screen
@@ -218,6 +224,7 @@ describe('ui.month_view', function()
     stub_module('google-calendar.ui.agenda', fake_agenda)
     stub_module('google-calendar.ui.form', fake_form)
     stub_module('google-calendar.ui.help', fake_help)
+    stub_module('google-calendar.ui.slot_filter', fake_slot_filter)
 
     original_columns = vim.o.columns
     original_lines = vim.o.lines
@@ -795,6 +802,15 @@ describe('ui.month_view', function()
 
     feed('?')
     assert.are.equal('month', openers.help)
+  end)
+
+  it('s で空き枠の条件選択を開く', function()
+    run_command()
+    wait_loading()
+
+    feed('s')
+
+    assert.is_true(openers.slots)
   end)
 
   it('h/l/j/k で選択日を移動し、月をまたぐと表示月も切り替える', function()

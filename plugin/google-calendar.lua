@@ -1,6 +1,9 @@
 local function complete_months(arglead)
   local now = os.date('*t')
   local candidates = {}
+  if ('slots'):sub(1, #arglead) == arglead then
+    table.insert(candidates, 'slots')
+  end
 
   for offset = -12, 12 do
     local total = now.year * 12 + (now.month - 1) + offset
@@ -20,6 +23,6 @@ vim.api.nvim_create_user_command('GoogleCalendar', function(opts)
 end, {
   nargs = '?',
   complete = complete_months,
-  desc = 'Google カレンダーの月表示を開く',
+  desc = 'Google カレンダーの月表示、または空き枠の候補 (slots) を開く',
   force = true,
 })

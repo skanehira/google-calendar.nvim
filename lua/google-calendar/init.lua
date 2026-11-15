@@ -11,7 +11,24 @@ function M.setup(opts)
   config.apply_highlights()
 end
 
+local function ensure_gws()
+  local cfg = config.get()
+  if vim.fn.executable(cfg.gws_cmd) == 0 then
+    notify.error({ kind = 'not_found', command = cfg.gws_cmd })
+    return false
+  end
+  return true
+end
+
 function M.open(args)
+  if args == 'slots' then
+    if not ensure_gws() then
+      return false
+    end
+    require('google-calendar.ui.slot_filter').open()
+    return true
+  end
+
   local today = calendar.today()
   local today_year, today_month, today_day = calendar.date_parts(today)
   local target_year, target_month
@@ -26,9 +43,7 @@ function M.open(args)
     end
   end
 
-  local cfg = config.get()
-  if vim.fn.executable(cfg.gws_cmd) == 0 then
-    notify.error({ kind = 'not_found', command = cfg.gws_cmd })
+  if not ensure_gws() then
     return false
   end
 

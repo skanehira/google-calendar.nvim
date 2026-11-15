@@ -454,8 +454,8 @@ Online meeting slots ~                                 *google-calendar-slots*
     the timeline is scrolled to the slot.
   - `y` copies every slot, one per line:
 >text
-    1. 2026/11/16 09:00 ~ 11:00
-    2. 2026/11/16 14:00 ~ 18:00
+    2026/11/16 09:00 ~ 11:00
+    2026/11/16 14:00 ~ 18:00
 <
 Create / update composer ~
   - The composer uses a Google Calendar-style layout with a main window and

@@ -209,13 +209,13 @@ describe('slots.target_dates', function()
 end)
 
 describe('slots.format', function()
-  it('候補を番号付きの yyyy/mm/dd hh:mm ~ hh:mm 形式にする', function()
+  it('候補を番号なしの yyyy/mm/dd hh:mm ~ hh:mm 形式にする', function()
     local lines = slots.format({
       { date = '2026-11-16', start = '09:00', finish = '10:00' },
       { date = '2026-12-01', start = '13:30', finish = '24:00' },
     })
 
-    assert.are.same({ '1. 2026/11/16 09:00 ~ 10:00', '2. 2026/12/01 13:30 ~ 24:00' }, lines)
+    assert.are.same({ '2026/11/16 09:00 ~ 10:00', '2026/12/01 13:30 ~ 24:00' }, lines)
   end)
 end)
 

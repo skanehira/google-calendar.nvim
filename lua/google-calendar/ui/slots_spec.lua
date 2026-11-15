@@ -335,7 +335,7 @@ describe('ui.slots', function()
         timed('b', '終日会議', '2026-11-17T08:00:00+09:00', '2026-11-17T19:00:00+09:00'),
       }, nil)
 
-      assert.are.same({ '>1. 2026/11/16 09:00 ~ 11:00', ' 2. 2026/11/16 14:00 ~ 18:00' }, lines_of('slots'))
+      assert.are.same({ '>2026/11/16 09:00 ~ 11:00', ' 2026/11/16 14:00 ~ 18:00' }, lines_of('slots'))
       assert.are.equal(' 2026/11/16(月) ', title_of('slots_timeline'))
       assert.are.equal(vim.api.nvim_get_current_win(), state.windows.slots)
     end
@@ -351,9 +351,9 @@ describe('ui.slots', function()
       feed('j')
 
       assert.are.same({
-        ' 1. 2026/11/16 09:00 ~ 11:00',
-        '>2. 2026/11/16 14:00 ~ 18:00',
-        ' 3. 2026/11/17 09:00 ~ 18:00',
+        ' 2026/11/16 09:00 ~ 11:00',
+        '>2026/11/16 14:00 ~ 18:00',
+        ' 2026/11/17 09:00 ~ 18:00',
       }, lines_of('slots'))
       -- 4 行前 (25 行目) からだと末尾が余るため、ウィンドウが埋まる位置まで戻す
       local height = vim.fn.winheight(state.windows.slots_timeline)
@@ -364,19 +364,19 @@ describe('ui.slots', function()
       assert.are.equal(' 2026/11/17(火) ', title_of('slots_timeline'))
 
       feed('jk')
-      assert.are.equal('>2. 2026/11/16 14:00 ~ 18:00', lines_of('slots')[2])
+      assert.are.equal('>2026/11/16 14:00 ~ 18:00', lines_of('slots')[2])
       assert.are.equal(' 2026/11/16(月) ', title_of('slots_timeline'))
     end
   )
 
-  it('y で表示中のすべての候補を番号付きでコピーして件数を通知する', function()
+  it('y で表示中のすべての候補を番号なしでコピーして件数を通知する', function()
     slots_ui.open(conditions)
     fetches[1].callback({ timed('a', '朝会', '2026-11-16T12:00:00+09:00', '2026-11-16T13:00:00+09:00') }, nil)
 
     feed('y')
 
     assert.are.same({
-      '1. 2026/11/16 09:00 ~ 11:00\n2. 2026/11/16 14:00 ~ 18:00\n3. 2026/11/17 09:00 ~ 18:00',
+      '2026/11/16 09:00 ~ 11:00\n2026/11/16 14:00 ~ 18:00\n2026/11/17 09:00 ~ 18:00',
     }, copied)
     assert.are.same({ { msg = 'Copied 3 slots', level = vim.log.levels.INFO } }, notifications)
   end)
@@ -438,7 +438,7 @@ describe('ui.slots', function()
       assert.are.same({ '読み込み中...' }, lines_of('slots'))
 
       fetches[2].callback({}, nil)
-      assert.are.same({ '>1. 2026/11/17 09:00 ~ 18:00' }, lines_of('slots'))
+      assert.are.same({ '>2026/11/17 09:00 ~ 18:00' }, lines_of('slots'))
       assert.are.equal(' 2026/11/17(火) ', title_of('slots_timeline'))
     end
   )

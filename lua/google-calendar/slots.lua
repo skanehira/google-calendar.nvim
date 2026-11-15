@@ -204,8 +204,8 @@ end
 
 function M.format(found)
   local lines = {}
-  for index, slot in ipairs(found) do
-    table.insert(lines, string.format('%d. %s %s ~ %s', index, (slot.date:gsub('%-', '/')), slot.start, slot.finish))
+  for _, slot in ipairs(found) do
+    table.insert(lines, string.format('%s %s ~ %s', (slot.date:gsub('%-', '/')), slot.start, slot.finish))
   end
   return lines
 end

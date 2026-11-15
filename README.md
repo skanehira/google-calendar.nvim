@@ -336,8 +336,8 @@ Override any group with `setup({ highlights = { ... } })`. Set a group to `false
 The left window lists the slots; the right window shows a 30-minute-per-row timeline of the selected slot's day with busy events (side by side when they overlap) and the slot itself. Event blocks and the slot block share the same right edge, a faint gray gridline marks every hour in the empty areas (as in Google Calendar), and the hour ruler extends to the bottom of the window. All-day events for that day are shown in the window's `winbar`, spanning the same width as the slot block, so they stay visible while the timeline is scrolled to the slot. `y` copies every slot in this format:
 
 ```text
-1. 2026/11/16 09:00 ~ 11:00
-2. 2026/11/16 14:00 ~ 18:00
+2026/11/16 09:00 ~ 11:00
+2026/11/16 14:00 ~ 18:00
 ```
 
 ### Event composer

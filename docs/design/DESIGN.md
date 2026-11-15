@@ -596,6 +596,7 @@ stdpath('data')/google-calendar.nvim/config.json
 - `vim.system` は Neovim 0.10 以上が必要
 - float の `hide`（`nvim_open_win` / `nvim_win_set_config`）は Neovim 0.10 以上が必要（news-0.10）。隠した float は `nvim_win_is_valid` が真のまま残り、`hide` を指定しない `nvim_win_set_config`（タイトル・サイズの変更）でも隠したままになる。隠した直後もカレントウィンドウのままで、`nvim_set_current_win` で入れる。`:wincmd w` では入らない（2026-11-15 に Neovim 0.13.0-nightly で確認）
 - 日本語の表示幅は `strdisplaywidth` / `strcharpart` で扱う。バイト長や `string.sub` では列がずれる
+- フォームのアイコンには、絵文字の性質を持つ文字（`▶` U+25B6 など）を使わない。Neovim は 1 列と数えるが、端末が絵文字のフォントで 2 列に描くため、後ろの文字が 1 列ずれる。Meet の行は `►`（U+25BA）を使う
 - `os.date('%z')` のローカルオフセットを使う変換式は、夏時間の境界では厳密でない。MVP は Asia/Tokyo を想定し、イベントのオフセットを優先する
 - `os.date('%z')` は `+0900` 形式（コロンなし）を返す。RFC3339 のオフセットは `+09:00` 形式なので、変換時は両方を受け付ける
 - サンドボックス環境では `gws` が `~/.config/gws` に書き込めない。開発時は `GOOGLE_WORKSPACE_CLI_CONFIG_DIR` をワークスペース内に向ける（PoC `gws-sandbox-config`）

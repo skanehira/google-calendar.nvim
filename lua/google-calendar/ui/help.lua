@@ -15,6 +15,7 @@ local layouts = {
     { { action = 'today', label = '今日' } },
     { { action = 'agenda', label = 'アジェンダ' } },
     { { action = 'create', label = '登録' } },
+    { { action = 'slots', label = '空き枠' } },
     { { action = 'refresh', label = '再取得' } },
     { { action = 'help', label = 'ヘルプ' } },
     { { action = 'close', label = '閉じる' }, { action = 'esc_close', label = '閉じる' } },
@@ -31,6 +32,17 @@ local layouts = {
     { { action = 'delete', label = '削除' } },
     { { action = 'copy_meet', label = 'Meet URL コピー' } },
     { { action = 'toggle_guests', label = 'ゲスト折り畳み' } },
+    { { action = 'close', label = '戻る' }, { action = 'esc_close', label = '戻る' } },
+  },
+  slot_filter = {
+    { { action = 'next', label = '移動' }, { action = 'prev', label = '移動' } },
+    { { action = 'toggle', label = '選択' } },
+    { { action = 'search', label = '検索' } },
+    { { action = 'close', label = '閉じる' }, { action = 'esc_close', label = '閉じる' } },
+  },
+  slots = {
+    { { action = 'next', label = '選択' }, { action = 'prev', label = '選択' } },
+    { { action = 'copy', label = 'コピー' } },
     { { action = 'close', label = '戻る' }, { action = 'esc_close', label = '戻る' } },
   },
   form = {

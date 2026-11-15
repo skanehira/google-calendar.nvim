@@ -18,6 +18,7 @@ Month view in WezTerm. The weekday header stays fixed while the grid scrolls; al
 - Multi-window event composer modeled after Google Calendar's create dialog, including recurring events
 - Guest invitations by email address
 - Add a Google Meet URL when creating an event, and copy it from the detail view
+- Online meeting slot finder: pick weeks, a time range, and a meeting length, list the free slots that keep 1 hour around busy events, check the neighboring events on a day timeline, and copy the numbered list with `y`
 - In-memory month cache for fast month navigation
 - Configurable window sizes, keymaps, and highlight groups
 
@@ -62,6 +63,7 @@ require('google-calendar').setup()
 | `:GoogleCalendar` | Open the current month. If the month view is already open, focus it and reuse the cache. |
 | `:GoogleCalendar 2026-11` | Open the specified month. |
 | `:GoogleCalendar 2026-13` | Report an invalid month and do not open the month view. |
+| `:GoogleCalendar slots` | Open the online meeting slot finder. |
 
 Use `r` or `R` in the month view to refetch the displayed month.
 
@@ -75,6 +77,7 @@ Use `r` or `R` in the month view to refetch the displayed month.
 | Month | `t` | Jump to today |
 | Month | `<CR>` | Open the day agenda for the selected day |
 | Month | `a` | Create an event on the selected day |
+| Month | `s` | Open the online meeting slot finder |
 | Month | `r` / `R` | Refetch the displayed month |
 | Month | `?` | Open help |
 | Month | `q` / `<Esc>` | Close the month view |
@@ -101,6 +104,15 @@ Use `r` or `R` in the month view to refetch the displayed month.
 | Form editor | `<CR>` | Edit the selected date/time field |
 | Form editor | `:w` | Apply the editor value and close it |
 | Form editor | `<Esc>` / `q` | Close the editor without applying |
+| Slot filter | `j` / `k` | Move between choices (headings are skipped) |
+| Slot filter | `<Space>` | Choose a time range or length, or toggle a week |
+| Slot filter | `<CR>` | Search slots with the chosen conditions |
+| Slot filter | `?` | Open help |
+| Slot filter | `q` / `<Esc>` | Close the slot filter |
+| Slots | `j` / `k` | Select a slot and redraw the timeline |
+| Slots | `y` | Copy every listed slot |
+| Slots | `?` | Open help |
+| Slots | `q` / `<Esc>` | Return to the slot filter |
 | Help | `q` / `<Esc>` | Close help |
 
 All keys can be changed through `setup()`. See `:help google-calendar-keymaps` for details.
@@ -142,6 +154,25 @@ require('google-calendar').setup({
     vim.fn.setreg('+', url)
   end,
 
+  -- Online meeting slot finder (:GoogleCalendar slots / s in the month view).
+  slots = {
+    -- Time range choices ('HH:MM-HH:MM'; the end can be 24:00).
+    time_ranges = { '09:00-18:00', '09:00-23:00' },
+    default_time_range = '09:00-18:00',
+    -- Meeting length choices in minutes.
+    durations = { 30, 60, 90, 120 },
+    default_duration = 60,
+    -- Minutes kept free before and after busy events.
+    buffer = 60,
+    -- Number of weeks listed, starting from the current week.
+    weeks = 8,
+    -- Weekdays that can produce slots.
+    weekdays = { 'sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday' },
+    -- Size of the slot list and timeline (combined) as ratios of the usable area.
+    width = 0.8,
+    height = 0.8,
+  },
+
   -- Per-screen keymap overrides. Use false to disable a key.
   keymaps = {
     month = {
@@ -154,6 +185,7 @@ require('google-calendar').setup({
       today = 't',
       agenda = '<CR>',
       create = 'a',
+      slots = 's',
       refresh = 'r',
       help = '?',
       close = 'q',
@@ -181,6 +213,16 @@ require('google-calendar').setup({
     },
     confirm = { yes = 'y', no = 'n', close = 'q', esc_close = '<Esc>' },
     help = { close = 'q', esc_close = '<Esc>' },
+    slot_filter = {
+      next = 'j',
+      prev = 'k',
+      toggle = '<Space>',
+      search = '<CR>',
+      help = '?',
+      close = 'q',
+      esc_close = '<Esc>',
+    },
+    slots = { next = 'j', prev = 'k', copy = 'y', help = '?', close = 'q', esc_close = '<Esc>' },
   },
 
   -- Highlight overrides.
@@ -259,6 +301,8 @@ The default highlight groups are:
 | `GoogleCalendarFormIcon` | Composer section icons |
 | `GoogleCalendarFormButton` | Composer buttons such as Save |
 | `GoogleCalendarFormSeparator` | Composer title separator |
+| `GoogleCalendarSlotCandidate` | Selected slot block in the slot timeline |
+| `GoogleCalendarSlotEventEnd` | Underline on the last row of each event in the slot timeline, separating back-to-back events |
 | `GoogleCalendarBorder` | Float border and month grid separators |
 | `GoogleCalendarError` | Form errors |
 
@@ -277,6 +321,23 @@ Override any group with `setup({ highlights = { ... } })`. Set a group to `false
 - The detail view uses a Google Calendar-style card. Events without a title display `▣ 予定あり`. The calendar line shows the calendar's email address and display name (for example `me@example.com (My Calendar)`) using `calendarList.list`, instead of the raw `primary` alias. Guests are collapsed by default when there are more than five attendees; press `g` to expand or collapse them. The cursor stays in place when toggling.
 - Event descriptions wrap to the window width and are never truncated.
 - `y` copies the Meet URL to the `+` register. If the event has no Meet URL, the plugin reports that instead.
+
+### Online meeting slots
+
+`:GoogleCalendar slots` (or `s` in the month view) opens a filter with time range, meeting length, and week choices. Time range and length take one choice each; weeks can be combined. The list starts at the current week and follows `week_start`; only the current week is selected when it opens.
+
+`<CR>` fetches events for the chosen weeks from `primary` and every calendar in `calendars`, then lists each free range that is at least the meeting length:
+
+- Busy events are timed events that are not cancelled, not marked as free (`transparency == 'transparent'`), and not declined by you. All-day events do not block slots.
+- `buffer` minutes (default 60) before and after each busy event are kept free. Event times are not rounded, so an event ending at 10:15 frees the time from 11:15.
+- Each slot covers the whole free range, for example `13:00 ~ 17:00` for a 1-hour meeting. Past days are skipped, and today starts at the current time rounded up to the next 30 minutes.
+
+The left window lists the slots; the right window shows a 30-minute-per-row timeline of the selected slot's day with busy events (side by side when they overlap) and the slot itself. Event blocks and the slot block share the same right edge, and the hour ruler extends to the bottom of the window. All-day events for that day are shown in the window's `winbar`, so they stay visible while the timeline is scrolled to the slot. `y` copies every slot in this format:
+
+```text
+1. 2026/11/16 09:00 ~ 11:00
+2. 2026/11/16 14:00 ~ 18:00
+```
 
 ### Event composer
 

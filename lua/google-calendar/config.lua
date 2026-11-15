@@ -56,6 +56,8 @@ local default_highlights = {
   GoogleCalendarFormIcon = { fg = '#ff9e64', bold = true },
   GoogleCalendarFormButton = { fg = '#7aa2f7', bold = true },
   GoogleCalendarFormSeparator = { fg = '#565f89' },
+  GoogleCalendarSlotCandidate = { fg = '#1a1b26', bg = '#9ece6a', bold = true },
+  GoogleCalendarSlotEventEnd = { underline = true },
   GoogleCalendarBorder = { fg = '#7aa2f7' },
   GoogleCalendarError = { fg = '#f7768e', bold = true },
 }
@@ -76,6 +78,17 @@ local defaults = {
   gws_cmd = 'gws',
   notify = vim.notify,
   clipboard = set_clipboard,
+  slots = {
+    time_ranges = { '09:00-18:00', '09:00-23:00' },
+    default_time_range = '09:00-18:00',
+    durations = { 30, 60, 90, 120 },
+    default_duration = 60,
+    buffer = 60,
+    weeks = 8,
+    weekdays = { 'sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday' },
+    width = 0.8,
+    height = 0.8,
+  },
   keymaps = {
     month = {
       prev_day = 'h',
@@ -88,6 +101,7 @@ local defaults = {
       agenda = '<CR>',
       create = 'a',
       refresh = 'r',
+      slots = 's',
       help = '?',
       close = 'q',
       esc_close = '<Esc>',
@@ -123,6 +137,16 @@ local defaults = {
     },
     confirm = { yes = 'y', no = 'n', close = 'q', esc_close = '<Esc>' },
     help = { close = 'q', esc_close = '<Esc>' },
+    slot_filter = {
+      next = 'j',
+      prev = 'k',
+      toggle = '<Space>',
+      search = '<CR>',
+      help = '?',
+      close = 'q',
+      esc_close = '<Esc>',
+    },
+    slots = { next = 'j', prev = 'k', copy = 'y', help = '?', close = 'q', esc_close = '<Esc>' },
   },
   highlights = default_highlights,
 }
@@ -152,6 +176,84 @@ local function validate_max_events_per_cell(notify, value)
   end
 
   return value
+end
+
+local WEEKDAY_NAMES = {
+  sunday = true,
+  monday = true,
+  tuesday = true,
+  wednesday = true,
+  thursday = true,
+  friday = true,
+  saturday = true,
+}
+
+local function is_integer(value)
+  return type(value) == 'number' and value == math.floor(value)
+end
+
+local function list_of(value, predicate)
+  if type(value) ~= 'table' or #value == 0 then
+    return false
+  end
+  for _, item in ipairs(value) do
+    if not predicate(item) then
+      return false
+    end
+  end
+  return true
+end
+
+local function contains(list, value)
+  for _, item in ipairs(list) do
+    if item == value then
+      return true
+    end
+  end
+  return false
+end
+
+local function validate_slots(notify, opts)
+  local slots = vim.tbl_extend('force', vim.deepcopy(defaults.slots), type(opts) == 'table' and opts or {})
+  local default = defaults.slots
+
+  if
+    not list_of(slots.time_ranges, function(item)
+      return require('google-calendar.slots').parse_time_range(item) ~= nil
+    end)
+  then
+    warn(notify, "slots.time_ranges must be a list of 'HH:MM-HH:MM'. Using the default.")
+    slots.time_ranges = vim.deepcopy(default.time_ranges)
+  end
+  if not list_of(slots.durations, function(item)
+    return is_integer(item) and item > 0
+  end) then
+    warn(notify, 'slots.durations must be a list of positive minutes. Using the default.')
+    slots.durations = vim.deepcopy(default.durations)
+  end
+  if not is_integer(slots.buffer) or slots.buffer < 0 or slots.buffer > 1440 then
+    warn(notify, 'slots.buffer must be between 0 and 1440. Using the default 60.')
+    slots.buffer = default.buffer
+  end
+  if not is_integer(slots.weeks) or slots.weeks < 1 or slots.weeks > 52 then
+    warn(notify, 'slots.weeks must be between 1 and 52. Using the default 8.')
+    slots.weeks = default.weeks
+  end
+  if not list_of(slots.weekdays, function(item)
+    return WEEKDAY_NAMES[item] == true
+  end) then
+    warn(notify, "slots.weekdays must be a list of weekday names such as 'monday'. Using every day.")
+    slots.weekdays = vim.deepcopy(default.weekdays)
+  end
+
+  if not contains(slots.time_ranges, slots.default_time_range) then
+    slots.default_time_range = slots.time_ranges[1]
+  end
+  if not contains(slots.durations, slots.default_duration) then
+    slots.default_duration = slots.durations[1]
+  end
+
+  return slots
 end
 
 local function config_file_path(opts)
@@ -313,6 +415,7 @@ function M.setup(opts)
   current.week_start = validate_week_start(notify, opts.week_start or defaults.week_start)
   current.max_events_per_cell =
     validate_max_events_per_cell(notify, opts.max_events_per_cell or defaults.max_events_per_cell)
+  current.slots = validate_slots(notify, opts.slots)
   current.keymaps = merge_keymaps(notify, opts.keymaps)
   current.highlights = merge_highlights(opts.highlights)
 

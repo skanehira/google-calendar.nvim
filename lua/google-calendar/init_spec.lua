@@ -13,6 +13,13 @@ local month_view_stub = {
   end,
 }
 
+local slot_filter_open_calls
+local slot_filter_stub = {
+  open = function()
+    slot_filter_open_calls = slot_filter_open_calls + 1
+  end,
+}
+
 local previous_month_view = package.loaded['google-calendar.ui.month_view']
 package.loaded['google-calendar.ui.month_view'] = month_view_stub
 local plugin = require('google-calendar')
@@ -28,12 +35,15 @@ describe('init', function()
   before_each(function()
     notifications = {}
     month_view_open_calls = 0
+    slot_filter_open_calls = 0
+    package.loaded['google-calendar.ui.slot_filter'] = slot_filter_stub
     state.reset()
     notify.reset()
     vim.cmd('runtime! plugin/google-calendar.lua')
   end)
 
   after_each(function()
+    package.loaded['google-calendar.ui.slot_filter'] = nil
     config.setup({})
     notify.reset()
     state.reset()
@@ -79,4 +89,30 @@ describe('init', function()
     assert.are.equal(1, month_view_open_calls)
     assert.are.equal(0, #notifications)
   end)
+  it(':GoogleCalendar slots は月表示ではなく空き枠の条件選択を開く', function()
+    plugin.setup({ gws_cmd = repo_root .. '/tests/fixtures/fake-gws.py', notify = capture })
+
+    vim.cmd('GoogleCalendar slots')
+
+    assert.are.equal(1, slot_filter_open_calls)
+    assert.are.equal(0, month_view_open_calls)
+    assert.are.same({}, notifications)
+  end)
+
+  it(
+    'gws が見つからない状態で :GoogleCalendar slots を実行すると通知し、条件選択を開かない',
+    function()
+      plugin.setup({ gws_cmd = '/nonexistent/google-calendar/gws', notify = capture })
+
+      vim.cmd('GoogleCalendar slots')
+
+      assert.are.same({
+        {
+          message = 'gws was not found. Install gws by following the setup instructions in README.md.',
+          level = vim.log.levels.ERROR,
+        },
+      }, notifications)
+      assert.are.equal(0, slot_filter_open_calls)
+    end
+  )
 end)

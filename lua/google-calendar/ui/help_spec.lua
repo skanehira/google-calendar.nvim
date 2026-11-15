@@ -13,6 +13,7 @@ local default_month_lines = {
   't:今日',
   '<CR>:アジェンダ',
   'a:登録',
+  's:空き枠',
   'r:再取得',
   '?:ヘルプ',
   'q/<Esc>:閉じる',
@@ -54,6 +55,23 @@ describe('ui.help', function()
     }, help.lines('detail'))
   end)
 
+  it('空き枠の条件選択で有効なキーの一覧を生成する', function()
+    assert.are.same({
+      'j/k:移動',
+      '<Space>:選択',
+      '<CR>:検索',
+      'q/<Esc>:閉じる',
+    }, help.lines('slot_filter'))
+  end)
+
+  it('空き枠の候補一覧で有効なキーの一覧を生成する', function()
+    assert.are.same({
+      'j/k:選択',
+      'y:コピー',
+      'q/<Esc>:戻る',
+    }, help.lines('slots'))
+  end)
+
   it('フォームで有効なキーの一覧を生成する', function()
     assert.are.same({
       '<Tab>/<S-Tab>:移動',
@@ -70,7 +88,7 @@ describe('ui.help', function()
 
     local expected_month = vim.deepcopy(default_month_lines)
     expected_month[3] = 'H/N:前月/次月'
-    expected_month[9] = 'Q/<Esc>:閉じる'
+    expected_month[10] = 'Q/<Esc>:閉じる'
 
     assert.are.same(expected_month, help.lines('month'))
     assert.are.same({
@@ -92,6 +110,7 @@ describe('ui.help', function()
       'H/L:前月/次月',
       't:今日',
       '<CR>:アジェンダ',
+      's:空き枠',
       'r:再取得',
       'q/<Esc>:閉じる',
     }, help.lines('month'))
@@ -235,7 +254,7 @@ describe('ui.help', function()
     local second = help.open('month')
 
     local expected_month = vim.deepcopy(default_month_lines)
-    expected_month[9] = 'Q/<Esc>:閉じる'
+    expected_month[10] = 'Q/<Esc>:閉じる'
 
     assert.are.equal(first, second)
     assert.are.equal(first, vim.api.nvim_get_current_win())

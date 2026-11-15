@@ -85,42 +85,80 @@ describe('ui.slots.build_timeline', function()
       local timeline = slots_ui.build_timeline('2026-11-16', events, nil, 37, '+0900')
 
       assert.are.equal(48, #timeline.lines)
-      assert.are.equal(' 終日 %#GoogleCalendarCalendarBg1# 出張 %*', timeline.winbar)
-      assert.are.same({ '00:00 │', '      │' }, vim.list_slice(timeline.lines, 1, 2))
+      -- 終日予定のラベルも、候補と同じ列から右端までの 30 列に広げる
+      assert.are.equal(
+        '終日  %#GoogleCalendarSlotRuler#│%*%#GoogleCalendarCalendarBg1#出張' .. string.rep(' ', 26) .. '%*',
+        timeline.winbar
+      )
+      assert.are.same(
+        { '00:00 │' .. string.rep(' ', 30), '      │' .. string.rep(' ', 30) },
+        vim.list_slice(timeline.lines, 1, 2)
+      )
       -- 内容の幅は 37 - 7 = 30。候補のブロックも 30 列なので、予定も右端を 30 列目に揃える
       assert.are.same({
         '10:00 │ホンダ朝会     daily 10:00~10…',
         '      │10:00~11:00' .. string.rep(' ', 19),
-        '11:00 │',
+        '11:00 │' .. string.rep(' ', 30),
       }, vim.list_slice(timeline.lines, 21, 23))
       assert.are.same({
         '15:00 │定例' .. string.rep(' ', 26),
         '      │15:00~16:00' .. string.rep(' ', 19),
-        '16:00 │',
+        '16:00 │' .. string.rep(' ', 30),
       }, vim.list_slice(timeline.lines, 31, 33))
     end
   )
 
-  it('続けて並ぶ予定を区切るため、各予定の最終行に下線を引く', function()
-    local events = {
-      timed('c', 'qss定例', '2026-11-16T14:00:00+09:00', '2026-11-16T15:00:00+09:00'),
-      timed('d', '役員会議', '2026-11-16T15:00:00+09:00', '2026-11-16T16:00:00+09:00'),
-    }
+  it('時刻の右の縦線を、すべての行で薄いグレーのハイライトにする', function()
+    local timeline = slots_ui.build_timeline('2026-11-16', {}, nil, 27, '+0900')
 
-    local timeline = slots_ui.build_timeline('2026-11-16', events, nil, 27, '+0900')
-
-    local ends = vim.tbl_filter(function(highlight)
-      return highlight.group == 'GoogleCalendarSlotEventEnd'
-    end, timeline.highlights)
-    local label = #'      │'
-    assert.are.same({
-      { line = 29, start_col = label, end_col = label + #'14:00~15:00' + 9, group = 'GoogleCalendarSlotEventEnd' },
-      { line = 31, start_col = label, end_col = label + #'15:00~16:00' + 9, group = 'GoogleCalendarSlotEventEnd' },
-    }, ends)
+    local rulers = {}
+    for _, highlight in ipairs(timeline.highlights) do
+      if highlight.group == 'GoogleCalendarSlotRuler' then
+        table.insert(rulers, { highlight.line, highlight.start_col, highlight.end_col })
+      end
+    end
+    local expected = {}
+    for row = 0, 47 do
+      table.insert(expected, { row, #'00:00 ', #'00:00 │' })
+    end
+    assert.are.same(expected, rulers)
   end)
 
   it(
-    '終日予定がなければ winbar に終日予定なしと表示し、タイトルの % をエスケープする',
+    '各時間の最後の行のうち、予定と候補のブロックが無い部分にだけ横線を引く',
+    function()
+      local events = {
+        timed('a', 'ホンダ朝会', '2026-11-16T10:00:00+09:00', '2026-11-16T11:00:00+09:00'),
+        timed('b', 'daily', '2026-11-16T10:00:00+09:00', '2026-11-16T10:30:00+09:00'),
+        timed('c', 'qss定例', '2026-11-16T14:00:00+09:00', '2026-11-16T15:00:00+09:00'),
+      }
+      local candidate = { date = '2026-11-16', start = '16:00', finish = '17:00' }
+
+      local timeline = slots_ui.build_timeline('2026-11-16', events, candidate, 37, '+0900')
+
+      local hour_lines = {}
+      for _, highlight in ipairs(timeline.highlights) do
+        if highlight.group == 'GoogleCalendarSlotHourLine' then
+          table.insert(hour_lines, { highlight.line, highlight.start_col, highlight.end_col })
+        end
+      end
+      local label = #'      │'
+      local expected = {}
+      for row = 1, 47, 2 do
+        if row == 21 then
+          -- 10:30 の行は左の列だけ予定が続き、隙間と右の列が空いている
+          table.insert(expected, { row, label + 14, label + 30 })
+        elseif row ~= 29 and row ~= 33 then
+          -- 14:30 の行は予定、16:30 の行は候補のブロックなので引かない
+          table.insert(expected, { row, label, label + 30 })
+        end
+      end
+      assert.are.same(expected, hour_lines)
+    end
+  )
+
+  it(
+    '終日予定がなければ winbar に なし と表示し、タイトルの % をエスケープする',
     function()
       local all_day = {
         id = 'e',
@@ -131,15 +169,75 @@ describe('ui.slots.build_timeline', function()
       }
 
       assert.are.equal(
-        ' %#GoogleCalendarDetailMuted#終日予定なし%*',
+        '終日  %#GoogleCalendarSlotRuler#│%*%#GoogleCalendarDetailMuted#なし%*',
         slots_ui.build_timeline('2026-11-17', { all_day }, nil, 27, '+0900').winbar
       )
       assert.are.equal(
-        ' 終日 %#GoogleCalendarCalendarBg1# 100%% 出張 %*',
+        '終日  %#GoogleCalendarSlotRuler#│%*%#GoogleCalendarCalendarBg1#100%% 出張' .. string.rep(' ', 11) .. '%*',
         slots_ui.build_timeline('2026-11-16', { all_day }, nil, 27, '+0900').winbar
       )
     end
   )
+
+  it(
+    '今いるウィンドウの幅に関係なく、終日予定のラベルを内容の幅ぴったりに埋める',
+    function()
+      -- 幅 30 のウィンドウでは、このタイトルの「準」が行末をまたぐ。折り返しを数える幅の測り方だと 1 列多く数えてしまう
+      local narrow = vim.api.nvim_open_win(
+        vim.api.nvim_create_buf(false, true),
+        true,
+        { relative = 'editor', width = 30, height = 3, row = 0, col = 0 }
+      )
+      local title = 'kintailyの現状整理&お試しの下準備'
+      local all_day = {
+        id = 'g',
+        summary = title,
+        calendar_id = 'primary',
+        start = { date = '2026-11-16' },
+        ['end'] = { date = '2026-11-17' },
+      }
+
+      local timeline = slots_ui.build_timeline('2026-11-16', { all_day }, nil, 47, '+0900')
+      vim.api.nvim_win_close(narrow, true)
+
+      assert.are.equal(
+        '終日  %#GoogleCalendarSlotRuler#│%*%#GoogleCalendarCalendarBg1#'
+          .. title
+          .. string.rep(' ', 40 - 33)
+          .. '%*',
+        timeline.winbar
+      )
+    end
+  )
+
+  it('終日予定が複数あるときは、列の間に 1 列空けて内容の幅を分け合う', function()
+    local function all_day(id, summary, calendar_id)
+      return {
+        id = id,
+        summary = summary,
+        calendar_id = calendar_id,
+        start = { date = '2026-11-16' },
+        ['end'] = { date = '2026-11-17' },
+      }
+    end
+
+    local timeline = slots_ui.build_timeline(
+      '2026-11-16',
+      { all_day('a', '出張', 'primary'), all_day('b', '祝日', 'primary') },
+      nil,
+      27,
+      '+0900'
+    )
+
+    assert.are.equal(
+      '終日  %#GoogleCalendarSlotRuler#│%*%#GoogleCalendarCalendarBg1#出張'
+        .. string.rep(' ', 5)
+        .. '%* %#GoogleCalendarCalendarBg1#祝日'
+        .. string.rep(' ', 6)
+        .. '%*',
+      timeline.winbar
+    )
+  end)
 
   it('候補を背景付きのブロックで描き、候補の開始行を返す', function()
     local candidate = { date = '2026-11-16', start = '13:00', finish = '14:00' }
@@ -147,7 +245,7 @@ describe('ui.slots.build_timeline', function()
     local timeline = slots_ui.build_timeline('2026-11-16', {}, candidate, 27, '+0900')
 
     assert.are.same(
-      { '13:00 │候補 13:00~14:00    ', '      │' .. string.rep(' ', 20), '14:00 │' },
+      { '13:00 │候補 13:00~14:00    ', '      │' .. string.rep(' ', 20), '14:00 │' .. string.rep(' ', 20) },
       vim.list_slice(timeline.lines, 27, 29)
     )
     assert.are.equal(27, timeline.candidate_line)
@@ -302,9 +400,29 @@ describe('ui.slots', function()
       local lines = lines_of('slots_timeline')
       assert.is_true(vim.fn.winheight(win) > 48)
       assert.are.equal(vim.fn.winheight(win), #lines)
-      assert.are.same({ '23:00 │', '      │', '      │' }, vim.list_slice(lines, 47, 49))
+      local blank = string.rep(' ', vim.api.nvim_win_get_width(win) - 7)
+      assert.are.same({ '23:00 │' .. blank, '      │' .. blank, '      │' }, vim.list_slice(lines, 47, 49))
       assert.are.equal('      │', lines[#lines])
-      assert.are.equal(' 終日 %#GoogleCalendarCalendarBg1# 出張 %*', vim.wo[win].winbar)
+      -- winbar の背景を本文と同じ float の背景にする (WinBar はカラースキームによって本体の背景で塗られる)
+      local winhl = vim.wo[win].winhl
+      assert.is_truthy(vim.tbl_contains(vim.split(winhl, ','), 'WinBar:NormalFloat'))
+      assert.is_truthy(vim.tbl_contains(vim.split(winhl, ','), 'WinBarNC:NormalFloat'))
+      -- 下端まで足した行の縦線も、時刻の行と同じ色にする
+      local buf = vim.api.nvim_win_get_buf(win)
+      local marks = vim.api.nvim_buf_get_extmarks(buf, -1, { #lines - 1, 0 }, { #lines - 1, -1 }, { details = true })
+      assert.are.same(
+        { { #'      ', 'GoogleCalendarSlotRuler', #'      │' } },
+        vim.tbl_map(function(mark)
+          return { mark[3], mark[4].hl_group, mark[4].end_col }
+        end, marks)
+      )
+      local content_width = vim.api.nvim_win_get_width(win) - 7
+      assert.are.equal(
+        '終日  %#GoogleCalendarSlotRuler#│%*%#GoogleCalendarCalendarBg1#出張'
+          .. string.rep(' ', content_width - 4)
+          .. '%*',
+        vim.wo[win].winbar
+      )
     end
   )
 

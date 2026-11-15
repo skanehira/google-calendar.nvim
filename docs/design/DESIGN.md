@@ -506,7 +506,8 @@ stdpath('data')/google-calendar.nvim/config.json
 | `GoogleCalendarFormButton` | フォームの保存などのボタン |
 | `GoogleCalendarFormSeparator` | フォームのタイトル下の区切り線 |
 | `GoogleCalendarSlotCandidate` | 空き枠のタイムラインで選択中の候補のブロック |
-| `GoogleCalendarSlotEventEnd` | 空き枠のタイムラインで予定の最終行に引く下線（続けて並ぶ予定を区切る） |
+| `GoogleCalendarSlotRuler` | 空き枠のタイムラインで時刻の右に引く薄いグレーの縦線 |
+| `GoogleCalendarSlotHourLine` | 空き枠のタイムラインで、予定と候補の無い部分に 1 時間ごとに引く薄いグレーの横線 |
 | `GoogleCalendarBorder` | float のボーダーと月表示の区切り線 |
 | `GoogleCalendarError` | フォーム内のエラー |
 

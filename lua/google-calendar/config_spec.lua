@@ -139,7 +139,8 @@ local default_highlight_groups = {
   'GoogleCalendarSelected',
   'GoogleCalendarSelectedBorder',
   'GoogleCalendarSlotCandidate',
-  'GoogleCalendarSlotEventEnd',
+  'GoogleCalendarSlotHourLine',
+  'GoogleCalendarSlotRuler',
   'GoogleCalendarSunday',
   'GoogleCalendarToday',
 }

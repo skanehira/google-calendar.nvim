@@ -16,6 +16,11 @@ local LABEL_WIDTH = 7
 local ROWS_PER_DAY = 48
 local MINUTES_PER_ROW = 30
 local CONTEXT_ROWS = 4
+local RULER = '      │'
+
+local function ruler_highlight(line_index)
+  return { line = line_index, start_col = #'      ', end_col = #RULER, group = 'GoogleCalendarSlotRuler' }
+end
 local FOOTER_ITEMS = {
   { action = 'copy', label = 'コピー' },
   { action = 'close', label = '戻る' },
@@ -74,7 +79,8 @@ local function clock_minutes(time)
 end
 
 local function pad(text, width)
-  return text .. string.rep(' ', math.max(0, width - vim.fn.strdisplaywidth(text)))
+  -- strdisplaywidth は今いるウィンドウでの折り返しも数え、全角文字が行末をまたぐと 1 列多くなるため使わない
+  return text .. string.rep(' ', math.max(0, width - vim.api.nvim_strwidth(text)))
 end
 
 local function time_label(item, local_offset)
@@ -168,21 +174,6 @@ local function block_text(block, row, local_offset)
   return ''
 end
 
--- タイムラインの先頭行に置くと、候補までスクロールしたときに画面外へ出るため、固定表示の winbar に置く
-local function all_day_winbar(date, events)
-  local chips = {}
-  for _, item in ipairs(events) do
-    if all_day_on(item, date) then
-      local title = event.display_title(item):gsub('%%', '%%%%')
-      table.insert(chips, '%#' .. calendar_color.bar_group(item.calendar_id) .. '# ' .. title .. ' %*')
-    end
-  end
-  if #chips == 0 then
-    return ' %#GoogleCalendarDetailMuted#終日予定なし%*'
-  end
-  return ' 終日 ' .. table.concat(chips, ' ')
-end
-
 -- 列の間に 1 列の隙間を置き、最後の列で端数を吸収して、右端を候補のブロックと揃える
 local function lane_widths(content_width, lane_count)
   local available = math.max(0, content_width - (lane_count - 1))
@@ -192,6 +183,29 @@ local function lane_widths(content_width, lane_count)
     widths[lane] = lane == lane_count and available - base * (lane_count - 1) or base
   end
   return widths
+end
+
+-- タイムラインの先頭行に置くと、候補までスクロールしたときに画面外へ出るため、固定表示の winbar に置く
+local function all_day_winbar(date, events, content_width)
+  local label = pad('終日', LABEL_WIDTH - 1) .. '%#GoogleCalendarSlotRuler#│%*'
+  local items = {}
+  for _, item in ipairs(events) do
+    if all_day_on(item, date) then
+      table.insert(items, item)
+    end
+  end
+  if #items == 0 then
+    return label .. '%#GoogleCalendarDetailMuted#なし%*'
+  end
+
+  local widths = lane_widths(content_width, #items)
+  local chips = {}
+  for index, item in ipairs(items) do
+    -- winbar は statusline の書式として解釈されるため、切り詰めと幅揃えの後で % をエスケープする
+    local text = pad(event.truncate(event.display_title(item), widths[index]), widths[index]):gsub('%%', '%%%%')
+    table.insert(chips, '%#' .. calendar_color.bar_group(item.calendar_id) .. '#' .. text .. '%*')
+  end
+  return label .. table.concat(chips, ' ')
 end
 
 ---@return { lines: string[], highlights: table[], candidate_line: integer|nil, winbar: string }
@@ -217,9 +231,22 @@ function M.build_timeline(date, events, candidate, width, local_offset)
   end
 
   for row = 0, ROWS_PER_DAY - 1 do
-    local label = row % 2 == 0 and string.format('%02d:00 │', row / 2) or '      │'
+    local label = row % 2 == 0 and string.format('%02d:00 │', row / 2) or RULER
     local line = label
     local line_index = row
+    table.insert(highlights, ruler_highlight(line_index))
+    -- extmark の列はバイト位置で指定するため、表示幅ではなくバイト位置で空いている範囲を持つ
+    local blank_ranges = {}
+
+    local function add_blank(text)
+      local last = blank_ranges[#blank_ranges]
+      if last ~= nil and last[2] == #line then
+        last[2] = #line + #text
+      else
+        table.insert(blank_ranges, { #line, #line + #text })
+      end
+      line = line .. text
+    end
 
     local function add_cell(text, cell_width, group)
       local cell = pad(event.truncate(text, cell_width), cell_width)
@@ -234,27 +261,31 @@ function M.build_timeline(date, events, candidate, width, local_offset)
       local widths = lane_widths(content_width, lane_count)
       for lane = 1, lane_count do
         if lane > 1 then
-          line = line .. ' '
+          add_blank(' ')
         end
         local block = lanes[lane]
         if block ~= nil then
-          local start_col = #line
           add_cell(block_text(block, row, local_offset), widths[lane], calendar_color.bar_group(block.item.calendar_id))
-          if row == block.last then
-            table.insert(highlights, {
-              line = line_index,
-              start_col = start_col,
-              end_col = #line,
-              group = 'GoogleCalendarSlotEventEnd',
-            })
-          end
         else
-          line = line .. string.rep(' ', widths[lane])
+          add_blank(string.rep(' ', widths[lane]))
         end
       end
     elseif candidate_first ~= nil and row >= candidate_first and row <= candidate_last then
       local text = row == candidate_first and ('候補 ' .. candidate.start .. '~' .. candidate.finish) or ''
       add_cell(text, content_width, 'GoogleCalendarSlotCandidate')
+    else
+      add_blank(string.rep(' ', content_width))
+    end
+
+    if row % 2 == 1 then
+      for _, range in ipairs(blank_ranges) do
+        table.insert(highlights, {
+          line = line_index,
+          start_col = range[1],
+          end_col = range[2],
+          group = 'GoogleCalendarSlotHourLine',
+        })
+      end
     end
 
     table.insert(lines, line)
@@ -264,7 +295,7 @@ function M.build_timeline(date, events, candidate, width, local_offset)
     lines = lines,
     highlights = highlights,
     candidate_line = candidate_first and (candidate_first + 1) or nil,
-    winbar = all_day_winbar(date, events),
+    winbar = all_day_winbar(date, events, content_width),
   }
 end
 
@@ -336,13 +367,15 @@ local function render_timeline()
   -- winheight は winbar の行を除いた本文の行数を返す
   local text_height = vim.fn.winheight(win)
   local lines = timeline.lines
+  local highlights = timeline.highlights
   while #lines < text_height do
-    table.insert(lines, '      │')
+    table.insert(lines, RULER)
+    table.insert(highlights, ruler_highlight(#lines - 1))
   end
   local buf = set_lines(win, lines)
   local ns = vim.api.nvim_create_namespace('google-calendar-slots-timeline')
   vim.api.nvim_buf_clear_namespace(buf, ns, 0, -1)
-  for _, highlight in ipairs(timeline.highlights) do
+  for _, highlight in ipairs(highlights) do
     vim.api.nvim_buf_set_extmark(buf, ns, highlight.line, highlight.start_col, {
       end_col = highlight.end_col,
       hl_group = highlight.group,
@@ -446,6 +479,8 @@ function M.open(conditions)
   for _, win in ipairs({ timeline_win, list_win }) do
     vim.wo[win].winhl = 'FloatBorder:GoogleCalendarBorder,FloatTitle:GoogleCalendarHeader'
   end
+  -- WinBar は背景を持たないカラースキームが多く、その場合は本体の背景で塗られて float の中で黒く浮くため、本文と同じ背景にする
+  vim.wo[timeline_win].winhl = vim.wo[timeline_win].winhl .. ',WinBar:NormalFloat,WinBarNC:NormalFloat'
   vim.wo[list_win].cursorline = true
   vim.api.nvim_create_autocmd('WinClosed', {
     pattern = tostring(list_win),

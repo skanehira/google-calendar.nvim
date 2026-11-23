@@ -17,6 +17,14 @@ local function buffer_lines()
   return vim.api.nvim_buf_get_lines(vim.api.nvim_win_get_buf(state.windows.slot_filter), 0, -1, false)
 end
 
+local function footer_text(win)
+  local text = ''
+  for _, chunk in ipairs(vim.api.nvim_win_get_config(win).footer or {}) do
+    text = text .. chunk[1]
+  end
+  return text
+end
+
 local function setup(slots)
   config.setup({
     slots = vim.tbl_extend('force', { weeks = 2 }, slots or {}),
@@ -171,10 +179,7 @@ describe('ui.slot_filter', function()
   it('フッターに選択・検索・閉じる・隠すのキーを表示する', function()
     local win = slot_filter.open({ today = '2026-11-18' })
 
-    assert.are.same(
-      { { ' <Space>:選択 <CR>:検索 <Esc>:閉じる q:隠す ' } },
-      vim.api.nvim_win_get_config(win).footer
-    )
+    assert.are.equal(' <Space>:選択 <CR>:検索 <Esc>:閉じる q:隠す ', footer_text(win))
   end)
 
   it('? でヘルプを開き、<Esc> で閉じる', function()

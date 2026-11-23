@@ -26,6 +26,14 @@ local function title_of(name)
   return title[1][1]
 end
 
+local function footer_text(win)
+  local text = ''
+  for _, chunk in ipairs(vim.api.nvim_win_get_config(win).footer or {}) do
+    text = text .. chunk[1]
+  end
+  return text
+end
+
 local function topline_of(name)
   return vim.api.nvim_win_call(state.windows[name], function()
     return vim.fn.winsaveview().topline
@@ -372,10 +380,7 @@ describe('ui.slots', function()
   it('フッターに選択・全選択・コピーのキーを表示する', function()
     slots_ui.open(conditions)
 
-    assert.are.same(
-      { { ' <Space>:選択 a:全選択 y:コピー ' } },
-      vim.api.nvim_win_get_config(state.windows.slots).footer
-    )
+    assert.are.equal(' <Space>:選択 a:全選択 y:コピー ', footer_text(state.windows.slots))
   end)
 
   it('Space で複数の候補を選択し、y で選んだ候補だけをコピーする', function()

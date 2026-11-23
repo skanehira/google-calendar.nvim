@@ -398,20 +398,32 @@ local function render_list()
     return
   end
   local lines
+  local highlights = {}
   if current.found == nil then
     lines = { '読み込み中...' }
   elseif #current.found == 0 then
     lines = { '空き枠なし' }
   else
     lines = {}
-    for index, line in ipairs(slots.format(current.found)) do
-      local cursor = index == current.selected and '>' or ' '
-      local mark = current.chosen[index] and '✓' or ' '
-      table.insert(lines, cursor .. mark .. line)
+    for index, line in ipairs(slots.format(current.found, { weekday = true })) do
+      local selected = current.chosen[index] == true
+      local mark = selected and '●' or '○'
+      table.insert(lines, mark .. ' ' .. line)
+      if selected or index == current.selected then
+        table.insert(highlights, { line = index - 1, start_col = 0, end_col = 1, group = 'GoogleCalendarSelected' })
+      end
     end
   end
   local win = state.windows[LIST]
-  set_lines(win, lines)
+  local buf = set_lines(win, lines)
+  local ns = vim.api.nvim_create_namespace('google-calendar-slots-list')
+  vim.api.nvim_buf_clear_namespace(buf, ns, 0, -1)
+  for _, highlight in ipairs(highlights) do
+    vim.api.nvim_buf_set_extmark(buf, ns, highlight.line, highlight.start_col, {
+      end_col = highlight.end_col,
+      hl_group = highlight.group,
+    })
+  end
   vim.api.nvim_win_set_cursor(win, { math.min(current.selected, #lines), 0 })
 end
 

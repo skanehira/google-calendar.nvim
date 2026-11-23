@@ -217,6 +217,15 @@ describe('slots.format', function()
 
     assert.are.same({ '2026/11/16 09:00 ~ 10:00', '2026/12/01 13:30 ~ 24:00' }, lines)
   end)
+
+  it('weekday を指定すると日付に曜日を付ける', function()
+    local lines = slots.format({
+      { date = '2026-11-16', start = '09:00', finish = '10:00' },
+      { date = '2026-12-01', start = '13:30', finish = '24:00' },
+    }, { weekday = true })
+
+    assert.are.same({ '2026/11/16(月) 09:00 ~ 10:00', '2026/12/01(火) 13:30 ~ 24:00' }, lines)
+  end)
 end)
 
 describe('slots.parse_time_range', function()

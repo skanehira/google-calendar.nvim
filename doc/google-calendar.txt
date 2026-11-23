@@ -183,8 +183,10 @@ Slots ~
   ?                  Open slots help
   <Esc>              Return to the slot filter
 
-  Press <Space> to select multiple slots. a toggles all slots. y copies only
-  the selected slots. If no slot is selected, y reports No slots selected.
+  Each slot's date includes its weekday. The current row is marked with an
+  orange ○, and selected rows with an orange ●. Press <Space> to select
+  multiple slots. a toggles all slots. y copies only the selected slots. If no
+  slot is selected, y reports No slots selected.
 
 Help ~
   <Esc>              Close help
@@ -484,9 +486,11 @@ Online meeting slots ~                                 *google-calendar-slots*
   - Each slot covers the whole free range, for example `13:00 ~ 17:00` for a
     1-hour meeting. Past days are skipped, and today starts at the current
     time rounded up to the next 30 minutes.
-  - The left window lists the slots. The right window shows a timeline of the
-    selected slot's day, one row per 30 minutes, with busy events (side by
-    side when they overlap) and the slot itself. Event blocks and the slot
+  - The left window lists the slots with their dates and weekdays. The current
+    row is marked with an orange ○, and selected rows with an orange ●. The
+    right window shows a timeline of the selected slot's day, one row per 30
+    minutes, with busy events (side by side when they overlap) and the slot
+    itself. Event blocks and the slot
     block share the same right edge, a faint gray gridline marks every hour
     in the empty areas, and the hour ruler extends to the bottom of the
     window.

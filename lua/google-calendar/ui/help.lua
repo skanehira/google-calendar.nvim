@@ -46,6 +46,8 @@ local layouts = {
   },
   slots = {
     { { action = 'next', label = '選択' }, { action = 'prev', label = '選択' } },
+    { { action = 'toggle_select', label = '複数選択' } },
+    { { action = 'select_all', label = '全選択' } },
     { { action = 'copy', label = 'コピー' } },
     { { action = 'esc_close', label = '戻る' } },
     { { action = 'close', label = '隠す' } },

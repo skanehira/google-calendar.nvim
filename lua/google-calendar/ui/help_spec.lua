@@ -75,6 +75,8 @@ describe('ui.help', function()
   it('空き枠の候補一覧で有効なキーの一覧を生成する', function()
     assert.are.same({
       'j/k:選択',
+      '<Space>:複数選択',
+      'a:全選択',
       'y:コピー',
       '<Esc>:戻る',
       'q:隠す',

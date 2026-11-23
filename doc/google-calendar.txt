@@ -177,9 +177,14 @@ Slot filter ~
 
 Slots ~
   j / k              Select a slot and redraw the timeline
-  y                  Copy every listed slot
+  <Space>            Toggle selection of the current slot
+  a                  Select all slots; press again to clear the selection
+  y                  Copy selected slots
   ?                  Open slots help
   <Esc>              Return to the slot filter
+
+  Press <Space> to select multiple slots. a toggles all slots. y copies only
+  the selected slots. If no slot is selected, y reports No slots selected.
 
 Help ~
   <Esc>              Close help
@@ -294,7 +299,16 @@ Options and defaults:
         close = 'q',
         esc_close = '<Esc>',
       },
-      slots = { next = 'j', prev = 'k', copy = 'y', help = '?', close = 'q', esc_close = '<Esc>' },
+      slots = {
+        next = 'j',
+        prev = 'k',
+        toggle_select = '<Space>',
+        select_all = 'a',
+        copy = 'y',
+        help = '?',
+        close = 'q',
+        esc_close = '<Esc>',
+      },
     },
 
     -- Highlight overrides.

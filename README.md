@@ -18,7 +18,7 @@ Month view in WezTerm. The weekday header stays fixed while the grid scrolls; al
 - Multi-window event composer modeled after Google Calendar's create dialog, including recurring events
 - Guest invitations by email address
 - Add a Google Meet URL when creating an event, and copy it from the detail view
-- Online meeting slot finder: pick weeks, a time range, and a meeting length, list the free slots that keep 1 hour around busy events, check the neighboring events on a day timeline, and copy the numbered list with `y`
+- Online meeting slot finder: pick weeks, a time range, and a meeting length, list the free slots that keep 1 hour around busy events, check the neighboring events on a day timeline, select slots with `<Space>` or `a`, and copy the selected slots with `y`
 - In-memory month cache for fast month navigation
 - Configurable window sizes, keymaps, and highlight groups
 
@@ -122,7 +122,9 @@ end)
 | Slot filter | `?` | Open help |
 | Slot filter | `<Esc>` | Close the slot filter |
 | Slots | `j` / `k` | Select a slot and redraw the timeline |
-| Slots | `y` | Copy every listed slot |
+| Slots | `<Space>` | Toggle selection of the current slot |
+| Slots | `a` | Select all slots; press again to clear the selection |
+| Slots | `y` | Copy selected slots |
 | Slots | `?` | Open help |
 | Slots | `<Esc>` | Return to the slot filter |
 | Help | `<Esc>` | Close help |
@@ -235,7 +237,16 @@ require('google-calendar').setup({
       close = 'q',
       esc_close = '<Esc>',
     },
-    slots = { next = 'j', prev = 'k', copy = 'y', help = '?', close = 'q', esc_close = '<Esc>' },
+    slots = {
+      next = 'j',
+      prev = 'k',
+      toggle_select = '<Space>',
+      select_all = 'a',
+      copy = 'y',
+      help = '?',
+      close = 'q',
+      esc_close = '<Esc>',
+    },
   },
 
   -- Highlight overrides.
@@ -346,7 +357,7 @@ Override any group with `setup({ highlights = { ... } })`. Set a group to `false
 - `buffer` minutes (default 60) before and after each busy event are kept free. Event times are not rounded, so an event ending at 10:15 frees the time from 11:15.
 - Each slot covers the whole free range, for example `13:00 ~ 17:00` for a 1-hour meeting. Past days are skipped, and today starts at the current time rounded up to the next 30 minutes.
 
-The left window lists the slots; the right window shows a 30-minute-per-row timeline of the selected slot's day with busy events (side by side when they overlap) and the slot itself. Event blocks and the slot block share the same right edge, a faint gray gridline marks every hour in the empty areas (as in Google Calendar), and the hour ruler extends to the bottom of the window. All-day events for that day are shown in the window's `winbar`, spanning the same width as the slot block, so they stay visible while the timeline is scrolled to the slot. `y` copies every slot in this format:
+The left window lists the slots with a `✓` mark on selected rows. `<Space>` toggles the current slot, `a` selects all slots or clears the selection when all are already selected, and `y` copies only the selected slots in this format. If no slot is selected, `y` reports `No slots selected` instead of copying. The right window shows a 30-minute-per-row timeline of the selected slot's day with busy events (side by side when they overlap) and the slot itself. Event blocks and the slot block share the same right edge, a faint gray gridline marks every hour in the empty areas (as in Google Calendar), and the hour ruler extends to the bottom of the window. All-day events for that day are shown in the window's `winbar`, spanning the same width as the slot block, so they stay visible while the timeline is scrolled to the slot.
 
 ```text
 2026/11/16 09:00 ~ 11:00

@@ -11,7 +11,7 @@ local M = {}
 
 local LIST = 'slots'
 local TIMELINE = 'slots_timeline'
-local LIST_WIDTH = 30
+local LIST_WIDTH = 32
 local LABEL_WIDTH = 7
 local ROWS_PER_DAY = 48
 local MINUTES_PER_ROW = 30
@@ -22,9 +22,9 @@ local function ruler_highlight(line_index)
   return { line = line_index, start_col = #'      ', end_col = #RULER, group = 'GoogleCalendarSlotRuler' }
 end
 local FOOTER_ITEMS = {
+  { action = 'toggle_select', label = '選択' },
+  { action = 'select_all', label = '全選択' },
   { action = 'copy', label = 'コピー' },
-  { action = 'esc_close', label = '戻る' },
-  { action = 'close', label = '隠す' },
 }
 
 function M.fetch_events(calendar_ids, time_min, time_max, callback)
@@ -72,7 +72,7 @@ M.openers = {
 }
 
 local request_seq = 0
-local current = { events = {}, found = nil, selected = 1 }
+local current = { events = {}, found = nil, selected = 1, chosen = {} }
 
 local function clock_minutes(time)
   local hour, minute = time:match('^(%d%d):(%d%d)$')
@@ -405,7 +405,9 @@ local function render_list()
   else
     lines = {}
     for index, line in ipairs(slots.format(current.found)) do
-      table.insert(lines, (index == current.selected and '>' or ' ') .. line)
+      local cursor = index == current.selected and '>' or ' '
+      local mark = current.chosen[index] and '✓' or ' '
+      table.insert(lines, cursor .. mark .. line)
     end
   end
   local win = state.windows[LIST]
@@ -435,12 +437,48 @@ local function copy()
     return
   end
 
-  local text = table.concat(slots.format(current.found), '\n')
+  local chosen = {}
+  for index, slot in ipairs(current.found) do
+    if current.chosen[index] then
+      table.insert(chosen, slot)
+    end
+  end
+  if #chosen == 0 then
+    cfg.notify('No slots selected', vim.log.levels.WARN)
+    return
+  end
+
+  local text = table.concat(slots.format(chosen), '\n')
   if vim.fn.has('clipboard') == 0 or not pcall(cfg.clipboard, text) then
     cfg.notify('Could not copy to clipboard', vim.log.levels.ERROR)
     return
   end
-  cfg.notify(string.format('Copied %d slots', #current.found), vim.log.levels.INFO)
+  cfg.notify(string.format('Copied %d slots', #chosen), vim.log.levels.INFO)
+end
+
+local function toggle_select()
+  if current.found == nil or #current.found == 0 then
+    return
+  end
+  current.chosen[current.selected] = not current.chosen[current.selected]
+  render_list()
+end
+
+local function toggle_all()
+  if current.found == nil or #current.found == 0 then
+    return
+  end
+  local all = true
+  for index = 1, #current.found do
+    if not current.chosen[index] then
+      all = false
+      break
+    end
+  end
+  for index = 1, #current.found do
+    current.chosen[index] = not all
+  end
+  render_list()
 end
 
 local key_actions = {
@@ -450,6 +488,8 @@ local key_actions = {
   prev = function()
     move(-1)
   end,
+  toggle_select = toggle_select,
+  select_all = toggle_all,
   copy = copy,
   help = function()
     M.openers.help(LIST)
@@ -497,7 +537,7 @@ function M.open(conditions)
   })
   set_keymaps(vim.api.nvim_win_get_buf(list_win))
 
-  current = { events = {}, found = nil, selected = 1 }
+  current = { events = {}, found = nil, selected = 1, chosen = {} }
   render_list()
   render_timeline()
 
@@ -532,6 +572,7 @@ function M.open(conditions)
         now = M.deps.now(),
         local_offset = M.deps.local_offset,
       })
+      current.chosen = {}
       render_list()
       render_timeline()
     end

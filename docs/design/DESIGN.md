@@ -210,10 +210,10 @@ nvim --headless -u tests/minimal_init.lua \
 
 実測値:
 
-- `make test`: 321 tests passed / 0 failed / 0 errors、exit 0
-- `make test-file FILE=lua/google-calendar/config_spec.lua`: 17 tests passed、exit 0
+- `make test`: 414 tests passed / 0 failed / 0 errors、exit 0
+- `make test-file FILE=lua/google-calendar/config_spec.lua`: 28 tests passed、exit 0
 - `make test-file FILE=lua/google-calendar/gws_spec.lua`: 36 tests passed、exit 0
-- `XDG_STATE_HOME="$PWD/.tmp-state" make test`: 321 tests passed、exit 0
+- `XDG_STATE_HOME="$PWD/.tmp-state" make test`: 414 tests passed、exit 0
 - `make test TEST_DIR=<空ディレクトリ>`: exit 2、`spec が 0 件です` を出力（0 件のまま成功しない）
 
 `TEST_DIR` は既定 `lua/`。spec は実装ファイルの隣 (`lua/**/*_spec.lua`) に置く。テストハーネスの spec も `lua/google-calendar/test_harness_spec.lua` に置き、`make test` の走査対象に含める。E2E の spec は `tests/e2e/` に置き、`make test-e2e` で実行する。
@@ -249,7 +249,7 @@ make test-e2e
 
 `scripts/e2e.sh` は `tests/fixtures/fake-gws.py` への `gws` シンボリックリンクを一時 `PATH` の先頭に置き、`FAKE_GWS_STATE` / `XDG_STATE_HOME` / `FAKE_GWS_CWD_LOG` / `FAKE_GWS_CALL_LOG` を一時ディレクトリに設定して `tests/e2e` を plenary で実行する。実カレンダーは変更しない。
 
-実測値: `make test-e2e` は 14 tests passed / 0 failed / 0 errors、exit 0。スモークテストは偽 gws が PATH の先頭にあること、空の `events list`、`+insert` 後の `list` への反映、`:GoogleCalendar` の登録、`setup()` の既定値を確認する。`tests/e2e/crud_spec.lua` は偽 gws を使い、月表示を開いて登録・更新・削除を通しで検証し、`+N`、認証エラー、作成失敗、`:w` 連打、各操作後の状態ファイルとバッファ内容の一致を確認する。
+実測値: `make test-e2e` は 15 tests passed / 0 failed / 0 errors、exit 0。スモークテストは偽 gws が PATH の先頭にあること、空の `events list`、`+insert` 後の `list` への反映、`:GoogleCalendar` の登録、`setup()` の既定値を確認する。`tests/e2e/crud_spec.lua` は偽 gws を使い、月表示を開いて登録・更新・削除を通しで検証し、`+N`、認証エラー、作成失敗、`:w` 連打、各操作後の状態ファイルとバッファ内容の一致を確認する。
 
 **実 API の手動確認**（任意）:
 
@@ -326,7 +326,9 @@ GOOGLE_WORKSPACE_CLI_CONFIG_DIR="$PWD/.local/gws-config" gws calendar calendarLi
 | 空き枠の条件選択 | `?` | ヘルプを開く |
 | 空き枠の条件選択 | `<Esc>` | 条件選択を閉じる |
 | 空き枠の候補一覧 | `j` / `k` | 候補を選択し、タイムラインを描き直す |
-| 空き枠の候補一覧 | `y` | 表示中のすべての候補をコピーする |
+| 空き枠の候補一覧 | `<Space>` | 選択中の候補の選択状態を切り替える |
+| 空き枠の候補一覧 | `a` | すべての候補を選択する。もう一度押すと全解除する |
+| 空き枠の候補一覧 | `y` | 選択中の候補だけをコピーする |
 | 空き枠の候補一覧 | `?` | ヘルプを開く |
 | 空き枠の候補一覧 | `<Esc>` | 条件選択に戻る |
 | ヘルプ | `<Esc>` | ヘルプを閉じる |
@@ -393,7 +395,16 @@ require('google-calendar').setup({
     confirm = { yes = 'y', no = 'n', close = 'q', esc_close = '<Esc>' },
     help = { close = 'q', esc_close = '<Esc>' },
     slot_filter = { next = 'j', prev = 'k', toggle = '<Space>', search = '<CR>', help = '?', close = 'q', esc_close = '<Esc>' },
-    slots = { next = 'j', prev = 'k', copy = 'y', help = '?', close = 'q', esc_close = '<Esc>' },
+    slots = {
+      next = 'j',
+      prev = 'k',
+      toggle_select = '<Space>',
+      select_all = 'a',
+      copy = 'y',
+      help = '?',
+      close = 'q',
+      esc_close = '<Esc>',
+    },
   },
   -- ハイライトの上書き
   highlights = {},
@@ -547,7 +558,7 @@ stdpath('data')/google-calendar.nvim/config.json
 - 月表示の曜日ヘッダーは winbar として固定し、月グリッドをスクロールしても表示し続ける。選択週をスクロールするときは、選択枠の下線も見えるように 1 行余裕を持たせる。最終週には次の週がないため、選択枠の下線を予定行の末尾に追加する。
 - 月表示の予定は Google カレンダー風に、終日・複数日予定はカレンダー色のバー（白文字）、単日の時刻付き予定はカレンダー色の `●` / `○` ドット＋開始時刻＋タイトルで表示する。タイトルがない予定（非公開予定で詳細が隠れている場合を含む）は `予定あり` と表示する。終了が翌日 00:00 の時刻付き予定は `24:00` 終了の単日予定として扱い、バーを翌日に伸ばさない。複数日予定のバーは隣接する日セルと週行を跨いで連続し、セル境界の `│` を背景で覆う。バーのタイトルはバー全体の幅に合わせて切り詰める。色は `primary` を先頭に、続いて `calendars` の順で 11 色を自動割り当てし、12 件目以降は先頭に戻る
 - 月グリッドは `│` の縦線に加えて、各週の上に `─` / `┼` の横線を引いてセルを区切る
-- 空き枠の候補一覧は左に候補、右に選択中の候補の日のタイムライン（1 行 30 分）を並べた 2 つの float で表示する。`<Esc>` で左右を同時に閉じて条件選択に戻る。月表示の状態とキャッシュは読み書きしない（[features/meeting-slots.md](features/meeting-slots.md)）
+- 空き枠の候補一覧は左に候補、右に選択中の候補の日のタイムライン（1 行 30 分）を並べた 2 つの float で表示する。左では `<Space>` で複数の候補を選択でき、`a` ですべての候補の選択を切り替え、`y` で選択中の候補だけをコピーする。`<Esc>` で左右を同時に閉じて条件選択に戻る。月表示の状態とキャッシュは読み書きしない（[features/meeting-slots.md](features/meeting-slots.md)）
 - insert モードの `<Esc>` は insert を抜けるだけにし、normal モードでキャンセルする（Vim の慣習に合わせる）
 - 画面を開いたら、実際のターミナルで代表データ（予定が多い日・長いタイトル・日本語）を使ってキー操作とスクリーンショットを確認する
 

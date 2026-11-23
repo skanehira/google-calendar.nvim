@@ -58,7 +58,16 @@ local default_keymaps = {
     close = 'q',
     esc_close = '<Esc>',
   },
-  slots = { next = 'j', prev = 'k', copy = 'y', help = '?', close = 'q', esc_close = '<Esc>' },
+  slots = {
+    next = 'j',
+    prev = 'k',
+    toggle_select = '<Space>',
+    select_all = 'a',
+    copy = 'y',
+    help = '?',
+    close = 'q',
+    esc_close = '<Esc>',
+  },
 }
 
 local default_slots = {

@@ -51,44 +51,42 @@ describe('e2e slots', function()
     config.setup({})
   end)
 
-  it(
-    ':GoogleCalendar slots で来週を選び、予定の前後 1 時間を避けた候補をコピーできる',
-    function()
-      local next_week = slots.week_options(calendar.today(), config.get().week_start, 2)[2]
-      local busy_date = calendar.add_days(next_week.start_date, 1)
-      vim.fn.writefile({
-        vim.json.encode({
-          items = {
-            {
-              id = 'evt-busy',
-              summary = '定例',
-              start = { dateTime = calendar.rfc3339(busy_date, '12:00') },
-              ['end'] = { dateTime = calendar.rfc3339(busy_date, '13:00') },
-            },
+  it(':GoogleCalendar slots で来週を選び、全選択した候補をコピーできる', function()
+    local next_week = slots.week_options(calendar.today(), config.get().week_start, 2)[2]
+    local busy_date = calendar.add_days(next_week.start_date, 1)
+    vim.fn.writefile({
+      vim.json.encode({
+        items = {
+          {
+            id = 'evt-busy',
+            summary = '定例',
+            start = { dateTime = calendar.rfc3339(busy_date, '12:00') },
+            ['end'] = { dateTime = calendar.rfc3339(busy_date, '13:00') },
           },
-        }),
-      }, state_path)
+        },
+      }),
+    }, state_path)
 
-      vim.cmd('GoogleCalendar slots')
-      -- 今週の選択を外し、来週を選ぶ
-      feed('jjjjjj<Space>j<Space><CR>')
-      assert.is_true(vim.wait(5000, function()
-        return state.windows.slots ~= nil and list_lines()[1] ~= '読み込み中...'
-      end, 20))
+    vim.cmd('GoogleCalendar slots')
+    -- 今週の選択を外し、来週を選ぶ
+    feed('jjjjjj<Space>j<Space><CR>')
+    assert.is_true(vim.wait(5000, function()
+      return state.windows.slots ~= nil and list_lines()[1] ~= '読み込み中...'
+    end, 20))
 
-      feed('y')
+    feed('a')
+    feed('y')
 
-      local expected = {}
-      for offset = 0, 6 do
-        local date = calendar.add_days(next_week.start_date, offset)
-        if date == busy_date then
-          table.insert(expected, { date = date, start = '09:00', finish = '11:00' })
-          table.insert(expected, { date = date, start = '14:00', finish = '18:00' })
-        else
-          table.insert(expected, { date = date, start = '09:00', finish = '18:00' })
-        end
+    local expected = {}
+    for offset = 0, 6 do
+      local date = calendar.add_days(next_week.start_date, offset)
+      if date == busy_date then
+        table.insert(expected, { date = date, start = '09:00', finish = '11:00' })
+        table.insert(expected, { date = date, start = '14:00', finish = '18:00' })
+      else
+        table.insert(expected, { date = date, start = '09:00', finish = '18:00' })
       end
-      assert.are.same({ table.concat(slots.format(expected), '\n') }, copied)
     end
-  )
+    assert.are.same({ table.concat(slots.format(expected), '\n') }, copied)
+  end)
 end)

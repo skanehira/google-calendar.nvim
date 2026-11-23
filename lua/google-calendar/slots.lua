@@ -202,10 +202,12 @@ function M.date_label(date)
   return date:gsub('%-', '/') .. '(' .. WEEKDAY_LABELS[weekday_index(date) + 1] .. ')'
 end
 
-function M.format(found)
+function M.format(found, opts)
+  opts = opts or {}
   local lines = {}
   for _, slot in ipairs(found) do
-    table.insert(lines, string.format('%s %s ~ %s', (slot.date:gsub('%-', '/')), slot.start, slot.finish))
+    local date = opts.weekday and M.date_label(slot.date) or slot.date:gsub('%-', '/')
+    table.insert(lines, string.format('%s %s ~ %s', date, slot.start, slot.finish))
   end
   return lines
 end

@@ -26,6 +26,17 @@ local function title_of(name)
   return title[1][1]
 end
 
+local function circle_marks()
+  local ns = vim.api.nvim_get_namespaces()['google-calendar-slots-list']
+  local marks =
+    vim.api.nvim_buf_get_extmarks(vim.api.nvim_win_get_buf(state.windows.slots), ns, 0, -1, { details = true })
+  local result = {}
+  for _, mark in ipairs(marks) do
+    table.insert(result, { mark[2], mark[3], mark[4].end_col, mark[4].hl_group })
+  end
+  return result
+end
+
 local function footer_text(win)
   local text = ''
   for _, chunk in ipairs(vim.api.nvim_win_get_config(win).footer or {}) do
@@ -343,14 +354,17 @@ describe('ui.slots', function()
         timed('b', '終日会議', '2026-11-17T08:00:00+09:00', '2026-11-17T19:00:00+09:00'),
       }, nil)
 
-      assert.are.same({ '> 2026/11/16 09:00 ~ 11:00', '  2026/11/16 14:00 ~ 18:00' }, lines_of('slots'))
+      assert.are.same({
+        '○ 2026/11/16(月) 09:00 ~ 11:00',
+        '○ 2026/11/16(月) 14:00 ~ 18:00',
+      }, lines_of('slots'))
       assert.are.equal(' 2026/11/16(月) ', title_of('slots_timeline'))
       assert.are.equal(vim.api.nvim_get_current_win(), state.windows.slots)
     end
   )
 
   it(
-    'j/k で候補を選ぶと > が移り、タイムラインが候補の 2 時間前から見えるようにスクロールする',
+    'j/k でカーソル行が移り、タイムラインが候補の 2 時間前から見えるようにスクロールする',
     function()
       slots_ui.open(conditions)
       fetches[1].callback({ timed('a', '朝会', '2026-11-16T12:00:00+09:00', '2026-11-16T13:00:00+09:00') }, nil)
@@ -359,10 +373,11 @@ describe('ui.slots', function()
       feed('j')
 
       assert.are.same({
-        '  2026/11/16 09:00 ~ 11:00',
-        '> 2026/11/16 14:00 ~ 18:00',
-        '  2026/11/17 09:00 ~ 18:00',
+        '○ 2026/11/16(月) 09:00 ~ 11:00',
+        '○ 2026/11/16(月) 14:00 ~ 18:00',
+        '○ 2026/11/17(火) 09:00 ~ 18:00',
       }, lines_of('slots'))
+      assert.are.equal(2, vim.api.nvim_win_get_cursor(state.windows.slots)[1])
       -- 4 行前 (25 行目) からだと末尾が余るため、ウィンドウが埋まる位置まで戻す
       local height = vim.fn.winheight(state.windows.slots_timeline)
       assert.are.equal(48 - height + 1, topline_of('slots_timeline'))
@@ -372,7 +387,7 @@ describe('ui.slots', function()
       assert.are.equal(' 2026/11/17(火) ', title_of('slots_timeline'))
 
       feed('jk')
-      assert.are.equal('> 2026/11/16 14:00 ~ 18:00', lines_of('slots')[2])
+      assert.are.equal('○ 2026/11/16(月) 14:00 ~ 18:00', lines_of('slots')[2])
       assert.are.equal(' 2026/11/16(月) ', title_of('slots_timeline'))
     end
   )
@@ -381,6 +396,24 @@ describe('ui.slots', function()
     slots_ui.open(conditions)
 
     assert.are.equal(' <Space>:選択 a:全選択 y:コピー ', footer_text(state.windows.slots))
+  end)
+
+  it('カーソル行と選択行の丸をオレンジで表示する', function()
+    slots_ui.open(conditions)
+    fetches[1].callback({ timed('a', '朝会', '2026-11-16T12:00:00+09:00', '2026-11-16T13:00:00+09:00') }, nil)
+
+    assert.are.same({ { 0, 0, 1, 'GoogleCalendarSelected' } }, circle_marks())
+
+    feed('j')
+    assert.are.same({ { 1, 0, 1, 'GoogleCalendarSelected' } }, circle_marks())
+
+    feed('<Space>')
+    feed('k')
+    feed('<Space>')
+    assert.are.same({
+      { 0, 0, 1, 'GoogleCalendarSelected' },
+      { 1, 0, 1, 'GoogleCalendarSelected' },
+    }, circle_marks())
   end)
 
   it('Space で複数の候補を選択し、y で選んだ候補だけをコピーする', function()
@@ -392,9 +425,9 @@ describe('ui.slots', function()
     feed('<Space>')
 
     assert.are.same({
-      ' ✓2026/11/16 09:00 ~ 11:00',
-      '>✓2026/11/16 14:00 ~ 18:00',
-      '  2026/11/17 09:00 ~ 18:00',
+      '● 2026/11/16(月) 09:00 ~ 11:00',
+      '● 2026/11/16(月) 14:00 ~ 18:00',
+      '○ 2026/11/17(火) 09:00 ~ 18:00',
     }, lines_of('slots'))
 
     feed('y')
@@ -411,16 +444,16 @@ describe('ui.slots', function()
 
     feed('a')
     assert.are.same({
-      '>✓2026/11/16 09:00 ~ 11:00',
-      ' ✓2026/11/16 14:00 ~ 18:00',
-      ' ✓2026/11/17 09:00 ~ 18:00',
+      '● 2026/11/16(月) 09:00 ~ 11:00',
+      '● 2026/11/16(月) 14:00 ~ 18:00',
+      '● 2026/11/17(火) 09:00 ~ 18:00',
     }, lines_of('slots'))
 
     feed('a')
     assert.are.same({
-      '> 2026/11/16 09:00 ~ 11:00',
-      '  2026/11/16 14:00 ~ 18:00',
-      '  2026/11/17 09:00 ~ 18:00',
+      '○ 2026/11/16(月) 09:00 ~ 11:00',
+      '○ 2026/11/16(月) 14:00 ~ 18:00',
+      '○ 2026/11/17(火) 09:00 ~ 18:00',
     }, lines_of('slots'))
   end)
 
@@ -504,7 +537,7 @@ describe('ui.slots', function()
       assert.are.same({ '読み込み中...' }, lines_of('slots'))
 
       fetches[2].callback({}, nil)
-      assert.are.same({ '> 2026/11/17 09:00 ~ 18:00' }, lines_of('slots'))
+      assert.are.same({ '○ 2026/11/17(火) 09:00 ~ 18:00' }, lines_of('slots'))
       assert.are.equal(' 2026/11/17(火) ', title_of('slots_timeline'))
     end
   )
@@ -566,7 +599,10 @@ describe('ui.slots', function()
       window.show_all()
 
       assert.are.equal(state.windows.slots, vim.api.nvim_get_current_win())
-      assert.are.same({ '> 2026/11/16 09:00 ~ 18:00', '  2026/11/17 09:00 ~ 18:00' }, lines_of('slots'))
+      assert.are.same({
+        '○ 2026/11/16(月) 09:00 ~ 18:00',
+        '○ 2026/11/17(火) 09:00 ~ 18:00',
+      }, lines_of('slots'))
     end
   )
 

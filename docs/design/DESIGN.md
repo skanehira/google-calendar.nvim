@@ -210,10 +210,10 @@ nvim --headless -u tests/minimal_init.lua \
 
 実測値:
 
-- `make test`: 414 tests passed / 0 failed / 0 errors、exit 0
+- `make test`: 416 tests passed / 0 failed / 0 errors、exit 0
 - `make test-file FILE=lua/google-calendar/config_spec.lua`: 28 tests passed、exit 0
 - `make test-file FILE=lua/google-calendar/gws_spec.lua`: 36 tests passed、exit 0
-- `XDG_STATE_HOME="$PWD/.tmp-state" make test`: 414 tests passed、exit 0
+- `XDG_STATE_HOME="$PWD/.tmp-state" make test`: 416 tests passed、exit 0
 - `make test TEST_DIR=<空ディレクトリ>`: exit 2、`spec が 0 件です` を出力（0 件のまま成功しない）
 
 `TEST_DIR` は既定 `lua/`。spec は実装ファイルの隣 (`lua/**/*_spec.lua`) に置く。テストハーネスの spec も `lua/google-calendar/test_harness_spec.lua` に置き、`make test` の走査対象に含める。E2E の spec は `tests/e2e/` に置き、`make test-e2e` で実行する。
@@ -558,7 +558,7 @@ stdpath('data')/google-calendar.nvim/config.json
 - 月表示の曜日ヘッダーは winbar として固定し、月グリッドをスクロールしても表示し続ける。選択週をスクロールするときは、選択枠の下線も見えるように 1 行余裕を持たせる。最終週には次の週がないため、選択枠の下線を予定行の末尾に追加する。
 - 月表示の予定は Google カレンダー風に、終日・複数日予定はカレンダー色のバー（白文字）、単日の時刻付き予定はカレンダー色の `●` / `○` ドット＋開始時刻＋タイトルで表示する。タイトルがない予定（非公開予定で詳細が隠れている場合を含む）は `予定あり` と表示する。終了が翌日 00:00 の時刻付き予定は `24:00` 終了の単日予定として扱い、バーを翌日に伸ばさない。複数日予定のバーは隣接する日セルと週行を跨いで連続し、セル境界の `│` を背景で覆う。バーのタイトルはバー全体の幅に合わせて切り詰める。色は `primary` を先頭に、続いて `calendars` の順で 11 色を自動割り当てし、12 件目以降は先頭に戻る
 - 月グリッドは `│` の縦線に加えて、各週の上に `─` / `┼` の横線を引いてセルを区切る
-- 空き枠の候補一覧は左に候補、右に選択中の候補の日のタイムライン（1 行 30 分）を並べた 2 つの float で表示する。左では `<Space>` で複数の候補を選択でき、`a` ですべての候補の選択を切り替え、`y` で選択中の候補だけをコピーする。`<Esc>` で左右を同時に閉じて条件選択に戻る。月表示の状態とキャッシュは読み書きしない（[features/meeting-slots.md](features/meeting-slots.md)）
+- 空き枠の候補一覧は左に候補、右に選択中の候補の日のタイムライン（1 行 30 分）を並べた 2 つの float で表示する。候補の日付には曜日を付け、カーソル行はオレンジの `○`、選択した行はオレンジの `●` で示す（カーソル行が選択済みなら `●`）。左では `<Space>` で複数の候補を選択でき、`a` ですべての候補の選択を切り替え、`y` で選択中の候補だけをコピーする。`<Esc>` で左右を同時に閉じて条件選択に戻る。月表示の状態とキャッシュは読み書きしない（[features/meeting-slots.md](features/meeting-slots.md)）
 - insert モードの `<Esc>` は insert を抜けるだけにし、normal モードでキャンセルする（Vim の慣習に合わせる）
 - 画面を開いたら、実際のターミナルで代表データ（予定が多い日・長いタイトル・日本語）を使ってキー操作とスクリーンショットを確認する
 
